@@ -42,14 +42,14 @@ class SceneHistoryManager {
     }
 
     /**
-     * 返回上一个场景
+     * 返回上一个场景，无历史时返回 home
      * @returns 是否成功返回
      */
     back(): boolean {
         this.init(); // 确保已初始化
         if (this._history.length === 0) {
-            console.warn('[SceneHistory] 没有历史记录，无法返回');
-            return false;
+            director.loadScene('home');
+            return true;
         }
         const prev = this._history.pop()!;
         // 临时移除监听，避免 back 时再次记录

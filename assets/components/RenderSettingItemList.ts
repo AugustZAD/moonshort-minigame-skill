@@ -16,6 +16,9 @@ export class SettingItemData {
 
     @property({ type: Enum(ClickMode), tooltip: '点击行为' })
     clickMode: ClickMode = ClickMode.Auto;
+
+    @property({ type: [Component.EventHandler], tooltip: '点击事件（同 Button 的 ClickEvents）' })
+    clickEvents: Component.EventHandler[] = [];
 }
 
 @ccclass('RenderSettingItemList')
@@ -57,7 +60,7 @@ export class RenderSettingItemList extends Component {
                 node.destroy();
                 return;
             }
-            comp.render(item.icon, item.title, item.sceneName, item.clickMode);
+            comp.render(item.icon, item.title, item.sceneName, item.clickMode, item.clickEvents);
             node.setParent(parent);
         });
     }

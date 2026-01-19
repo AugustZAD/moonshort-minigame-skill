@@ -60,12 +60,15 @@ export class RenderSettingItem extends Component {
     /**
      * 渲染设置项
      */
-    render(icon: SpriteFrame | null, title: string, sceneName: string, clickMode?: ClickMode) {
+    render(icon: SpriteFrame | null, title: string, sceneName: string, clickMode?: ClickMode, clickEvents?: Component.EventHandler[]) {
         this.setIcon(icon);
         this.setTitle(title);
         this.sceneName = sceneName ?? '';
         if (clickMode !== undefined) {
             this.clickMode = clickMode;
+        }
+        if (clickEvents !== undefined) {
+            this.clickEvents = clickEvents;
         }
     }
 
