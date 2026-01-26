@@ -1,6 +1,7 @@
 import { _decorator, Component, Enum, NodeEventType } from 'cc';
 import { SceneHistory } from './SceneHistory';
 import { trackHomeRouterClick } from '../analytics/UiEvents';
+import { SceneParams } from '../scripts/core/SceneParams';
 const { ccclass, property, menu } = _decorator;
 
 /**
@@ -29,6 +30,12 @@ export class ClickRouterTo extends Component {
     @property({ tooltip: '目标场景名称（Back 模式下忽略）', visible() { return (this as ClickRouterTo).mode !== RouterMode.Back; } })
     sceneName: string = '';
 
+    @property({ tooltip: '要传递的saveId（可选，用于跳转到游戏场景）', visible() { return (this as ClickRouterTo).mode !== RouterMode.Back; } })
+    saveId: number = 0;
+
+    @property({ tooltip: '要传递的novelId（可选）', visible() { return (this as ClickRouterTo).mode !== RouterMode.Back; } })
+    novelId: string = '';
+
     private _loading: boolean = false;
 
     onEnable() {
@@ -36,7 +43,10 @@ export class ClickRouterTo extends Component {
     }
 
     onDisable() {
-        this.node.off(NodeEventType.TOUCH_END, this.onClick, this);
+        // 清理事件（检查节点是否有效）
+        if (this.node && this.node.isValid) {
+            this.node.off(NodeEventType.TOUCH_END, this.onClick, this);
+        }
     }
 
     private onClick() {
@@ -55,14 +65,25 @@ export class ClickRouterTo extends Component {
             return;
         }
 
+        // 准备场景参数
+        const params: Record<string, any> = {};
+        if (this.saveId > 0) {
+            params.saveId = this.saveId;
+            console.log('[ClickRouterTo] 传递 saveId:', this.saveId);
+        }
+        if (this.novelId) {
+            params.novelId = this.novelId;
+            console.log('[ClickRouterTo] 传递 novelId:', this.novelId);
+        }
+
         this._loading = true;
         trackHomeRouterClick(name, this.node);
         if (this.mode === RouterMode.Replace) {
-            SceneHistory.replace(name, () => {
+            SceneHistory.replace(name, params, () => {
                 this._loading = false;
             });
         } else {
-            SceneHistory.push(name, () => {
+            SceneHistory.push(name, params, () => {
                 this._loading = false;
             });
         }

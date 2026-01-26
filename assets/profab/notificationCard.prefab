@@ -41,10 +41,13 @@
       },
       {
         "__id__": 46
+      },
+      {
+        "__id__": 48
       }
     ],
     "_prefab": {
-      "__id__": 48
+      "__id__": 50
     },
     "_lpos": {
       "__type__": "cc.Vec3",
@@ -356,7 +359,7 @@
     "_string": "title",
     "_horizontalAlign": 0,
     "_verticalAlign": 0,
-    "_actualFontSize": 16,
+    "_actualFontSize": 16.600938967136152,
     "_fontSize": 16,
     "_fontFamily": "Arial",
     "_lineHeight": 22,
@@ -519,7 +522,7 @@
     "_contentSize": {
       "__type__": "cc.Size",
       "width": 291,
-      "height": 40.67999999999999
+      "height": 40.68
     },
     "_anchorPoint": {
       "__type__": "cc.Vec2",
@@ -557,7 +560,7 @@
     "_string": "This text is the main body of the notice. Any more than two lines will be omitted",
     "_horizontalAlign": 0,
     "_verticalAlign": 0,
-    "_actualFontSize": 13,
+    "_actualFontSize": 13.488262910798124,
     "_fontSize": 13,
     "_fontFamily": "Arial",
     "_lineHeight": 18,
@@ -775,7 +778,7 @@
     "_string": "Jan 1，2026 at 16:00",
     "_horizontalAlign": 0,
     "_verticalAlign": 0,
-    "_actualFontSize": 13,
+    "_actualFontSize": 13.488262910798124,
     "_fontSize": 13,
     "_fontFamily": "Arial",
     "_lineHeight": 18,
@@ -1107,6 +1110,33 @@
     "fileId": "21RmHT5xJBZ6znGnw6V+Fp"
   },
   {
+    "__type__": "dc289PxHB5G25eYl/TioNN9",
+    "_name": "",
+    "_objFlags": 0,
+    "__editorExtras__": {},
+    "node": {
+      "__id__": 1
+    },
+    "_enabled": true,
+    "__prefab": {
+      "__id__": 49
+    },
+    "titleLabel": {
+      "__id__": 13
+    },
+    "contentLabel": {
+      "__id__": 21
+    },
+    "timeLabel": {
+      "__id__": 31
+    },
+    "_id": ""
+  },
+  {
+    "__type__": "cc.CompPrefabInfo",
+    "fileId": "3eFp/4Pt1GtKGa9FCARopF"
+  },
+  {
     "__type__": "cc.PrefabInfo",
     "root": {
       "__id__": 1
@@ -1115,6 +1145,7 @@
       "__id__": 0
     },
     "fileId": "d4lpefa4xFiJubk0mALOF5",
+    "instance": null,
     "targetOverrides": null
   }
 ]

@@ -38,10 +38,16 @@
     "_components": [
       {
         "__id__": 54
+      },
+      {
+        "__id__": 56
+      },
+      {
+        "__id__": 58
       }
     ],
     "_prefab": {
-      "__id__": 56
+      "__id__": 68
     },
     "_lpos": {
       "__type__": "cc.Vec3",
@@ -713,7 +719,7 @@
     "_contentSize": {
       "__type__": "cc.Size",
       "width": 66,
-      "height": 20.339999999999996
+      "height": 11.340000000000002
     },
     "_anchorPoint": {
       "__type__": "cc.Vec2",
@@ -748,10 +754,10 @@
       "b": 255,
       "a": 255
     },
-    "_string": "Advanced Life Potion",
-    "_horizontalAlign": 0,
+    "_string": "Advanced Life P...",
+    "_horizontalAlign": 1,
     "_verticalAlign": 1,
-    "_actualFontSize": 8,
+    "_actualFontSize": 8.300469483568076,
     "_fontSize": 8,
     "_fontFamily": "Arial",
     "_lineHeight": 9,
@@ -1032,8 +1038,8 @@
     },
     "_lpos": {
       "__type__": "cc.Vec3",
-      "x": 29.6630859375,
-      "y": -11.18,
+      "x": 29.66345318410192,
+      "y": -11.179999999999998,
       "z": 0
     },
     "_lrot": {
@@ -1073,8 +1079,8 @@
     },
     "_contentSize": {
       "__type__": "cc.Size",
-      "width": 12.673828125,
-      "height": 17.64
+      "width": 12.673093631796167,
+      "height": 17.640000000000004
     },
     "_anchorPoint": {
       "__type__": "cc.Vec2",
@@ -1112,7 +1118,7 @@
     "_string": "x3",
     "_horizontalAlign": 1,
     "_verticalAlign": 1,
-    "_actualFontSize": 12,
+    "_actualFontSize": 12.450704225352114,
     "_fontSize": 12,
     "_fontFamily": "Arial",
     "_lineHeight": 14,
@@ -1233,6 +1239,208 @@
     "fileId": "b7ATF0d0BBbbJVDZnQsNtR"
   },
   {
+    "__type__": "cc.Button",
+    "_name": "",
+    "_objFlags": 0,
+    "__editorExtras__": {},
+    "node": {
+      "__id__": 1
+    },
+    "_enabled": true,
+    "__prefab": {
+      "__id__": 57
+    },
+    "clickEvents": [],
+    "_interactable": true,
+    "_transition": 0,
+    "_normalColor": {
+      "__type__": "cc.Color",
+      "r": 255,
+      "g": 255,
+      "b": 255,
+      "a": 255
+    },
+    "_hoverColor": {
+      "__type__": "cc.Color",
+      "r": 211,
+      "g": 211,
+      "b": 211,
+      "a": 255
+    },
+    "_pressedColor": {
+      "__type__": "cc.Color",
+      "r": 255,
+      "g": 255,
+      "b": 255,
+      "a": 255
+    },
+    "_disabledColor": {
+      "__type__": "cc.Color",
+      "r": 124,
+      "g": 124,
+      "b": 124,
+      "a": 255
+    },
+    "_normalSprite": null,
+    "_hoverSprite": null,
+    "_pressedSprite": null,
+    "_disabledSprite": null,
+    "_duration": 0.1,
+    "_zoomScale": 1.2,
+    "_target": {
+      "__id__": 1
+    },
+    "_id": ""
+  },
+  {
+    "__type__": "cc.CompPrefabInfo",
+    "fileId": "1dk8Owc5ZFz52G0U+Yk0kw"
+  },
+  {
+    "__type__": "10be4T7OQNN8ZCQ1xafeHWp",
+    "_name": "",
+    "_objFlags": 0,
+    "__editorExtras__": {},
+    "node": {
+      "__id__": 1
+    },
+    "_enabled": true,
+    "__prefab": {
+      "__id__": 59
+    },
+    "backgroundSprite": {
+      "__id__": 5
+    },
+    "categoryIconSprite": {
+      "__id__": 13
+    },
+    "itemIconSprite": {
+      "__id__": 21
+    },
+    "nameLabel": {
+      "__id__": 30
+    },
+    "countLabel": {
+      "__id__": 49
+    },
+    "itemButton": {
+      "__id__": 56
+    },
+    "itemIcons": [
+      {
+        "__id__": 60
+      },
+      {
+        "__id__": 61
+      },
+      {
+        "__id__": 62
+      },
+      {
+        "__id__": 63
+      }
+    ],
+    "rarityBackgrounds": [
+      {
+        "__id__": 64
+      },
+      {
+        "__id__": 65
+      },
+      {
+        "__id__": 66
+      },
+      {
+        "__id__": 67
+      }
+    ],
+    "_id": ""
+  },
+  {
+    "__type__": "cc.CompPrefabInfo",
+    "fileId": "69yMJvx51IJoKwrphqEyZ6"
+  },
+  {
+    "__type__": "ItemIconConfig",
+    "configId": "equipment",
+    "iconFrame1": {
+      "__uuid__": "d8d7870b-1a69-4404-8068-3c071f07d07b@f9941",
+      "__expectedType__": "cc.SpriteFrame"
+    },
+    "iconFrame2": {
+      "__uuid__": "8a02db38-a338-4f9b-906b-5be04cb0a9d8@f9941",
+      "__expectedType__": "cc.SpriteFrame"
+    }
+  },
+  {
+    "__type__": "ItemIconConfig",
+    "configId": "buff",
+    "iconFrame1": {
+      "__uuid__": "c6b6f6fc-8928-441b-8cb0-dbcc6239c267@f9941",
+      "__expectedType__": "cc.SpriteFrame"
+    },
+    "iconFrame2": {
+      "__uuid__": "aea33712-8260-4ada-90db-f1b3b4a5c3a5@f9941",
+      "__expectedType__": "cc.SpriteFrame"
+    }
+  },
+  {
+    "__type__": "ItemIconConfig",
+    "configId": "consumable",
+    "iconFrame1": {
+      "__uuid__": "e4501082-054e-44bc-9724-978edc7ef642@f9941",
+      "__expectedType__": "cc.SpriteFrame"
+    },
+    "iconFrame2": {
+      "__uuid__": "4c51a05c-1b42-4b93-a2a0-fe42964013ad@f9941",
+      "__expectedType__": "cc.SpriteFrame"
+    }
+  },
+  {
+    "__type__": "ItemIconConfig",
+    "configId": "dice",
+    "iconFrame1": {
+      "__uuid__": "a8de7116-7529-41c6-856c-76f796cdf19f@f9941",
+      "__expectedType__": "cc.SpriteFrame"
+    },
+    "iconFrame2": {
+      "__uuid__": "b1a1afcd-0ad0-47b4-9592-17a3840a265a@f9941",
+      "__expectedType__": "cc.SpriteFrame"
+    }
+  },
+  {
+    "__type__": "ItemRarityBackgroundConfig",
+    "rarity": "common",
+    "backgroundFrame": {
+      "__uuid__": "7667ff0b-8f8f-45fc-9b14-25ee4e9c29c2@f9941",
+      "__expectedType__": "cc.SpriteFrame"
+    }
+  },
+  {
+    "__type__": "ItemRarityBackgroundConfig",
+    "rarity": "fine",
+    "backgroundFrame": {
+      "__uuid__": "6d4676c2-7486-486d-ad6a-d95651479ad1@f9941",
+      "__expectedType__": "cc.SpriteFrame"
+    }
+  },
+  {
+    "__type__": "ItemRarityBackgroundConfig",
+    "rarity": "epic",
+    "backgroundFrame": {
+      "__uuid__": "65ceaa2e-e11f-4a2f-b7be-d5b948b0f95b@f9941",
+      "__expectedType__": "cc.SpriteFrame"
+    }
+  },
+  {
+    "__type__": "ItemRarityBackgroundConfig",
+    "rarity": "legendary",
+    "backgroundFrame": {
+      "__uuid__": "3d6e0249-7693-40cf-9b96-a22ebf411f85@f9941",
+      "__expectedType__": "cc.SpriteFrame"
+    }
+  },
+  {
     "__type__": "cc.PrefabInfo",
     "root": {
       "__id__": 1
@@ -1241,6 +1449,7 @@
       "__id__": 0
     },
     "fileId": "64TiLJJrRJQaRTjbVDINrn",
+    "instance": null,
     "targetOverrides": null
   }
 ]

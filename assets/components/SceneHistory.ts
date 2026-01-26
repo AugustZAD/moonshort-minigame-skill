@@ -1,6 +1,7 @@
 import { director, Director, game, Game, Scene } from 'cc';
 import { Analytics } from '../analytics/AnalyticsManager';
 import { trackHomeView } from '../analytics/UiEvents';
+import { SceneParams } from '../scripts/core/SceneParams';
 
 /**
  * 场景历史记录管理器
@@ -73,17 +74,47 @@ class SceneHistoryManager {
 
     /**
      * 跳转场景（会记录历史）
+     * @param sceneName 场景名称
+     * @param params 场景参数（可选）
+     * @param onLaunched 加载完成回调（可选）
      */
-    push(sceneName: string, onLaunched?: () => void) {
+    push(sceneName: string, params?: Record<string, any>, onLaunched?: () => void) {
         this.init(); // 确保已初始化
+        
+        // 如果第二个参数是函数，说明没有传递 params
+        if (typeof params === 'function') {
+            onLaunched = params;
+            params = undefined;
+        }
+        
+        // 设置场景参数
+        if (params) {
+            SceneParams.set(params);
+        }
+        
         director.loadScene(sceneName, onLaunched);
     }
 
     /**
      * 替换当前场景（不记录历史）
+     * @param sceneName 场景名称
+     * @param params 场景参数（可选）
+     * @param onLaunched 加载完成回调（可选）
      */
-    replace(sceneName: string, onLaunched?: () => void) {
+    replace(sceneName: string, params?: Record<string, any>, onLaunched?: () => void) {
         this.init();
+        
+        // 如果第二个参数是函数，说明没有传递 params
+        if (typeof params === 'function') {
+            onLaunched = params;
+            params = undefined;
+        }
+        
+        // 设置场景参数
+        if (params) {
+            SceneParams.set(params);
+        }
+        
         director.off(Director.EVENT_BEFORE_SCENE_LOADING, this.onBeforeSceneLoading, this);
         director.loadScene(sceneName, () => {
             this._current = sceneName;

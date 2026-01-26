@@ -222,5 +222,9 @@
       }
     },
     "globalConfigKey": "defaultConfig"
+  },
+  "macroConfig": {
+    "ENABLE_TRANSPARENT_CANVAS": true,
+    "ENABLE_FLOAT_OUTPUT": false
   }
 }
