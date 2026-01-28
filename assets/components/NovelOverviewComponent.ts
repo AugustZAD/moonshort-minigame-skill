@@ -6,7 +6,6 @@ import { SavesAPI } from '../scripts/api/SavesAPI';
 import { Novel, SaveGame } from '../scripts/types/api.types';
 import { trackOverviewPlayClick, trackOverviewView } from '../analytics/UiEvents';
 import { TagItemComponent } from './TagItemComponent';
-import { SavesListComponent } from './SavesListComponent';
 
 const { ccclass, property, menu } = _decorator;
 
@@ -63,10 +62,6 @@ export class NovelOverviewComponent extends Component {
     @property({ type: Node, tooltip: '内容节点（加载成功后显示）' })
     contentNode: Node | null = null;
 
-    // 存档列表相关
-    @property({ type: Node, tooltip: '存档列表节点（可选，如果配置则监听存档选择事件）' })
-    savesListNode: Node | null = null;
-
     @property({ tooltip: '属性分配场景名称' })
     addPointSceneName: string = 'add-point';
 
@@ -75,7 +70,6 @@ export class NovelOverviewComponent extends Component {
     private savesAPI: SavesAPI | null = null;
     private currentNovel: Novel | null = null;
     private isLiking: boolean = false; // 防止重复点击
-    private selectedSaveId: string | null = null; // 当前选中的存档ID
 
     onLoad() {
         // 初始化 API
@@ -100,51 +94,8 @@ export class NovelOverviewComponent extends Component {
             this.likeButton.node.on(Button.EventType.CLICK, this.onLikeButtonClick, this);
         }
 
-        // 监听存档选择事件
-        this.setupSavesListListener();
-
         // 加载小说详情
         this.loadNovelDetail();
-    }
-
-    /**
-     * 设置存档列表监听器
-     */
-    private setupSavesListListener() {
-        console.log('[NovelOverviewComponent] setupSavesListListener 被调用');
-        console.log('[NovelOverviewComponent] savesListNode:', this.savesListNode);
-        
-        if (!this.savesListNode) {
-            console.warn('[NovelOverviewComponent] savesListNode 未配置，无法监听存档选择事件');
-            return;
-        }
-
-        // 查找 SavesListComponent
-        const savesListComponent = this.savesListNode.getComponent(SavesListComponent) 
-            || this.savesListNode.getComponentInChildren(SavesListComponent);
-
-        console.log('[NovelOverviewComponent] savesListComponent:', savesListComponent);
-        
-        if (savesListComponent) {
-            console.log('[NovelOverviewComponent] ✓ 找到 SavesListComponent，监听 save-selected 事件');
-            console.log('[NovelOverviewComponent] SavesListComponent.autoNavigateToGame:', savesListComponent.autoNavigateToGame);
-            // 监听存档选择事件
-            this.savesListNode.on('save-selected', this.onSaveSelected, this);
-        } else {
-            console.error('[NovelOverviewComponent] ✗ 未找到 SavesListComponent，请检查配置');
-        }
-    }
-
-    /**
-     * 存档选择事件处理
-     */
-    private onSaveSelected(save: SaveGame) {
-        console.log('[NovelOverviewComponent] 存档被选中:', save.id);
-        // 保存选中的saveId
-        this.selectedSaveId = save.id;
-        // 如果SavesListComponent已禁用自动跳转，则不跳转，等待用户点击按钮
-        // 如果需要点击存档后直接跳转，取消下面的注释
-        // this.navigateToGame(save.id);
     }
 
     /**
@@ -416,19 +367,11 @@ export class NovelOverviewComponent extends Component {
      */
     async onClickRouterToGame() {
         console.log('[NovelOverviewComponent] 按钮点击：跳转到游戏');
-        console.log('[NovelOverviewComponent] novelId:', this.novelId);
-        console.log('[NovelOverviewComponent] 当前选中的 saveId:', this.selectedSaveId);
 
         const title = this.currentNovel?.title || this.titleLabel?.string || undefined;
         trackOverviewPlayClick(this.novelId, title);
         
-        // 如果已经有选中的存档，直接跳转
-        if (this.selectedSaveId) {
-            this.navigateToGame(this.selectedSaveId);
-            return;
-        }
-        
-        // 否则，获取该小说的第一个存档或创建新存档
+        // 获取该小说的第一个存档或创建新存档
         if (!this.savesAPI) {
             console.error('[NovelOverviewComponent] savesAPI 未初始化');
             return;
@@ -453,28 +396,15 @@ export class NovelOverviewComponent extends Component {
         }
     }
 
-    /**
-     * 获取当前选中的存档ID
-     */
-    getSelectedSaveId(): string | null {
-        return this.selectedSaveId;
-    }
-
     onDestroy() {
         // 清理事件监听（检查节点是否有效）
         if (this.likeButton && this.likeButton.node && this.likeButton.node.isValid) {
             this.likeButton.node.off(Button.EventType.CLICK, this.onLikeButtonClick, this);
         }
         
-        // 清理存档列表监听
-        if (this.savesListNode && this.savesListNode.isValid) {
-            this.savesListNode.off('save-selected', this.onSaveSelected, this);
-        }
-        
         // 清空引用
         this.novelsAPI = null;
         this.savesAPI = null;
         this.currentNovel = null;
-        this.selectedSaveId = null;
     }
 }

@@ -490,8 +490,15 @@ export class BCardDisplayComponent extends Component {
         const currentMode = this.gameController.getRenderMode();
         console.log('[BCardDisplay] 当前渲染模式:', currentMode);
 
-        // 如果当前是普通图片模式，切换到带蒙版模式（复用 SpriteFrame）
-        if (currentMode === 'image') {
+        // 如果当前是视频模式，需要先加载场景图
+        if (currentMode === 'video') {
+            console.log('[BCardDisplay] 视频模式，先加载场景图');
+            await this.loadSceneImage(this.currentDecisionIndex);
+        }
+
+        // 如果当前是普通图片模式，切换到带蒙版模式
+        const modeAfterLoad = this.gameController.getRenderMode();
+        if (modeAfterLoad === 'image') {
             console.log('[BCardDisplay] 切换到带蒙版模式');
             this.gameController.switchToMask();
         }
@@ -505,15 +512,44 @@ export class BCardDisplayComponent extends Component {
         console.log('[BCardDisplay] 阶段8：B 卡完成');
         this.currentState = BCardState.COMPLETED;
 
-        // TODO: 调用 evaluate API 结算
-        // const result = await gameAPI.evaluateBCard(...)
+        // 调用 evaluate API 结算
+        if (this.gameController && this.bCardData && this.playerSave) {
+            try {
+                const result = await this.gameController.evaluateBCard(
+                    this.playerSave.id,
+                    this.bCardData.nodeIndex,
+                    []  // checkResults
+                );
+                console.log('[BCardDisplay] B 卡结算结果:', result);
 
-        // 触发完成事件
-        this.node.emit('bcard-completed', {
-            nodeIndex: this.bCardData?.nodeIndex,
-            resultType: 'normal',  // TODO: 从 API 获取
-            playerUpdates: {}      // TODO: 从 API 获取
-        });
+                // 触发完成事件，传递后端返回的数据
+                this.node.emit('bcard-completed', {
+                    nodeIndex: this.bCardData.nodeIndex,
+                    resultType: result.resultType,
+                    playerUpdates: result.playerUpdates,
+                    rewards: result.rewards,
+                    gameCompleted: result.gameCompleted,
+                    nextNodeIndex: result.nextNodeIndex,
+                });
+            } catch (error) {
+                console.error('[BCardDisplay] B 卡结算失败:', error);
+                // 即使失败也触发事件，以便上层处理
+                this.node.emit('bcard-completed', {
+                    nodeIndex: this.bCardData?.nodeIndex,
+                    resultType: 'normal',
+                    playerUpdates: {},
+                    gameCompleted: false,
+                });
+            }
+        } else {
+            console.error('[BCardDisplay] 缺少必要数据，无法结算');
+            this.node.emit('bcard-completed', {
+                nodeIndex: this.bCardData?.nodeIndex,
+                resultType: 'normal',
+                playerUpdates: {},
+                gameCompleted: false,
+            });
+        }
     }
 
     /**

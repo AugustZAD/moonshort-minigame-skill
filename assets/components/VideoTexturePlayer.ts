@@ -104,9 +104,10 @@ export class VideoTexturePlayer extends Component {
                 this.videoElement!.onerror = reject;
             });
 
-            // 检查 videoElement 是否有效
+            // 检查 videoElement 是否有效（可能在等待期间被 onDestroy 清理）
             if (!this.videoElement) {
-                throw new Error('videoElement 已被清理');
+                console.warn('[VideoTexturePlayer] videoElement 已被清理，跳过初始化');
+                return;
             }
 
             // 记录视频宽高比

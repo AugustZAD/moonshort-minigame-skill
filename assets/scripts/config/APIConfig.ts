@@ -3,7 +3,7 @@
  */
 export const APIConfig = {
     // API 基础 URL
-    BASE_URL: 'http://47.254.93.15',
+    BASE_URL: 'http://localhost:3000',
     
     // API 端点
     ENDPOINTS: {
@@ -34,7 +34,7 @@ export const APIConfig = {
     },
     
     // 请求超时时间（毫秒）
-    TIMEOUT: 10000,
+    TIMEOUT: 60000,
     
     // Token 刷新阈值：在过期前多久刷新（毫秒）
     // 默认为 1 天
@@ -42,10 +42,26 @@ export const APIConfig = {
 };
 
 /**
- * 本地存储 Key
+ * 获取环境标识（基于 BASE_URL 生成）
+ */
+function getEnvKey(): string {
+    const url = APIConfig.BASE_URL;
+    if (url.includes('localhost')) return 'local';
+    if (url.includes('47.254.93.15')) return 'prod';
+    // 提取域名作为 key
+    try {
+        const host = new URL(url).host.replace(/[:.]/g, '_');
+        return host;
+    } catch {
+        return 'default';
+    }
+}
+
+/**
+ * 本地存储 Key（带环境前缀，避免不同环境 token 混淆）
  */
 export const StorageKeys = {
-    TOKEN: 'auth_token',
-    TOKEN_EXPIRES_AT: 'auth_token_expires_at',
-    USER_INFO: 'auth_user_info',
+    get TOKEN() { return `${getEnvKey()}_auth_token`; },
+    get TOKEN_EXPIRES_AT() { return `${getEnvKey()}_auth_token_expires_at`; },
+    get USER_INFO() { return `${getEnvKey()}_auth_user_info`; },
 };

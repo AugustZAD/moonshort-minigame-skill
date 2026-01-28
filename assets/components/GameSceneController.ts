@@ -447,26 +447,20 @@ export class GameSceneController extends Component {
             return;
         }
 
-        try {
-            // TODO: 调用 API 检查是否有下一个 B 卡节点
-            // const hasNextNode = await this.gameAPI.hasNextBCardNode(this.currentSave.id);
-            
-            // 临时方案：检查 currentNodeIndex 是否超过总节点数
-            // 这需要后端返回 totalNodes 或类似信息
-            const hasNextNode = result.hasNextNode !== false; // 默认有下一个节点，除非后端明确返回 false
+        // 检查后端返回的 gameCompleted 字段
+        console.log('[GameSceneController] 检查游戏状态:', {
+            gameCompleted: result.gameCompleted,
+            nextNodeIndex: result.nextNodeIndex,
+            resultType: result.resultType,
+        });
+        const gameCompleted = result.gameCompleted === true;
 
-            if (hasNextNode) {
-                console.log('[GameSceneController] 有下一个节点，直接进入 A 卡阶段');
-                // 直接进入 A 卡阶段
-                await this.startACardPhase();
-            } else {
-                console.log('[GameSceneController] 没有下一个节点，当前剧情已完成，返回首页');
-                // TODO: 返回首页的逻辑
-                // 可能需要显示完成提示，然后跳转到首页场景
-                this.returnToHome();
-            }
-        } catch (error) {
-            console.error('[GameSceneController] 检查下一个节点失败:', error);
+        if (gameCompleted) {
+            console.log('[GameSceneController] 游戏已完成，返回首页');
+            this.returnToHome();
+        } else {
+            console.log('[GameSceneController] 进入下一个节点的 A 卡阶段');
+            await this.startACardPhase();
         }
     }
 
@@ -624,10 +618,7 @@ export class GameSceneController extends Component {
             // 继续 A 卡阶段
             await this.startACardPhase();
         } else {
-            // 进入下一个 B 卡
-            if (this.currentSave) {
-                this.currentSave.currentNodeIndex++;
-            }
+            // A 卡轮结束，进入当前节点的 B 卡
             await this.startBCardPhase();
         }
     }
@@ -652,9 +643,7 @@ export class GameSceneController extends Component {
      */
     private returnToHome() {
         console.log('[GameSceneController] 返回首页');
-        // TODO: 实现返回首页的逻辑
-        // 可以使用 director.loadScene('home') 或类似方法
-        // 也可以显示一个完成提示对话框
+        director.loadScene('index');
     }
 
     /**
@@ -694,6 +683,16 @@ export class GameSceneController extends Component {
      */
     getCurrentPhase(): GamePhase {
         return this.currentPhase;
+    }
+
+    /**
+     * 结算 B 卡（供 BCardDisplayComponent 调用）
+     */
+    async evaluateBCard(playerId: number, nodeIndex: number, checkResults: any[]): Promise<any> {
+        if (!this.gameAPI) {
+            throw new Error('GameAPI 未初始化');
+        }
+        return this.gameAPI.evaluateBCard(playerId, nodeIndex, checkResults);
     }
 
     // ==================== 场景渲染管理 ====================
@@ -922,16 +921,33 @@ export class GameSceneController extends Component {
     }
     
     /**
-     * 加载远程图片
+     * 加载远程图片（带 60 秒超时）
      */
     private loadRemoteImage(url: string, sprite: Sprite | null): Promise<void> {
+        const TIMEOUT_MS = 60000; // 60 秒超时
+        
         return new Promise((resolve, reject) => {
             if (!sprite) {
                 reject(new Error('Sprite 为 null'));
                 return;
             }
             
+            let isResolved = false;
+            
+            // 超时处理
+            const timeoutId = setTimeout(() => {
+                if (!isResolved) {
+                    isResolved = true;
+                    console.error('[GameSceneController] 加载图片超时 (60s):', url);
+                    reject(new Error('图片加载超时'));
+                }
+            }, TIMEOUT_MS);
+            
             assetManager.loadRemote<ImageAsset>(url, (err, imageAsset) => {
+                if (isResolved) return; // 已超时，忽略
+                isResolved = true;
+                clearTimeout(timeoutId);
+                
                 if (err) {
                     console.error('[GameSceneController] 加载图片失败:', err);
                     reject(err);
