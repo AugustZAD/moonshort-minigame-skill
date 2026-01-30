@@ -1,6 +1,7 @@
 import { _decorator, Component, Label, Sprite, assetManager, ImageAsset, SpriteFrame, Texture2D } from 'cc';
 import { Novel } from '../../scripts/types/api.types';
 import { VideoTexturePlayer } from './VideoTexturePlayer';
+import { showLoading, hideLoading } from '../scripts/utils/SpriteLoading';
 
 const { ccclass, property, menu } = _decorator;
 
@@ -89,8 +90,15 @@ export class NovelItemComponent extends Component {
             return;
         }
 
+        // 显示 Loading
+        const coverNode = this.coverSprite.node;
+        if (coverNode) showLoading(coverNode);
+        
         // 加载远程图片
         assetManager.loadRemote<ImageAsset>(coverUrl, (err, imageAsset) => {
+            // 隐藏 Loading
+            if (coverNode) hideLoading(coverNode);
+            
             if (err) {
                 console.error('[NovelItemComponent] 封面图加载失败:', err);
                 this.setDefaultCover();

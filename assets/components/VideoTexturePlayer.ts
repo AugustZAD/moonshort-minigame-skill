@@ -1,4 +1,5 @@
 import { _decorator, Component, Sprite, SpriteFrame, Texture2D, UITransform, Enum, CCInteger } from 'cc';
+import { showLoading, hideLoading } from '../scripts/utils/SpriteLoading';
 
 const { ccclass, property, menu } = _decorator;
 
@@ -88,6 +89,9 @@ export class VideoTexturePlayer extends Component {
 
     // 初始化视频和纹理
     private async initVideo(url: string) {
+        // 显示 Loading
+        showLoading(this.node);
+        
         try {
             // 创建隐藏 video
             this.videoElement = document.createElement('video');
@@ -150,7 +154,12 @@ export class VideoTexturePlayer extends Component {
             this.sprite.sizeMode = Sprite.SizeMode.CUSTOM;
             
             console.log('[VideoTexturePlayer] 视频初始化完成, 节点尺寸:', this.uiTransform?.width, 'x', this.uiTransform?.height, ', Canvas尺寸:', tw, 'x', th);
+            
+            // 隐藏 Loading
+            hideLoading(this.node);
         } catch (e) {
+            // 隐藏 Loading
+            hideLoading(this.node);
             console.error('[VideoTexturePlayer] 初始化失败:', e);
         }
     }

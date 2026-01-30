@@ -1,4 +1,5 @@
-import { _decorator, Component, Label, director, Node, UIOpacity, Sprite, assetManager, ImageAsset, Texture2D, SpriteFrame, Mask, Graphics, Color, UITransform } from 'cc';
+import { _decorator, Component, Node, Label, Button, director, Sprite, SpriteFrame, assetManager, ImageAsset, Texture2D, Mask, Graphics, UITransform, Color, UIOpacity } from 'cc';
+import { showLoading, hideLoading } from '../scripts/utils/SpriteLoading';
 import { SceneParams } from '../scripts/core/SceneParams';
 import { GameManager } from '../scripts/core/GameManager';
 import { SavesAPI } from '../scripts/api/SavesAPI';
@@ -188,7 +189,14 @@ export class AddPointComponent extends Component {
 
             console.log('[AddPointComponent] 加载角色头像:', avatarUrl);
 
+            // 显示 Loading
+            const avatarNode = this.roleplayAvatarSprite.node;
+            if (avatarNode) showLoading(avatarNode, { showMask: false });
+            
             assetManager.loadRemote<ImageAsset>(avatarUrl, (err, imageAsset) => {
+                // 隐藏 Loading
+                if (avatarNode) hideLoading(avatarNode);
+                
                 if (err) {
                     console.error('[AddPointComponent] 头像加载失败:', err);
                     reject(err);

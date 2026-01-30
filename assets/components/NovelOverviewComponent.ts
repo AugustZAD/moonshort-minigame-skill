@@ -1,4 +1,5 @@
-import { _decorator, Component, Label, Node, Prefab, instantiate, Button, Sprite, assetManager, ImageAsset, Texture2D, SpriteFrame, director } from 'cc';
+import { _decorator, Component, Node, Label, Sprite, Prefab, instantiate, assetManager, ImageAsset, SpriteFrame, Texture2D, director, Button } from 'cc';
+import { showLoading, hideLoading } from '../scripts/utils/SpriteLoading';
 import { SceneParams } from '../scripts/core/SceneParams';
 import { GameManager } from '../scripts/core/GameManager';
 import { NovelsAPI } from '../scripts/api/NovelsAPI';
@@ -205,8 +206,15 @@ export class NovelOverviewComponent extends Component {
         }
 
         try {
+            // 显示 Loading
+            const coverNode = this.coverImage.node;
+            if (coverNode) showLoading(coverNode);
+            
             // 加载远程图片
             assetManager.loadRemote<ImageAsset>(url, { ext: '.png' }, (err, imageAsset) => {
+                // 隐藏 Loading
+                if (coverNode) hideLoading(coverNode);
+                
                 if (err) {
                     console.error('[NovelOverviewComponent] 加载封面图失败:', err);
                     return;

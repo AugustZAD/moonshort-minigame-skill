@@ -1,4 +1,5 @@
-import { _decorator, Component, Sprite, Label, Node, Button, SpriteFrame, instantiate, assetManager, ImageAsset, Texture2D } from 'cc';
+import { _decorator, Component, Node, Sprite, Label, assetManager, ImageAsset, SpriteFrame, Texture2D, Prefab, instantiate, Button } from 'cc';
+import { showLoading, hideLoading } from '../scripts/utils/SpriteLoading';
 import { Novel } from '../scripts/types/api.types';
 import { trackHomeHistoryCardClick } from '../analytics/UiEvents';
 
@@ -135,8 +136,15 @@ export class HistoryCard extends Component {
         }
 
         try {
+            // 显示 Loading
+            const coverNode = this.coverSprite.node;
+            if (coverNode) showLoading(coverNode);
+            
             // 使用 assetManager.loadRemote 加载远程图片
             assetManager.loadRemote<ImageAsset>(coverUrl, (err, imageAsset) => {
+                // 隐藏 Loading
+                if (coverNode) hideLoading(coverNode);
+                
                 if (err) {
                     console.error('[HistoryCard] 封面图加载失败:', err);
                     if (this.defaultCover && this.coverSprite) {

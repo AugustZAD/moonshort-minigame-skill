@@ -10,6 +10,7 @@ import { ACardPanel } from './ACardPanel';
 import { BCardDisplayComponent } from './BCardDisplayComponent';
 import { InventoryPanel } from './InventoryPanel';
 import { VideoTexturePlayer } from './VideoTexturePlayer';
+import { showLoading, hideLoading } from '../scripts/utils/SpriteLoading';
 
 const { ccclass, property, menu } = _decorator;
 
@@ -290,7 +291,14 @@ export class GameSceneController extends Component {
                 return;
             }
 
+            // 显示 Loading
+            const avatarNode = this.playerStatsPanel?.getAvatarNode?.();
+            if (avatarNode) showLoading(avatarNode, { showMask: false });
+            
             assetManager.loadRemote<ImageAsset>(avatarUrl, (err, imageAsset) => {
+                // 隐藏 Loading
+                if (avatarNode) hideLoading(avatarNode);
+                
                 if (err) {
                     console.error('[GameSceneController] 头像加载失败:', err);
                     reject(err);
@@ -933,11 +941,16 @@ export class GameSceneController extends Component {
             }
             
             let isResolved = false;
+            const targetNode = sprite.node;
+            
+            // 显示 Loading
+            if (targetNode) showLoading(targetNode);
             
             // 超时处理
             const timeoutId = setTimeout(() => {
                 if (!isResolved) {
                     isResolved = true;
+                    if (targetNode) hideLoading(targetNode);
                     console.error('[GameSceneController] 加载图片超时 (60s):', url);
                     reject(new Error('图片加载超时'));
                 }
@@ -947,6 +960,9 @@ export class GameSceneController extends Component {
                 if (isResolved) return; // 已超时，忽略
                 isResolved = true;
                 clearTimeout(timeoutId);
+                
+                // 隐藏 Loading
+                if (targetNode) hideLoading(targetNode);
                 
                 if (err) {
                     console.error('[GameSceneController] 加载图片失败:', err);
