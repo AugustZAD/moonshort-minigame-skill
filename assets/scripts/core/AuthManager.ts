@@ -205,12 +205,43 @@ export class AuthManager {
     }
 
     /**
+     * 设置认证信息（用于 OAuth 登录等外部获取 token 的场景）
+     */
+    setAuth(token: string, expiresAt: string | Date, userInfo: UserInfo) {
+        this.token = token;
+        this.tokenExpiresAt = typeof expiresAt === 'string' ? new Date(expiresAt) : expiresAt;
+        this.userInfo = userInfo;
+        this.saveToStorage();
+        console.log('[AuthManager] 认证信息已设置:', userInfo.username);
+    }
+
+    /**
      * 更新用户信息
      */
     updateUserInfo(userInfo: Partial<UserInfo>) {
         if (this.userInfo) {
             this.userInfo = { ...this.userInfo, ...userInfo };
             this.saveToStorage();
+        }
+    }
+
+    /**
+     * 从服务器刷新用户信息
+     */
+    async refreshUserInfo(): Promise<UserInfo> {
+        try {
+            const response = await this.apiService.get<UserInfo>(
+                APIConfig.ENDPOINTS.AUTH.ME
+            );
+
+            this.userInfo = response;
+            this.saveToStorage();
+
+            console.log('[AuthManager] 用户信息已刷新:', this.userInfo);
+            return this.userInfo;
+        } catch (error) {
+            console.error('[AuthManager] 刷新用户信息失败:', error);
+            throw error;
         }
     }
 }

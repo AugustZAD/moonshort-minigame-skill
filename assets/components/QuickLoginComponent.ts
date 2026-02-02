@@ -1,12 +1,17 @@
-import { _decorator, Component, Node, Button, Label, director } from 'cc';
+import { _decorator, Component, Node, Label, director, sys } from 'cc';
 import { GameManager } from '../scripts/core/GameManager';
 import { ApiError } from '../scripts/types/api.types';
+import { APIConfig } from '../scripts/config/APIConfig';
 
 const { ccclass, property, menu } = _decorator;
 
 /**
  * 快速登录组件
- * 直接挂载到任意节点，通过 Button 组件的 Click Events 调用 onLoginClick 方法
+ * 支持两种登录方式：
+ * 1. 快速登录 - 自动创建临时账号（未激活）
+ * 2. Google 登录 - 使用 Google 账号登录/注册（自动激活）
+ * 
+ * 已登录用户可通过 bindToCurrentUser=true 绑定 Google 账号
  */
 @ccclass('QuickLoginComponent')
 @menu('Components/QuickLoginComponent')
@@ -17,29 +22,99 @@ export class QuickLoginComponent extends Component {
     @property({ type: Node, tooltip: '加载中提示节点（可选）' })
     loadingNode: Node | null = null;
 
-    @property({ tooltip: '登录成功后跳转的场景名称' })
-    nextSceneName: string = 'home';
+    // 以下属性使用默认值，在属性检查器中隐藏
+    @property({ visible: false })
+    activatedSceneName: string = 'index';
 
-    @property({ tooltip: '是否在启动时自动检查登录状态' })
+    @property({ visible: false })
+    inviteSceneName: string = 'invite';
+
+    @property({ visible: false })
     autoCheckLogin: boolean = true;
 
+    @property({ visible: false })
+    bindGoogleToCurrentUser: boolean = false;
+
     private isLoading: boolean = false;
-    private maxRetries: number = 5; // 最大重试次数
+    private maxRetries: number = 5;
 
     start() {
-        // 检查是否已登录
         if (this.autoCheckLogin) {
             this.checkLoginStatus();
+        }
+        // 检查是否从 Google OAuth 回调回来
+        if (sys.isBrowser) {
+            this.handleOAuthCallback();
         }
     }
 
     /**
-     * 检查登录状态
+     * 处理 OAuth 回调（从 Google 登录成功后重定向回来）
+     */
+    private async handleOAuthCallback() {
+        const url = new URL(window.location.href);
+        // Auth.js 成功登录后会在 session 中存储用户信息
+        // 我们需要从后端获取 session 并同步到前端
+        const hasSession = url.searchParams.get('session');
+        if (hasSession) {
+            console.log('[QuickLogin] 检测到 OAuth 回调，同步 session...');
+            await this.syncSessionFromBackend();
+        }
+    }
+
+    /**
+     * 从后端换取 JWT Token（OAuth 登录成功后）
+     */
+    private async syncSessionFromBackend() {
+        try {
+            const gameManager = GameManager.getInstance();
+            if (!gameManager) return;
+
+            // 调用 oauth-token API 换取 JWT Token
+            const tokenUrl = `${APIConfig.BASE_URL}/apiv2/auth/oauth-token`;
+            console.log('[QuickLogin] 换取 OAuth Token:', tokenUrl);
+            
+            const response = await fetch(tokenUrl, {
+                method: 'POST',
+                credentials: 'include', // 包含 Auth.js 的 cookie
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+            });
+            const result = await response.json();
+            console.log('[QuickLogin] OAuth Token 响应:', result);
+
+            if (result?.success && result?.data?.user) {
+                const { user, token, expiresAt } = result.data;
+                console.log('[QuickLogin] Google 登录成功:', user.username);
+                
+                // 保存认证信息
+                gameManager.getAuth().setAuth(token, expiresAt, {
+                    id: user.id,
+                    username: user.username,
+                    gems: user.gems,
+                    isActivated: user.isActivated,
+                    googleEmail: user.googleEmail,
+                    inviteCode: user.inviteCode,
+                });
+
+                // 跳转场景
+                const targetScene = user.isActivated ? this.activatedSceneName : this.inviteSceneName;
+                console.log('[QuickLogin] 跳转到:', targetScene);
+                director.loadScene(targetScene);
+            } else {
+                console.warn('[QuickLogin] OAuth Token 换取失败:', result?.error);
+            }
+        } catch (error) {
+            console.error('[QuickLogin] OAuth Token 换取异常:', error);
+        }
+    }
+
+    /**
+     * 检查登录状态和激活状态
      */
     private checkLoginStatus() {
-        if (!this.node || !this.node.isValid) {
-            return;
-        }
+        if (!this.node || !this.node.isValid) return;
 
         const gameManager = GameManager.getInstance();
         if (!gameManager) {
@@ -47,28 +122,23 @@ export class QuickLoginComponent extends Component {
             return;
         }
 
-        // 如果已登录，直接跳转
         if (gameManager.isLoggedIn()) {
-            console.log('[QuickLoginComponent] 已登录，跳转到主场景');
-            this.navigateToNextScene();
+            const userInfo = gameManager.getAuth().getUserInfo();
+            if (userInfo?.isActivated) {
+                console.log('[QuickLoginComponent] 已激活，跳转到 index');
+                director.loadScene(this.activatedSceneName);
+            } else {
+                console.log('[QuickLoginComponent] 未激活，跳转到 invite');
+                director.loadScene(this.inviteSceneName);
+            }
         }
     }
 
     /**
-     * 快速登录方法（供 Button 的 Click Events 调用）
-     * 在 Button 组件的 Click Events 中配置：
-     * - Component: QuickLoginComponent
-     * - Handler: onLoginClick
+     * 快速登录（供 Button Click Events 调用）
      */
     async onLoginClick() {
-        if (!this.node || !this.node.isValid) {
-            return;
-        }
-
-        if (this.isLoading) {
-            return;
-        }
-
+        if (!this.node || !this.node.isValid || this.isLoading) return;
         await this.doQuickLogin();
     }
 
@@ -83,28 +153,30 @@ export class QuickLoginComponent extends Component {
         }
 
         this.setLoadingState(true);
-        this.setTip('正在创建临时账号...');
+        this.setTip('正在创建账号...');
 
         try {
-            // 生成随机账号密码
             const { username, password } = this.generateTempCredentials();
-            console.log('[QuickLoginComponent] 尝试创建账号:', username);
+            console.log('[QuickLoginComponent] 创建账号:', username);
 
-            // 调用认证管理器的登录方法（会自动注册）
             await this.registerAndLogin(username, password);
 
-            console.log('[QuickLoginComponent] 快速登录成功');
+            console.log('[QuickLoginComponent] 登录成功');
             this.setTip('登录成功！');
 
-            // 短暂延迟后跳转
+            // 根据激活状态跳转
+            const userInfo = gameManager.getAuth().getUserInfo();
+            const targetScene = userInfo?.isActivated ? this.activatedSceneName : this.inviteSceneName;
+            console.log('[QuickLoginComponent] 跳转到:', targetScene);
+
             setTimeout(() => {
                 if (this.node && this.node.isValid) {
-                    this.navigateToNextScene();
+                    director.loadScene(targetScene);
                 }
             }, 500);
 
         } catch (error) {
-            console.error('[QuickLoginComponent] 快速登录失败:', error);
+            console.error('[QuickLoginComponent] 登录失败:', error);
             if (this.node && this.node.isValid) {
                 this.handleLoginError(error);
             }
@@ -127,21 +199,12 @@ export class QuickLoginComponent extends Component {
         const api = gameManager.getAPI();
 
         try {
-            // 先尝试注册
-            const registerResponse = await api.post(
-                '/apiv2/auth/register',
-                { username, password }
-            );
-
-            // 注册成功，保存认证信息
-            const authManager = gameManager.getAuth();
-            // 直接使用注册返回的 token 和用户信息
-            // 注意：我们需要手动调用 AuthManager 的内部方法
-            // 为了简化，我们直接调用 login
-            await authManager.login(username, password);
+            // 注册（不需要邀请码，账户默认未激活）
+            await api.post('/apiv2/auth/register', { username, password });
+            // 登录
+            await gameManager.getAuth().login(username, password);
 
         } catch (error: any) {
-            // 如果用户名已存在，重新生成并重试
             if (error instanceof ApiError && error.message.includes('用户名已被使用')) {
                 if (retryCount < this.maxRetries) {
                     console.log(`[QuickLoginComponent] 用户名冲突，重试 ${retryCount + 1}/${this.maxRetries}`);
@@ -222,15 +285,44 @@ export class QuickLoginComponent extends Component {
         }
     }
 
+    // ==================== Google 登录相关 ====================
+
     /**
-     * 跳转到下一个场景
+     * Google 登录（供 Button Click Events 调用）
+     * 使用 OAuth 2.0 redirect 方式，跳转到后端进行认证
      */
-    private navigateToNextScene() {
-        if (this.nextSceneName) {
-            director.loadScene(this.nextSceneName);
+    onGoogleLoginClick() {
+        if (!this.node || !this.node.isValid || this.isLoading) return;
+
+        if (sys.isBrowser) {
+            this.doGoogleLoginWeb();
+        } else if (sys.isNative) {
+            this.doGoogleLoginNative();
         } else {
-            console.error('[QuickLoginComponent] 未设置下一个场景名称');
+            this.setTip('当前平台不支持 Google 登录');
         }
     }
 
+    /**
+     * Web 端 Google 登录 - OAuth 2.0 redirect 方式
+     * 直接跳转到 Auth.js 的 signin 页面
+     */
+    private doGoogleLoginWeb() {
+        this.setTip('正在跳转到 Google...');
+        
+        // 构建回调 URL
+        const callbackUrl = encodeURIComponent(window.location.origin + window.location.pathname + '?session=1');
+        
+        // 直接跳转到 Auth.js signin 页面，它会自动处理 CSRF
+        window.location.href = `${APIConfig.BASE_URL}/api/auth/signin?callbackUrl=${callbackUrl}`;
+    }
+
+    /**
+     * 原生平台 Google 登录（需要 JSB 桥接）
+     */
+    private async doGoogleLoginNative() {
+        // TODO: 实现原生 JSB 调用，获取 idToken 后调用 google-mobile provider
+        console.warn('[QuickLogin] 原生平台 Google 登录需要配置 JSB');
+        this.setTip('原生登录功能开发中');
+    }
 }
