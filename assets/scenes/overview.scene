@@ -153,8 +153,7 @@
     "loadingNode": null,
     "errorNode": null,
     "contentNode": null,
-    "savesListNode": null,
-    "gameSceneName": "game",
+    "addPointSceneName": "add-point",
     "_id": "3eIWnAvyFFtrdblB5+QJrG"
   },
   {
@@ -177,10 +176,7 @@
       "b": 255,
       "a": 255
     },
-    "_spriteFrame": {
-      "__uuid__": "eedf9bf3-e0d0-405b-b6aa-e19245f714e6@f9941",
-      "__expectedType__": "cc.SpriteFrame"
-    },
+    "_spriteFrame": null,
     "_type": 0,
     "_fillType": 0,
     "_sizeMode": 0,
@@ -2163,7 +2159,7 @@
     "_prefab": null,
     "_lpos": {
       "__type__": "cc.Vec3",
-      "x": -152.8266036029354,
+      "x": -160.60697179192664,
       "y": 0,
       "z": 0
     },
@@ -2211,7 +2207,7 @@
     "_prefab": null,
     "_lpos": {
       "__type__": "cc.Vec3",
-      "x": -13.673396397064622,
+      "x": -5.893028208073353,
       "y": 0,
       "z": 0
     },
@@ -2320,7 +2316,7 @@
     "_prefab": null,
     "_lpos": {
       "__type__": "cc.Vec3",
-      "x": 11.999999999999998,
+      "x": 12,
       "y": 0,
       "z": 0
     },
@@ -2359,7 +2355,7 @@
     "__prefab": null,
     "_contentSize": {
       "__type__": "cc.Size",
-      "width": 23.34679279412924,
+      "width": 7.786056416146708,
       "height": 20.16
     },
     "_anchorPoint": {
@@ -2389,10 +2385,10 @@
       "b": 255,
       "a": 255
     },
-    "_string": "726",
+    "_string": "0",
     "_horizontalAlign": 1,
     "_verticalAlign": 1,
-    "_actualFontSize": 14.657276995305164,
+    "_actualFontSize": 14.690140845070422,
     "_fontSize": 14,
     "_fontFamily": "Arial",
     "_lineHeight": 16,
@@ -2443,7 +2439,7 @@
     "__prefab": null,
     "_contentSize": {
       "__type__": "cc.Size",
-      "width": 47.34679279412924,
+      "width": 31.786056416146707,
       "height": 20
     },
     "_anchorPoint": {
@@ -2513,7 +2509,7 @@
     "_prefab": null,
     "_lpos": {
       "__type__": "cc.Vec3",
-      "x": -77.78682681370212,
+      "x": -104.82091537577992,
       "y": 0,
       "z": 0
     },
@@ -2561,7 +2557,7 @@
     "_prefab": null,
     "_lpos": {
       "__type__": "cc.Vec3",
-      "x": -17.36638039216867,
+      "x": -5.893028208073353,
       "y": 0,
       "z": 0
     },
@@ -2709,7 +2705,7 @@
     "__prefab": null,
     "_contentSize": {
       "__type__": "cc.Size",
-      "width": 30.732760784337337,
+      "width": 7.786056416146708,
       "height": 20.16
     },
     "_anchorPoint": {
@@ -2739,10 +2735,10 @@
       "b": 255,
       "a": 255
     },
-    "_string": "43k+",
+    "_string": "0",
     "_horizontalAlign": 1,
     "_verticalAlign": 1,
-    "_actualFontSize": 14.657276995305164,
+    "_actualFontSize": 14.690140845070422,
     "_fontSize": 14,
     "_fontFamily": "Arial",
     "_lineHeight": 16,
@@ -2793,7 +2789,7 @@
     "__prefab": null,
     "_contentSize": {
       "__type__": "cc.Size",
-      "width": 54.73276078433734,
+      "width": 31.786056416146707,
       "height": 20
     },
     "_anchorPoint": {
@@ -2863,7 +2859,7 @@
     "_prefab": null,
     "_lpos": {
       "__type__": "cc.Vec3",
-      "x": 22.140475525449716,
+      "x": -20.242194770966563,
       "y": 0,
       "z": 0
     },
@@ -2911,7 +2907,7 @@
     "_prefab": null,
     "_lpos": {
       "__type__": "cc.Vec3",
-      "x": -38.560921946983164,
+      "x": -34.68569239673999,
       "y": 0,
       "z": 0
     },
@@ -3059,7 +3055,7 @@
     "__prefab": null,
     "_contentSize": {
       "__type__": "cc.Size",
-      "width": 73.12184389396633,
+      "width": 65.37138479347998,
       "height": 20.16
     },
     "_anchorPoint": {
@@ -3089,10 +3085,10 @@
       "b": 255,
       "a": 255
     },
-    "_string": "49 chapters",
+    "_string": "0 chapters",
     "_horizontalAlign": 1,
     "_verticalAlign": 1,
-    "_actualFontSize": 14.657276995305164,
+    "_actualFontSize": 14.690140845070422,
     "_fontSize": 14,
     "_fontFamily": "Arial",
     "_lineHeight": 16,
@@ -3143,7 +3139,7 @@
     "__prefab": null,
     "_contentSize": {
       "__type__": "cc.Size",
-      "width": 97.12184389396633,
+      "width": 89.37138479347998,
       "height": 20
     },
     "_anchorPoint": {
@@ -3294,7 +3290,7 @@
     "_lpos": {
       "__type__": "cc.Vec3",
       "x": 0,
-      "y": -20.08,
+      "y": 3.9200000000000017,
       "z": 0
     },
     "_lrot": {
@@ -3333,7 +3329,7 @@
     "_contentSize": {
       "__type__": "cc.Size",
       "width": 353,
-      "height": 68.16
+      "height": 20.16
     },
     "_anchorPoint": {
       "__type__": "cc.Vec2",
@@ -3362,10 +3358,10 @@
       "b": 255,
       "a": 255
     },
-    "_string": "Avery's senior year is turned upside down when a kiss with herolder brothers' best friend ignites a forbidden relationship tangled in danger, heartbreak, and family secrets that could destroy everything...",
+    "_string": "",
     "_horizontalAlign": 0,
     "_verticalAlign": 0,
-    "_actualFontSize": 12.56338028169014,
+    "_actualFontSize": 12.591549295774648,
     "_fontSize": 12,
     "_fontFamily": "Arial",
     "_lineHeight": 16,
@@ -3469,7 +3465,7 @@
     "_lpos": {
       "__type__": "cc.Vec3",
       "x": 0,
-      "y": -82.16,
+      "y": -34.16,
       "z": 0
     },
     "_lrot": {
@@ -4582,7 +4578,7 @@
     "_lpos": {
       "__type__": "cc.Vec3",
       "x": 0,
-      "y": -213.23000000000002,
+      "y": -227.73,
       "z": 0
     },
     "_lrot": {
@@ -4621,7 +4617,7 @@
     "_contentSize": {
       "__type__": "cc.Size",
       "width": 353,
-      "height": 65.53999999999999
+      "height": 36.54
     },
     "_anchorPoint": {
       "__type__": "cc.Vec2",
@@ -4650,10 +4646,10 @@
       "b": 255,
       "a": 255
     },
-    "_string": "My Brother’s Mafia Best Friend",
+    "_string": "",
     "_horizontalAlign": 0,
     "_verticalAlign": 2,
-    "_actualFontSize": 29.314553990610328,
+    "_actualFontSize": 29.380281690140844,
     "_fontSize": 28,
     "_fontFamily": "Arial",
     "_lineHeight": 29,

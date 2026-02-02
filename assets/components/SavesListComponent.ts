@@ -1,6 +1,6 @@
 import { _decorator, Component, Node, Prefab, instantiate, Label, Button, director } from 'cc';
 import { GameManager } from '../scripts/core/GameManager';
-import { SavesAPI } from '../scripts/api/SavesAPI';
+import { DataStore } from '../scripts/core/DataStore';
 import { SaveGame } from '../scripts/types/api.types';
 import { SceneParams } from '../scripts/core/SceneParams';
 
@@ -40,9 +40,10 @@ export class SavesListComponent extends Component {
     @property({ tooltip: '游戏场景名称（当autoNavigateToGame=true时生效）' })
     gameSceneName: string = 'game';
 
-    private savesAPI: SavesAPI | null = null;
+    private dataStore: DataStore | null = null;
     private isLoading: boolean = false;
     private saves: SaveGame[] = [];
+    private _unsubscribe: (() => void) | null = null;
 
     onLoad() {
         const gameManager = GameManager.getInstance();
@@ -51,7 +52,16 @@ export class SavesListComponent extends Component {
             return;
         }
 
-        this.savesAPI = new SavesAPI(gameManager.getAPI());
+        this.dataStore = gameManager.getDataStore();
+
+        // 订阅数据更新
+        const key = this.filterNovelId ? `saves_${this.filterNovelId}` : 'saves_all';
+        this._unsubscribe = this.dataStore.subscribe<SaveGame[]>(key, (data, isFromCache) => {
+            if (!isFromCache && this.node && this.node.isValid) {
+                this.saves = data;
+                this.renderSaves();
+            }
+        });
 
         if (this.autoLoad) {
             this.loadSaves();
@@ -62,7 +72,7 @@ export class SavesListComponent extends Component {
      * 加载存档列表
      */
     async loadSaves() {
-        if (this.isLoading || !this.savesAPI) {
+        if (this.isLoading || !this.dataStore) {
             return;
         }
 
@@ -71,7 +81,7 @@ export class SavesListComponent extends Component {
 
         try {
             const novelId = this.filterNovelId || undefined;
-            this.saves = await this.savesAPI.getList(novelId);
+            this.saves = await this.dataStore.getSaves(novelId);
 
             if (this.saves.length === 0) {
                 this.showEmptyState();
@@ -212,14 +222,17 @@ export class SavesListComponent extends Component {
      * 删除存档
      */
     private async onDeleteClick(save: SaveGame) {
-        if (!this.savesAPI) return;
+        if (!this.dataStore) return;
 
         // TODO: 添加确认对话框
         console.log('[SavesListComponent] 删除存档:', save.id);
 
         try {
-            await this.savesAPI.delete(save.id);
-            // 重新加载列表
+            const gameManager = GameManager.getInstance();
+            const apiService = gameManager.getAPI();
+            await apiService.delete(`/apiv2/saves/${save.id}`);
+            // 刷新缓存并重新加载
+            this.dataStore.invalidateSaves(this.filterNovelId || undefined);
             this.loadSaves();
         } catch (error) {
             console.error('[SavesListComponent] 删除失败:', error);
@@ -238,6 +251,17 @@ export class SavesListComponent extends Component {
      */
     setFilterNovelId(novelId: string) {
         this.filterNovelId = novelId;
+        // 更新订阅
+        this._unsubscribe?.();
+        if (this.dataStore) {
+            const key = novelId ? `saves_${novelId}` : 'saves_all';
+            this._unsubscribe = this.dataStore.subscribe<SaveGame[]>(key, (data, isFromCache) => {
+                if (!isFromCache && this.node && this.node.isValid) {
+                    this.saves = data;
+                    this.renderSaves();
+                }
+            });
+        }
         this.loadSaves();
     }
 
@@ -285,6 +309,7 @@ export class SavesListComponent extends Component {
     }
 
     onDestroy() {
+        this._unsubscribe?.();
         if (this.containerNode) {
             this.containerNode.removeAllChildren();
         }

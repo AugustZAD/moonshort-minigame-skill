@@ -398,7 +398,7 @@
         "__id__": 10
       }
     ],
-    "_active": false,
+    "_active": true,
     "_components": [
       {
         "__id__": 14
@@ -414,7 +414,7 @@
     "_lpos": {
       "__type__": "cc.Vec3",
       "x": 0,
-      "y": 57.499999999999886,
+      "y": 57.5,
       "z": 0
     },
     "_lrot": {
@@ -627,10 +627,7 @@
       "b": 255,
       "a": 255
     },
-    "_spriteFrame": {
-      "__uuid__": "52559e01-966d-4688-8226-1b37c7d84074@f9941",
-      "__expectedType__": "cc.SpriteFrame"
-    },
+    "_spriteFrame": null,
     "_type": 0,
     "_fillType": 0,
     "_sizeMode": 0,
@@ -685,7 +682,7 @@
       "__id__": 2
     },
     "_children": [],
-    "_active": false,
+    "_active": true,
     "_components": [
       {
         "__id__": 18
@@ -701,7 +698,7 @@
     "_lpos": {
       "__type__": "cc.Vec3",
       "x": 0,
-      "y": 57.499999999999886,
+      "y": 57.5,
       "z": 0
     },
     "_lrot": {
@@ -772,10 +769,7 @@
       "b": 255,
       "a": 255
     },
-    "_spriteFrame": {
-      "__uuid__": "52559e01-966d-4688-8226-1b37c7d84074@f9941",
-      "__expectedType__": "cc.SpriteFrame"
-    },
+    "_spriteFrame": null,
     "_type": 0,
     "_fillType": 0,
     "_sizeMode": 0,
@@ -2995,6 +2989,8 @@
     "nextButton": {
       "__id__": 95
     },
+    "enableTTS": true,
+    "lockNextDuringTTS": true,
     "_id": "15h7LdNp9GKIR1cXBv6eBW"
   },
   {

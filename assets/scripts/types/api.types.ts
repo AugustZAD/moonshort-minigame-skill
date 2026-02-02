@@ -17,6 +17,11 @@ export interface UserInfo {
     id: string;
     username: string;
     gems: number;
+    isActivated: boolean;
+    inviteCode?: string;
+    googleEmail?: string;   // Google 绑定邮箱
+    googleName?: string;    // Google 显示名称
+    googleAvatar?: string;  // Google 头像 URL
 }
 
 /**
@@ -25,6 +30,33 @@ export interface UserInfo {
 export interface LoginRequest {
     username: string;
     password: string;
+}
+
+/**
+ * 注册请求
+ */
+export interface RegisterRequest {
+    username: string;
+    password: string;
+    inviteCode: string;
+}
+
+/**
+ * 邀请码信息
+ */
+export interface InviteInfo {
+    inviteCode: string;
+    used: number;
+    limit: number;
+    remaining: number;
+}
+
+/**
+ * 邀请码验证结果
+ */
+export interface InviteValidationResult {
+    valid: boolean;
+    reason?: string;
 }
 
 /**

@@ -1,7 +1,7 @@
-import { _decorator, Component, Node, Prefab, instantiate, Label } from 'cc';
+import { _decorator, Component, Node, Prefab, instantiate, Label, Button } from 'cc';
 import { GameManager } from '../scripts/core/GameManager';
-import { MallAPI } from '../scripts/api/MallAPI';
-import { MallItem } from '../scripts/types/api.types';
+import { DataStore } from '../scripts/core/DataStore';
+import { MallItem, MallData, MallCategory } from '../scripts/types/api.types';
 
 const { ccclass, property, menu } = _decorator;
 
@@ -30,10 +30,12 @@ export class MallComponent extends Component {
     @property({ tooltip: '是否自动加载' })
     autoLoad: boolean = true;
 
-    private mallAPI: MallAPI | null = null;
+    private dataStore: DataStore | null = null;
     private isLoading: boolean = false;
     private categories: MallCategory[] = [];
     private userGems: number = 0;
+    private _unsubscribeMall: (() => void) | null = null;
+    private _unsubscribeUser: (() => void) | null = null;
 
     onLoad() {
         const gameManager = GameManager.getInstance();
@@ -42,7 +44,25 @@ export class MallComponent extends Component {
             return;
         }
 
-        this.mallAPI = new MallAPI(gameManager.getAPI());
+        this.dataStore = gameManager.getDataStore();
+
+        // 订阅商城数据更新
+        this._unsubscribeMall = this.dataStore.subscribe<MallData>('mall', (data, isFromCache) => {
+            if (!isFromCache && this.node && this.node.isValid) {
+                this.categories = data.categories;
+                this.userGems = data.userGems;
+                this.updateGemsDisplay();
+                this.renderCategories();
+            }
+        });
+
+        // 订阅用户信息更新（金币变化）
+        this._unsubscribeUser = this.dataStore.subscribe('user_info', (data: any, isFromCache) => {
+            if (!isFromCache && this.node && this.node.isValid && typeof data.gems === 'number') {
+                this.userGems = data.gems;
+                this.updateGemsDisplay();
+            }
+        });
 
         if (this.autoLoad) {
             this.loadMall();
@@ -53,7 +73,7 @@ export class MallComponent extends Component {
      * 加载商城数据
      */
     async loadMall() {
-        if (this.isLoading || !this.mallAPI) {
+        if (this.isLoading || !this.dataStore) {
             return;
         }
 
@@ -61,7 +81,7 @@ export class MallComponent extends Component {
         this.hideErrorState();
 
         try {
-            const data = await this.mallAPI.getItems();
+            const data = await this.dataStore.getMallData();
             
             this.categories = data.categories;
             this.userGems = data.userGems;
@@ -206,7 +226,7 @@ export class MallComponent extends Component {
      * 购买按钮点击事件
      */
     private async onBuyClick(item: MallItem) {
-        if (!this.mallAPI) return;
+        if (!this.dataStore) return;
 
         // 检查宝石是否足够
         if (this.userGems < item.price) {
@@ -218,12 +238,18 @@ export class MallComponent extends Component {
         console.log('[MallComponent] 购买商品:', item.name);
 
         try {
-            const result = await this.mallAPI.purchase(item.id);
+            const gameManager = GameManager.getInstance();
+            const apiService = gameManager.getAPI();
+            const result = await apiService.post<{ success: boolean; message: string }>(
+                '/apiv2/mall/purchase',
+                { itemId: item.id, quantity: 1 }
+            );
             console.log('[MallComponent] 购买成功:', result.message);
             
-            // 更新宝石数量
-            this.userGems -= item.price;
-            this.updateGemsDisplay();
+            // 刷新用户信息缓存（金币变化）
+            this.dataStore.invalidateUserInfo();
+            // 重新加载用户信息
+            this.dataStore.getUserInfo();
 
             // 触发自定义事件
             this.node.emit('item-purchased', item);
@@ -277,6 +303,8 @@ export class MallComponent extends Component {
     }
 
     onDestroy() {
+        this._unsubscribeMall?.();
+        this._unsubscribeUser?.();
         if (this.containerNode) {
             this.containerNode.removeAllChildren();
         }

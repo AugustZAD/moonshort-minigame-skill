@@ -80,6 +80,14 @@ export class NarrativeItemComponent extends Component {
         }
     }
 
+    onDestroy() {
+        // 节点已经从父节点移除，不会再被渲染
+        // 只需清空引用
+        this.avatarSprite = null;
+        this.speakerNameLabel = null;
+        this.contentLabel = null;
+    }
+
     /**
      * 为头像设置圆形遮罩
      */

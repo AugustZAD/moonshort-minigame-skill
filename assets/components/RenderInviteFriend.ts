@@ -1,27 +1,32 @@
 import { _decorator, Component, Label, Node } from 'cc';
 import { trackHomeCopyInvite, trackHomeInviteOpen } from '../analytics/UiEvents';
+import { GameManager } from '../scripts/core/GameManager';
+import { NativeBridge } from '../scripts/core/NativeBridge';
+import { Toast } from '../scripts/ui/Toast';
+
 const { ccclass, property, menu } = _decorator;
 
+/**
+ * 邀请好友面板组件
+ * 显示用户邀请码、剩余次数，支持复制
+ */
 @ccclass('RenderInviteFriend')
 @menu('Components/RenderInviteFriend')
 export class RenderInviteFriend extends Component {
-    @property({ tooltip: '已邀请数量' })
-    inviteNum: number = 0;
-
-    @property({ tooltip: '最大邀请数量' })
-    inviteMax: number = 5;
-
-    @property({ tooltip: '邀请码（用于埋点，可为空）' })
-    inviteCode: string = '';
+    @property({ type: Label, tooltip: '显示邀请码的 Label' })
+    inviteCodeLabel: Label | null = null;
 
     @property({ type: Node, tooltip: '显示剩余次数的 Label 节点' })
     remainingLabelNode: Node | null = null;
 
-    private _label: Label | null = null;
+    private _inviteCode: string = '';
+    private _remaining: number = 0;
+    private _limit: number = 5;
+    private _remainingLabel: Label | null = null;
 
     onLoad() {
         if (this.remainingLabelNode) {
-            this._label = this.remainingLabelNode.getComponent(Label);
+            this._remainingLabel = this.remainingLabelNode.getComponent(Label);
         }
     }
 
@@ -30,7 +35,7 @@ export class RenderInviteFriend extends Component {
      */
     open() {
         this.node.active = true;
-        this.updateRemainingText();
+        this.fetchData();
         trackHomeInviteOpen();
     }
 
@@ -42,41 +47,61 @@ export class RenderInviteFriend extends Component {
     }
 
     /**
-     * 复制邀请码（预留）
+     * 获取邀请码数据
      */
-    copyCode() {
-        // TODO: 实现复制邀请码逻辑
-        const remaining = this.getRemaining();
+    async fetchData() {
+        const gameManager = GameManager.getInstance();
+        if (!gameManager) return;
+
+        try {
+            const api = gameManager.getAPI();
+            const response = await api.get('/apiv2/auth/invite');
+            
+            if (!this.node || !this.node.isValid) return;
+
+            this._inviteCode = response.inviteCode || '';
+            this._remaining = response.remaining || 0;
+            this._limit = response.limit || 5;
+
+            this.updateUI();
+        } catch (error: any) {
+            console.error('[RenderInviteFriend] 获取邀请码信息失败:', error);
+        }
+    }
+
+    /**
+     * 复制邀请码
+     */
+    async copyCode() {
+        if (!this._inviteCode) {
+            return;
+        }
+
+        const success = await NativeBridge.copyToClipboard(this._inviteCode);
+        
+        if (success) {
+            Toast.show('Copied!');
+        }
+
+        // 埋点
         trackHomeCopyInvite({
-            invite_code: this.inviteCode || undefined,
-            remaining,
+            invite_code: this._inviteCode,
+            remaining: this._remaining,
         });
     }
 
     /**
-     * 分享邀请码（预留）
+     * 更新 UI
      */
-    shareCode() {
-        // TODO: 实现分享邀请码逻辑
-    }
+    private updateUI() {
+        // 更新邀请码
+        if (this.inviteCodeLabel && this.inviteCodeLabel.isValid) {
+            this.inviteCodeLabel.string = this._inviteCode;
+        }
 
-    /**
-     * 获取数据（预留）
-     */
-    fetchData() {
-        // TODO: 实现获取邀请数据逻辑
-    }
-
-    /**
-     * 更新剩余次数文案
-     */
-    private updateRemainingText() {
-        if (!this._label) return;
-        const remaining = this.getRemaining();
-        this._label.string = `Remaining: ${remaining}/${this.inviteMax}`;
-    }
-
-    private getRemaining() {
-        return Math.max(0, this.inviteMax - this.inviteNum);
+        // 更新剩余次数
+        if (this._remainingLabel && this._remainingLabel.isValid) {
+            this._remainingLabel.string = `Remaining: ${this._remaining}/${this._limit}`;
+        }
     }
 }

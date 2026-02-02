@@ -3,7 +3,7 @@
  */
 export const APIConfig = {
     // API 基础 URL
-    BASE_URL: 'http://localhost:3000',
+    BASE_URL: 'http://localhost:3000',  // 后端服务地址
     
     // API 端点
     ENDPOINTS: {
@@ -13,6 +13,10 @@ export const APIConfig = {
             REFRESH: '/apiv2/auth/refresh',
             LOGOUT: '/apiv2/auth/logout',
             ME: '/apiv2/auth/me',
+            ACTIVATE: '/apiv2/auth/activate',
+            INVITE_INFO: '/apiv2/auth/invite',
+            INVITE_VALIDATE: '/apiv2/auth/invite/validate',
+            GOOGLE: '/apiv2/auth/google',  // Google 登录/绑定
         },
         NOVELS: {
             LIST: '/apiv2/novels',

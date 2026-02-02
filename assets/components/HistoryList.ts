@@ -1,7 +1,7 @@
 import { _decorator, Component, Node, instantiate, ScrollView, Layout, director } from 'cc';
 import { HistoryCard } from './HistoryCard';
-import { Novel } from '../scripts/types/api.types';
-import { NovelsAPI } from '../scripts/api/NovelsAPI';
+import { Novel, PaginatedResponse } from '../scripts/types/api.types';
+import { DataStore } from '../scripts/core/DataStore';
 import { GameManager } from '../scripts/core/GameManager';
 import { SceneParams } from '../scripts/core/SceneParams';
 import { trackHistoryCardClick } from '../analytics/UiEvents';
@@ -51,15 +51,32 @@ export class HistoryList extends Component {
     pageSize: number = 20;
 
     // ========== 私有属性 ==========
-    private novelsAPI: NovelsAPI | null = null;
+    private dataStore: DataStore | null = null;
     private historyList: Novel[] = [];
     private currentPage: number = 1;
     private isLoading: boolean = false;
+    private _unsubscribe: (() => void) | null = null;
 
     onLoad() {
-        // 初始化 API
+        // 初始化 DataStore
         const gameManager = GameManager.getInstance();
-        this.novelsAPI = new NovelsAPI(gameManager.getAPI());
+        this.dataStore = gameManager.getDataStore();
+
+        // 订阅数据更新
+        this._unsubscribe = this.dataStore.subscribe<PaginatedResponse<Novel>>(
+            `history_${this.currentPage}_${this.pageSize}`,
+            (response, isFromCache) => {
+                if (!isFromCache && this.node && this.node.isValid) {
+                    this.historyList = response.items || [];
+                    this.renderList();
+                    if (this.historyList.length === 0) {
+                        this.showEmpty();
+                    } else {
+                        this.showContent();
+                    }
+                }
+            }
+        );
 
         // 初始化状态
         this.showLoading();
@@ -71,8 +88,10 @@ export class HistoryList extends Component {
     }
 
     onDestroy() {
+        // 取消订阅
+        this._unsubscribe?.();
         // 清理引用
-        this.novelsAPI = null;
+        this.dataStore = null;
         this.historyList = [];
         this.cardsContainer = null;
         this.historyCardPrefab = null;
@@ -86,8 +105,8 @@ export class HistoryList extends Component {
      * 加载历史记录
      */
     async loadHistory(page: number = 1) {
-        if (!this.novelsAPI) {
-            console.error('[HistoryList] NovelsAPI 未初始化');
+        if (!this.dataStore) {
+            console.error('[HistoryList] DataStore 未初始化');
             this.showError();
             return;
         }
@@ -100,15 +119,30 @@ export class HistoryList extends Component {
         this.isLoading = true;
         this.currentPage = page;
 
+        // 更新订阅
+        this._unsubscribe?.();
+        this._unsubscribe = this.dataStore.subscribe<PaginatedResponse<Novel>>(
+            `history_${page}_${this.pageSize}`,
+            (response, isFromCache) => {
+                if (!isFromCache && this.node && this.node.isValid) {
+                    this.historyList = response.items || [];
+                    this.renderList();
+                    if (this.historyList.length === 0) {
+                        this.showEmpty();
+                    } else {
+                        this.showContent();
+                    }
+                }
+            }
+        );
+
         try {
             console.log(`[HistoryList] 加载历史记录 - 页码: ${page}, 每页: ${this.pageSize}`);
 
-            // 调用历史记录接口
-            const response = await this.novelsAPI.getHistory(page, this.pageSize);
+            // 使用 DataStore 获取数据
+            const response = await this.dataStore.getHistory(page, this.pageSize);
 
             console.log('[HistoryList] 历史记录加载成功:', response);
-            console.log('[HistoryList] items:', response.items);
-            console.log('[HistoryList] items 数量:', response.items?.length);
 
             // 保存数据
             this.historyList = response.items || [];

@@ -1,30 +1,54 @@
-import { Node, Graphics, UITransform, Color, tween, Tween, Vec3 } from 'cc';
+import { Node, Graphics, UITransform, Color, tween, Tween, Vec3, Sprite, SpriteFrame, Texture2D } from 'cc';
 
 /**
- * SpriteLoading - 纯代码 Loading 工具
+ * SpriteLoading - Loading 工具
  * 
- * 在目标节点上显示旋转圆环 Loading 动画，用于远程图片/视频加载时的占位
+ * 在目标 Sprite 节点上显示 Loading：
+ * 1. 给 Sprite 设置纯黑色 spriteFrame 作为背景（享受 shader 裁切）
+ * 2. 添加圆环子节点播放旋转动画
  * 
  * 用法：
- *   import { SpriteLoading } from '../scripts/utils/SpriteLoading';
+ *   import { showLoading, hideLoading } from '../scripts/utils/SpriteLoading';
  *   
- *   SpriteLoading.showLoading(node);
+ *   showLoading(spriteNode);
  *   await loadSomething();
- *   SpriteLoading.hideLoading(node);
+ *   hideLoading(spriteNode);
  */
 
 interface LoadingData {
-    node: Node;
-    tween: Tween<Node>;
+    spinnerNode: Node;
+    spinTween: Tween<Node>;
+    originalSpriteFrame: SpriteFrame | null; // 保存原始 spriteFrame
 }
 
 // 全局存储
 const loadingMap: Map<Node, LoadingData> = new Map();
-const LOADING_NODE_NAME = '__sprite_loading__';
+const SPINNER_NODE_NAME = '__loading_spinner__';
+
+// 缓存纯黑色 SpriteFrame
+let blackSpriteFrame: SpriteFrame | null = null;
+
+function getBlackSpriteFrame(): SpriteFrame {
+    if (!blackSpriteFrame) {
+        const texture = new Texture2D();
+        // 创建 1x1 纯黑色纹理
+        const data = new Uint8Array([0, 0, 0, 255]); // RGBA: 纯黑不透明
+        texture.reset({
+            width: 1,
+            height: 1,
+            format: Texture2D.PixelFormat.RGBA8888,
+        });
+        texture.uploadData(data);
+        
+        blackSpriteFrame = new SpriteFrame();
+        blackSpriteFrame.texture = texture;
+    }
+    return blackSpriteFrame;
+}
 
 /**
  * 在目标节点上显示 Loading
- * @param target 目标节点
+ * @param target 目标节点（应该有 Sprite 组件）
  * @param options 可选配置
  */
 export function showLoading(target: Node, options?: {
@@ -34,10 +58,8 @@ export function showLoading(target: Node, options?: {
     lineWidth?: number;
     /** 圆环半径，默认自动计算 */
     radius?: number;
-    /** 是否显示遮罩背景，默认 true */
+    /** 是否设置黑色背景，默认 true */
     showMask?: boolean;
-    /** 遮罩颜色，默认半透明黑 */
-    maskColor?: Color;
 }): void {
     if (!target || !target.isValid) {
         return;
@@ -53,7 +75,6 @@ export function showLoading(target: Node, options?: {
         lineWidth = 3,
         radius,
         showMask = true,
-        maskColor = new Color(0, 0, 0, 255),
     } = options || {};
 
     // 获取目标节点尺寸
@@ -63,28 +84,17 @@ export function showLoading(target: Node, options?: {
     const autoRadius = Math.min(width, height) / 6;
     const r = radius ?? Math.max(10, Math.min(autoRadius, 24));
 
-    // 创建 Loading 容器
-    const loadingNode = new Node(LOADING_NODE_NAME);
-    const loadingTransform = loadingNode.addComponent(UITransform);
-    loadingTransform.width = width;
-    loadingTransform.height = height;
-    target.addChild(loadingNode);
-
-    // 遮罩背景
-    if (showMask) {
-        const maskNode = new Node('mask');
-        const maskTransform = maskNode.addComponent(UITransform);
-        maskTransform.width = width;
-        maskTransform.height = height;
-        const maskGraphics = maskNode.addComponent(Graphics);
-        maskGraphics.fillColor = maskColor;
-        maskGraphics.rect(-width / 2, -height / 2, width, height);
-        maskGraphics.fill();
-        loadingNode.addChild(maskNode);
+    // 保存原始 spriteFrame
+    const sprite = target.getComponent(Sprite);
+    const originalSpriteFrame = sprite?.spriteFrame || null;
+    
+    // 设置黑色背景（享受 Sprite 的 shader 裁切）
+    if (showMask && sprite) {
+        sprite.spriteFrame = getBlackSpriteFrame();
     }
 
-    // 旋转圆环
-    const spinnerNode = new Node('spinner');
+    // 创建旋转圆环子节点
+    const spinnerNode = new Node(SPINNER_NODE_NAME);
     spinnerNode.addComponent(UITransform);
     const graphics = spinnerNode.addComponent(Graphics);
     graphics.lineWidth = lineWidth;
@@ -97,7 +107,7 @@ export function showLoading(target: Node, options?: {
     graphics.arc(0, 0, r, startRad, endRad, false);
     graphics.stroke();
     
-    loadingNode.addChild(spinnerNode);
+    target.addChild(spinnerNode);
 
     // 旋转动画
     const spinTween = tween(spinnerNode)
@@ -106,12 +116,12 @@ export function showLoading(target: Node, options?: {
         .start();
 
     // 淡入
-    loadingNode.setScale(0.8, 0.8, 1);
-    tween(loadingNode)
+    spinnerNode.setScale(0.8, 0.8, 1);
+    tween(spinnerNode)
         .to(0.12, { scale: new Vec3(1, 1, 1) }, { easing: 'backOut' })
         .start();
 
-    loadingMap.set(target, { node: loadingNode, tween: spinTween });
+    loadingMap.set(target, { spinnerNode, spinTween, originalSpriteFrame });
 }
 
 /**
@@ -123,24 +133,31 @@ export function hideLoading(target: Node): void {
 
     const data = loadingMap.get(target);
     if (data) {
-        data.tween.stop();
+        data.spinTween.stop();
         
         // 淡出
-        tween(data.node)
+        tween(data.spinnerNode)
             .to(0.08, { scale: new Vec3(0.8, 0.8, 1) }, { easing: 'backIn' })
             .call(() => {
-                if (data.node && data.node.isValid) {
-                    data.node.destroy();
+                if (data.spinnerNode && data.spinnerNode.isValid) {
+                    data.spinnerNode.destroy();
                 }
             })
             .start();
+        
+        // 注意：不恢复原始 spriteFrame，因为视频/图片加载完成后会设置新的
+        // 如果需要恢复，可以取消下面的注释
+        // const sprite = target.getComponent(Sprite);
+        // if (sprite && data.originalSpriteFrame) {
+        //     sprite.spriteFrame = data.originalSpriteFrame;
+        // }
         
         loadingMap.delete(target);
         return;
     }
 
-    // 兜底：直接查找移除
-    const existing = target.getChildByName(LOADING_NODE_NAME);
+    // 兑底：直接查找移除
+    const existing = target.getChildByName(SPINNER_NODE_NAME);
     if (existing) {
         existing.destroy();
     }
@@ -169,3 +186,6 @@ export const SpriteLoading = {
     isLoading,
     hideAllLoading,
 };
+
+// 默认导出
+export default SpriteLoading;

@@ -1,7 +1,7 @@
 import { _decorator, Component, Node, instantiate, ScrollView, Layout } from 'cc';
 import { NotificationCard } from './NotificationCard';
-import { Notification } from '../scripts/types/api.types';
-import { NotificationsAPI } from '../scripts/api/NotificationsAPI';
+import { Notification, PaginatedResponse } from '../scripts/types/api.types';
+import { DataStore } from '../scripts/core/DataStore';
 import { GameManager } from '../scripts/core/GameManager';
 import { trackNotificationClick } from '../analytics/UiEvents';
 
@@ -47,15 +47,32 @@ export class NotificationList extends Component {
     pageSize: number = 20;
 
     // ========== 私有属性 ==========
-    private notificationsAPI: NotificationsAPI | null = null;
+    private dataStore: DataStore | null = null;
     private notificationList: Notification[] = [];
     private currentPage: number = 1;
     private isLoading: boolean = false;
+    private _unsubscribe: (() => void) | null = null;
 
     onLoad() {
-        // 初始化 API
+        // 初始化 DataStore
         const gameManager = GameManager.getInstance();
-        this.notificationsAPI = new NotificationsAPI(gameManager.getAPI());
+        this.dataStore = gameManager.getDataStore();
+
+        // 订阅数据更新
+        this._unsubscribe = this.dataStore.subscribe<PaginatedResponse<Notification>>(
+            `notifications_${this.currentPage}_${this.pageSize}`,
+            (response, isFromCache) => {
+                if (!isFromCache && this.node && this.node.isValid) {
+                    this.notificationList = response.items || [];
+                    this.renderList();
+                    if (this.notificationList.length === 0) {
+                        this.showEmpty();
+                    } else {
+                        this.showContent();
+                    }
+                }
+            }
+        );
 
         // 初始化状态
         this.showLoading();
@@ -67,8 +84,10 @@ export class NotificationList extends Component {
     }
 
     onDestroy() {
+        // 取消订阅
+        this._unsubscribe?.();
         // 清理引用
-        this.notificationsAPI = null;
+        this.dataStore = null;
         this.notificationList = [];
         this.cardsContainer = null;
         this.notificationCardPrefab = null;
@@ -82,8 +101,8 @@ export class NotificationList extends Component {
      * 加载通知列表
      */
     async loadNotifications(page: number = 1) {
-        if (!this.notificationsAPI) {
-            console.error('[NotificationList] NotificationsAPI 未初始化');
+        if (!this.dataStore) {
+            console.error('[NotificationList] DataStore 未初始化');
             this.showError();
             return;
         }
@@ -96,11 +115,28 @@ export class NotificationList extends Component {
         this.isLoading = true;
         this.currentPage = page;
 
+        // 更新订阅
+        this._unsubscribe?.();
+        this._unsubscribe = this.dataStore.subscribe<PaginatedResponse<Notification>>(
+            `notifications_${page}_${this.pageSize}`,
+            (response, isFromCache) => {
+                if (!isFromCache && this.node && this.node.isValid) {
+                    this.notificationList = response.items || [];
+                    this.renderList();
+                    if (this.notificationList.length === 0) {
+                        this.showEmpty();
+                    } else {
+                        this.showContent();
+                    }
+                }
+            }
+        );
+
         try {
             console.log(`[NotificationList] 加载通知 - 页码: ${page}, 每页: ${this.pageSize}`);
 
-            // 调用通知接口
-            const response = await this.notificationsAPI.getList(page, this.pageSize);
+            // 使用 DataStore 获取数据
+            const response = await this.dataStore.getNotifications(page, this.pageSize);
 
             console.log('[NotificationList] 通知加载成功:', response);
 

@@ -1,6 +1,7 @@
 import { _decorator, Component, Node, Sprite, SpriteFrame, assetManager, ImageAsset, Texture2D, Button, Label, instantiate, Prefab, Rect, Size } from 'cc';
-import { EnrichedBCard, NarrativeSegment, PlayerSave } from '../scripts/types/game.types';
-import { NarrativeDialogComponent, NarrativeItem } from './NarrativeDialogComponent';
+import { EnrichedBCard, NarrativeSegment, PlayerSave, TTSSegmentData } from '../scripts/types/game.types';
+import { NarrativeDialogComponent, NarrativeItem, TTSOptions } from './NarrativeDialogComponent';
+import { TTSSegment, getTTSManager } from '../scripts/core/TTSManager';
 import { VideoTexturePlayer } from './VideoTexturePlayer';
 import { AdaptiveCardBackground } from './AdaptiveCardBackground';
 import { DiceRollController } from './DiceRollController';
@@ -145,26 +146,30 @@ export class BCardDisplayComponent extends Component {
 
     /**
      * 阶段1：播放 Intro 视频
+     * 同时启动流式 TTS 预加载（后台异步，不阻塞）
      */
     private async startIntroVideo() {
         console.log('[BCardDisplay] 阶段1：播放 Intro 视频');
         this.currentState = BCardState.INTRO_VIDEO;
 
-        if (!this.bCardData?.introVideoUrl) {
-            console.log('[BCardDisplay] 没有 intro 视频，跳过');
-            await this.startFirstNarrative();
-            return;
+        // 启动流式 TTS 预加载（后台异步，不等待）
+        if (this.bCardData?.firstNarrativeTTS && this.bCardData.firstNarrativeTTS.length > 0) {
+            const ttsSegments = this.convertTTSSegments(this.bCardData.firstNarrativeTTS);
+            console.log('[BCardDisplay] 启动流式 TTS 预加载,', ttsSegments.length, '个段落');
+            getTTSManager().startPreload(ttsSegments);
         }
 
-        // 使用背景节点播放视频
-        try {
-            await this.playVideoOnBackground(this.bCardData.introVideoUrl);
-            console.log('[BCardDisplay] Intro 视频播放完成');
-        } catch (error) {
-            console.error('[BCardDisplay] Intro 视频播放失败:', error);
+        // 播放视频（如果有）
+        if (this.bCardData?.introVideoUrl) {
+            try {
+                await this.playVideoOnBackground(this.bCardData.introVideoUrl);
+                console.log('[BCardDisplay] Intro 视频播放完成');
+            } catch (error) {
+                console.error('[BCardDisplay] Intro 视频播放失败:', error);
+            }
         }
 
-        // 视频播放完成，进入下一阶段
+        // 进入下一阶段
         await this.startFirstNarrative();
     }
 
@@ -178,9 +183,12 @@ export class BCardDisplayComponent extends Component {
         // 显示场景空镜图（替换视频）
         await this.loadSceneImage(this.currentDecisionIndex);
 
-        // 显示首次叙事
+        // 显示首次叙事（传递 TTS 数据）
         if (this.bCardData?.firstNarrative && this.bCardData.firstNarrative.length > 0) {
-            await this.playNarrative(this.bCardData.firstNarrative);
+            const ttsSegments = this.bCardData.firstNarrativeTTS 
+                ? this.convertTTSSegments(this.bCardData.firstNarrativeTTS)
+                : undefined;
+            await this.playNarrative(this.bCardData.firstNarrative, ttsSegments);
         }
 
         // 进入选项阶段
@@ -401,9 +409,24 @@ export class BCardDisplayComponent extends Component {
     }
 
     /**
-     * 播放叙事
+     * 将后端 TTS 数据转换为前端格式
      */
-    private playNarrative(narratives: NarrativeSegment[]): Promise<void> {
+    private convertTTSSegments(segments: TTSSegmentData[]): TTSSegment[] {
+        return segments.map(seg => ({
+            id: seg.id,
+            role: seg.role,
+            instruction: seg.instruction,
+            content: seg.content,
+            speaker: seg.speaker,
+        }));
+    }
+
+    /**
+     * 播放叙事
+     * @param narratives 叙事段落数组
+     * @param ttsSegments TTS 数据（可选）
+     */
+    private playNarrative(narratives: NarrativeSegment[], ttsSegments?: TTSSegment[]): Promise<void> {
         return new Promise((resolve) => {
             if (!this.narrativeDialog) {
                 console.warn('[BCardDisplay] 对话框组件未配置');
@@ -416,16 +439,22 @@ export class BCardDisplayComponent extends Component {
                 resolve();
             });
 
-            // 播放叙事，传递角色信息
-            // nameSuffix 由预制体面板配置，不需要传递
+            // 构建 TTS 配置
+            const ttsOptions: TTSOptions | undefined = ttsSegments && ttsSegments.length > 0
+                ? { enabled: true, segments: ttsSegments, autoPlay: true }
+                : undefined;
+
+            // 播放叙事，传递角色信息和 TTS 配置
             console.log('[BCardDisplay] 传递角色信息:', {
                 hasAvatar: !!this.roleplayAvatarFrame,
-                characterName: this.roleplayCharacterName
+                characterName: this.roleplayCharacterName,
+                hasTTS: !!ttsOptions
             });
             this.narrativeDialog.playNarrative(
                 narratives as any,
                 this.roleplayAvatarFrame,
-                this.roleplayCharacterName
+                this.roleplayCharacterName,
+                ttsOptions
             );
         });
     }

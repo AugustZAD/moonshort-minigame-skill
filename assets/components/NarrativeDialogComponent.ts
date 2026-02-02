@@ -1,5 +1,6 @@
 import { _decorator, Component, Node, Label, Prefab, instantiate, SpriteFrame } from 'cc';
 import { NarrativeItemComponent } from './NarrativeItemComponent';
+import { getTTSManager, TTSSegment } from '../scripts/core/TTSManager';
 
 const { ccclass, property, menu } = _decorator;
 
@@ -19,6 +20,15 @@ export interface NarrativeItem {
     type: NarrativeType | string;
     content: string;
     speaker?: string;  // 仅 speaking 类型使用
+}
+
+/**
+ * TTS 配置项
+ */
+export interface TTSOptions {
+    enabled: boolean;
+    segments?: TTSSegment[];
+    autoPlay?: boolean;  // 是否自动播放 TTS
 }
 
 /**
@@ -51,6 +61,12 @@ export class NarrativeDialogComponent extends Component {
     @property({ type: Node, tooltip: '下一步按钮' })
     nextButton: Node | null = null;
 
+    @property({ tooltip: '是否启用 TTS 语音' })
+    enableTTS: boolean = true;
+
+    @property({ tooltip: 'TTS 播放时禁用下一步按钮' })
+    lockNextDuringTTS: boolean = true;
+
     // 私有属性
     private narrativeQueue: NarrativeItem[] = [];
     private currentIndex: number = 0;
@@ -60,6 +76,10 @@ export class NarrativeDialogComponent extends Component {
     // 角色信息（由 playNarrative 传入）
     private currentRoleplayAvatar: SpriteFrame | null = null;
     private currentRoleplayName: string = '';
+    
+    // TTS 相关
+    private ttsOptions: TTSOptions | null = null;
+    private isTTSPlaying: boolean = false;
 
     onLoad() {
         // 绑定下一步按钮点击事件
@@ -98,11 +118,13 @@ export class NarrativeDialogComponent extends Component {
      * @param narratives 叙事列表
      * @param roleplayAvatar 角色头像
      * @param roleplayName 角色名称
+     * @param ttsOptions TTS 配置项
      */
     playNarrative(
         narratives: NarrativeItem[],
         roleplayAvatar?: SpriteFrame | null,
-        roleplayName?: string
+        roleplayName?: string,
+        ttsOptions?: TTSOptions
     ) {
         console.log('[NarrativeDialog] 开始播放叙事，共', narratives.length, '条');
         
@@ -113,9 +135,15 @@ export class NarrativeDialogComponent extends Component {
         // 存储角色信息（仅用于本次播放）
         this.currentRoleplayAvatar = roleplayAvatar || null;
         this.currentRoleplayName = roleplayName || '';
+        
+        // TTS 配置
+        this.ttsOptions = ttsOptions || null;
+        this.isTTSPlaying = false;
 
         // 显示对话框
         this.node.active = true;
+        
+        // TTS 预加载已在 BCardDisplay 中启动，这里不再重复调用
 
         // 显示第一条叙事
         this.showCurrentNarrative();
@@ -133,8 +161,9 @@ export class NarrativeDialogComponent extends Component {
         const narrative = this.narrativeQueue[this.currentIndex];
         console.log('[NarrativeDialog] 显示叙事', this.currentIndex + 1, '/', this.narrativeQueue.length, narrative);
 
-        // 清除之前的节点
-        if (this.currentNode) {
+        // 清除之前的节点（先移除再销毁）
+        if (this.currentNode && this.currentNode.isValid) {
+            this.currentNode.removeFromParent();
             this.currentNode.destroy();
             this.currentNode = null;
         }
@@ -150,6 +179,80 @@ export class NarrativeDialogComponent extends Component {
         if (this.nextButton) {
             this.nextButton.active = true;
         }
+        
+        // 播放 TTS 语音
+        this.playCurrentTTS();
+    }
+    
+    /**
+     * 播放当前段落的 TTS
+     * 
+     * 流式播放: 如果当前段落还在加载，playSegment 会等待它
+     */
+    private async playCurrentTTS() {
+        if (!this.enableTTS || !this.ttsOptions?.enabled) {
+            return;
+        }
+        
+        const segmentId = this.currentIndex + 1; // TTS segment ID 从 1 开始
+        
+        try {
+            const ttsManager = getTTSManager();
+            
+            // 设置 TTS 播放状态
+            this.isTTSPlaying = true;
+            this.updateNextButtonState();
+            
+            console.log('[NarrativeDialog] 播放 TTS 段落:', segmentId);
+            
+            // playSegment 会自动等待加载完成
+            const success = await ttsManager.playSegment(segmentId, () => {
+                // TTS 播放完成回调
+                this.isTTSPlaying = false;
+                this.updateNextButtonState();
+                console.log('[NarrativeDialog] TTS 播放完成');
+            });
+            
+            if (!success) {
+                // 播放失败，重置状态
+                this.isTTSPlaying = false;
+                this.updateNextButtonState();
+            }
+        } catch (error) {
+            console.error('[NarrativeDialog] TTS 播放失败:', error);
+            this.isTTSPlaying = false;
+            this.updateNextButtonState();
+        }
+    }
+    
+    /**
+     * 更新下一步按钮状态
+     * 
+     * 新逻辑：如果下一段音频已加载完成，允许点击跳过当前语音
+     */
+    private updateNextButtonState() {
+        if (!this.nextButton) return;
+        
+        // 始终允许点击，在 onNextButtonClick 中判断是否可以跳过
+        this.nextButton.getComponent('cc.Button')?.setInteractable?.(true);
+    }
+    
+    /**
+     * 检查下一段 TTS 是否已加载完成
+     */
+    private isNextTTSReady(): boolean {
+        if (!this.enableTTS || !this.ttsOptions?.enabled) {
+            return true; // 没有 TTS，直接允许
+        }
+        
+        const nextIndex = this.currentIndex + 1;
+        if (nextIndex >= this.narrativeQueue.length) {
+            return true; // 没有下一段，允许
+        }
+        
+        const nextSegmentId = nextIndex + 1; // TTS segment ID 从 1 开始
+        const ttsManager = getTTSManager();
+        return ttsManager.isSegmentReady(nextSegmentId);
     }
 
     /**
@@ -209,8 +312,24 @@ export class NarrativeDialogComponent extends Component {
         if (!this.isPlaying) {
             return;
         }
+        
+        // TTS 播放中时，检查下一段是否已加载
+        if (this.isTTSPlaying && this.lockNextDuringTTS) {
+            if (!this.isNextTTSReady()) {
+                console.log('[NarrativeDialog] 下一段 TTS 还在加载，忽略点击');
+                return;
+            }
+            // 下一段已加载，允许跳过
+            console.log('[NarrativeDialog] 下一段 TTS 已加载，允许跳过当前语音');
+        }
 
         console.log('[NarrativeDialog] 点击下一步');
+        
+        // 停止当前 TTS
+        if (this.isTTSPlaying) {
+            getTTSManager().stop();
+            this.isTTSPlaying = false;
+        }
 
         // 进入下一条叙事
         this.currentIndex++;
@@ -225,14 +344,16 @@ export class NarrativeDialogComponent extends Component {
 
         this.isPlaying = false;
 
-        // 隐藏对话框
-        this.node.active = false;
-
-        // 清除当前节点
-        if (this.currentNode) {
+        // 先清除当前节点（在隐藏之前，避免渲染已销毁的 sprite）
+        if (this.currentNode && this.currentNode.isValid) {
+            // 先从父节点移除
+            this.currentNode.removeFromParent();
             this.currentNode.destroy();
             this.currentNode = null;
         }
+
+        // 然后隐藏对话框
+        this.node.active = false;
 
         // 触发完成事件
         this.node.emit('narrative-completed');
@@ -246,7 +367,15 @@ export class NarrativeDialogComponent extends Component {
         this.narrativeQueue = [];
         this.currentIndex = 0;
         
-        if (this.currentNode) {
+        // 停止 TTS
+        if (this.isTTSPlaying) {
+            getTTSManager().stop();
+            this.isTTSPlaying = false;
+        }
+        
+        // 先移除再销毁
+        if (this.currentNode && this.currentNode.isValid) {
+            this.currentNode.removeFromParent();
             this.currentNode.destroy();
             this.currentNode = null;
         }

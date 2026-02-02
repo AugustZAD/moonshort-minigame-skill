@@ -15,11 +15,17 @@ export class AuthGuard extends Component {
     @property({ tooltip: '登录页场景名称' })
     loginSceneName: string = 'login';
 
+    @property({ tooltip: '激活页场景名称' })
+    inviteSceneName: string = 'invite';
+
     @property({ tooltip: '是否在 onLoad 时检查（默认开启）' })
     checkOnLoad: boolean = true;
 
     @property({ tooltip: '是否验证服务器端 Token 有效性' })
     validateWithServer: boolean = true;
+
+    @property({ tooltip: '是否要求账户已激活' })
+    requireActivated: boolean = true;
 
     @property({ type: Node, tooltip: '场景内容节点（未登录时隐藏）' })
     contentNode: Node | null = null;
@@ -55,30 +61,28 @@ export class AuthGuard extends Component {
             return false;
         }
 
-        // 2. 服务器验证（可选）
-        if (this.validateWithServer) {
-            try {
-                // 调用 /apiv2/auth/me 验证 Token
-                const api = gameManager.getAPI();
-                await api.get('/apiv2/auth/me');
-                console.log('[AuthGuard] 服务器验证通过');
-                
-                // 验证通过，显示内容
-                if (this.contentNode) {
-                    this.contentNode.active = true;
-                }
-                return true;
-            } catch (error: any) {
-                console.log('[AuthGuard] 服务器验证失败:', error?.message || error);
-                
-                // 认证失败，清除本地状态并跳转
-                authManager.logout();
-                this.redirectToLogin();
+        // 2. 服务器验证并获取激活状态
+        try {
+            const api = gameManager.getAPI();
+            const response = await api.get('/apiv2/auth/me');
+            console.log('[AuthGuard] 服务器验证通过, isActivated:', response.isActivated);
+            
+            // 3. 检查激活状态（直接用后端返回值）
+            if (this.requireActivated && !response.isActivated) {
+                console.log('[AuthGuard] 账户未激活，跳转激活页');
+                this.redirectToInvite();
                 return false;
             }
+        } catch (error: any) {
+            console.log('[AuthGuard] 服务器验证失败:', error?.message || error);
+            
+            // 认证失败，清除本地状态并跳转
+            await authManager.logout();
+            this.redirectToLogin();
+            return false;
         }
 
-        // 不需要服务器验证，直接显示内容
+        // 验证通过，显示内容
         if (this.contentNode) {
             this.contentNode.active = true;
         }
@@ -97,5 +101,18 @@ export class AuthGuard extends Component {
         this.isRedirecting = true;
         console.log('[AuthGuard] 跳转到登录页:', this.loginSceneName);
         director.loadScene(this.loginSceneName);
+    }
+
+    /**
+     * 跳转到激活页
+     */
+    private redirectToInvite() {
+        if (this.isRedirecting) {
+            return;
+        }
+        
+        this.isRedirecting = true;
+        console.log('[AuthGuard] 跳转到激活页:', this.inviteSceneName);
+        director.loadScene(this.inviteSceneName);
     }
 }

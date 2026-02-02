@@ -1,5 +1,6 @@
 import { _decorator, Component, Label } from 'cc';
 import { GameManager } from '../scripts/core/GameManager';
+import { DataStore, UserInfoResponse } from '../scripts/core/DataStore';
 
 const { ccclass, property, menu } = _decorator;
 
@@ -23,25 +24,40 @@ export class GlobalCurrencyDisplay extends Component {
     suffix: string = '';
 
     private currentGems: number = 0;
+    private dataStore: DataStore | null = null;
+    private _unsubscribe: (() => void) | null = null;
 
     async onLoad() {
+        const gameManager = GameManager.getInstance();
+        this.dataStore = gameManager.getDataStore();
+
+        // 订阅用户信息更新（金币变化时自动刷新）
+        this._unsubscribe = this.dataStore.subscribe<UserInfoResponse>('user_info', (data, isFromCache) => {
+            if (this.node && this.node.isValid && typeof data.gems === 'number') {
+                this.currentGems = data.gems;
+                this.updateDisplay();
+            }
+        });
+
         if (this.autoLoad) {
             await this.loadGems();
         }
+    }
+
+    onDestroy() {
+        this._unsubscribe?.();
     }
 
     /**
      * 加载并显示当前金币数量
      */
     async loadGems(): Promise<void> {
-        try {
-            const gameManager = GameManager.getInstance();
-            const apiService = gameManager.getAPI();
+        if (!this.dataStore) return;
 
-            // 使用 v2 接口获取用户信息
-            const response = await apiService.get('/apiv2/auth/me');
+        try {
+            // 使用 DataStore 获取用户信息（优先返回缓存）
+            const response = await this.dataStore.getUserInfo();
             
-            // v2 响应格式: { id, username, gems, players, unreadMessageCount }
             if (response && typeof response.gems === 'number') {
                 this.currentGems = response.gems;
                 this.updateDisplay();

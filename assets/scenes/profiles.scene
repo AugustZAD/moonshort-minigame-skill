@@ -531,7 +531,7 @@
     "_prefab": null,
     "_lpos": {
       "__type__": "cc.Vec3",
-      "x": -142.61328125,
+      "x": -142.62285793227636,
       "y": 320.36,
       "z": 0
     },
@@ -570,7 +570,7 @@
     "__prefab": null,
     "_contentSize": {
       "__type__": "cc.Size",
-      "width": 67.7734375,
+      "width": 67.75428413544725,
       "height": 35.28
     },
     "_anchorPoint": {
@@ -603,7 +603,7 @@
     "_string": "Setting",
     "_horizontalAlign": 1,
     "_verticalAlign": 1,
-    "_actualFontSize": 20,
+    "_actualFontSize": 20.985915492957744,
     "_fontSize": 20,
     "_fontFamily": "Arial",
     "_lineHeight": 28,
@@ -939,7 +939,7 @@
     "_string": "Account",
     "_horizontalAlign": 0,
     "_verticalAlign": 1,
-    "_actualFontSize": 16,
+    "_actualFontSize": 16.788732394366196,
     "_fontSize": 16,
     "_fontFamily": "Arial",
     "_lineHeight": 19,

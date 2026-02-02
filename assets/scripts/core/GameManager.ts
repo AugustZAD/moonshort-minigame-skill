@@ -1,5 +1,6 @@
 import { APIService } from './APIService';
 import { AuthManager } from './AuthManager';
+import { DataStore } from './DataStore';
 
 /**
  * 游戏管理器 - 全局单例（自动初始化）
@@ -10,6 +11,7 @@ export class GameManager {
     
     private _apiService: APIService;
     private _authManager: AuthManager;
+    private _dataStore: DataStore;
 
     /**
      * 私有构造函数，防止外部实例化
@@ -28,11 +30,17 @@ export class GameManager {
             return this._authManager.getToken();
         });
 
+        // 初始化数据存储
+        this._dataStore = DataStore.getInstance();
+        this._dataStore.init(this._apiService);
+
         console.log('[GameManager] 初始化完成');
         
         // 检查登录状态
         if (this._authManager.isAuthenticated()) {
             console.log('[GameManager] 用户已登录:', this._authManager.getUserInfo());
+            // 登录后预加载数据
+            this._dataStore.preloadAll();
         } else {
             console.log('[GameManager] 用户未登录');
         }
@@ -60,6 +68,13 @@ export class GameManager {
      */
     getAuth(): AuthManager {
         return this._authManager;
+    }
+
+    /**
+     * 获取数据存储
+     */
+    getDataStore(): DataStore {
+        return this._dataStore;
     }
 
     /**

@@ -106,9 +106,22 @@ export class AuthManager {
     /**
      * 登出
      */
-    logout() {
+    async logout() {
         console.log('[AuthManager] 登出');
         this.clearAuth();
+        
+        // 同时清理 Auth.js 的 session cookies
+        try {
+            await fetch(`${APIConfig.BASE_URL}/apiv2/auth/oauth-logout`, {
+                method: 'POST',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json' },
+            });
+            console.log('[AuthManager] Auth.js session 已清理');
+        } catch (error) {
+            // 忽略错误，本地认证已清理
+            console.warn('[AuthManager] 清理 Auth.js session 失败:', error);
+        }
     }
 
     /**

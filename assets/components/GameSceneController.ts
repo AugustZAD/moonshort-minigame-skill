@@ -1,4 +1,4 @@
-import { _decorator, Component, Node, assetManager, ImageAsset, SpriteFrame, Texture2D, director, Sprite, Size, Rect } from 'cc';
+import { _decorator, Component, Node, assetManager, ImageAsset, SpriteFrame, Texture2D, director, Sprite, Size, Rect, AudioSource } from 'cc';
 import { SceneParams } from '../scripts/core/SceneParams';
 import { GameManager } from '../scripts/core/GameManager';
 import { GameAPI } from '../scripts/api/GameAPI';
@@ -11,6 +11,7 @@ import { BCardDisplayComponent } from './BCardDisplayComponent';
 import { InventoryPanel } from './InventoryPanel';
 import { VideoTexturePlayer } from './VideoTexturePlayer';
 import { showLoading, hideLoading } from '../scripts/utils/SpriteLoading';
+import { getTTSManager } from '../scripts/core/TTSManager';
 
 const { ccclass, property, menu } = _decorator;
 
@@ -76,15 +77,33 @@ export class GameSceneController extends Component {
     async onLoad() {
         console.log('[GameSceneController] 初始化...');
         
-        // 初始化场景渲染 Sprite 节点的 sizeMode
-        if (this.sceneImageSprite) {
+        // 初始化场景渲染 Sprite 节点
+        // 两个节点始终激活，通过层级切换显示
+        if (this.sceneImageSprite?.node) {
+            this.sceneImageSprite.node.active = true;
             this.sceneImageSprite.sizeMode = Sprite.SizeMode.CUSTOM;
-            console.log('[GameSceneController] 设置 sceneImageSprite.sizeMode = CUSTOM');
+            console.log('[GameSceneController] sceneImageSprite 激活，sizeMode = CUSTOM');
         }
-        if (this.sceneImageWithMaskSprite) {
+        if (this.sceneImageWithMaskSprite?.node) {
+            this.sceneImageWithMaskSprite.node.active = true;
             this.sceneImageWithMaskSprite.sizeMode = Sprite.SizeMode.CUSTOM;
-            console.log('[GameSceneController] 设置 sceneImageWithMaskSprite.sizeMode = CUSTOM');
+            console.log('[GameSceneController] sceneImageWithMaskSprite 激活，sizeMode = CUSTOM');
         }
+        // 初始层级：无蒙版节点在上层（视频和普通图片都用它）
+        if (this.sceneImageSprite?.node && this.sceneImageWithMaskSprite?.node) {
+            const idx1 = this.sceneImageSprite.node.getSiblingIndex();
+            const idx2 = this.sceneImageWithMaskSprite.node.getSiblingIndex();
+            if (idx1 < idx2) {
+                // 无蒙版在下层，交换
+                this.sceneImageSprite.node.setSiblingIndex(idx2);
+                this.sceneImageWithMaskSprite.node.setSiblingIndex(idx1);
+            }
+            console.log('[GameSceneController] 初始层级: sceneImageSprite =', this.sceneImageSprite.node.getSiblingIndex(), 
+                        ', sceneImageWithMaskSprite =', this.sceneImageWithMaskSprite.node.getSiblingIndex());
+        }
+        
+        // 初始化 TTS AudioSource
+        this.initTTSAudioSource();
 
         // 初始化 API
         const gameManager = GameManager.getInstance();
@@ -212,6 +231,24 @@ export class GameSceneController extends Component {
             transitionDisplay: !!this.transitionDisplay,
             inventoryPanel: !!this.inventoryPanel,
         });
+    }
+    
+    /**
+     * 初始化 TTS AudioSource
+     * 在根节点上添加 AudioSource 组件用于 TTS 播放
+     */
+    private initTTSAudioSource() {
+        // 获取或添加 AudioSource 组件
+        let audioSource = this.node.getComponent(AudioSource);
+        if (!audioSource) {
+            audioSource = this.node.addComponent(AudioSource);
+            console.log('[GameSceneController] 已添加 AudioSource 组件用于 TTS');
+        }
+        
+        // 设置给 TTSManager
+        const ttsManager = getTTSManager();
+        ttsManager.setAudioSource(audioSource);
+        console.log('[GameSceneController] TTS AudioSource 初始化完成');
     }
 
     /**
@@ -390,8 +427,18 @@ export class GameSceneController extends Component {
         try {
             console.log('[GameSceneController] 开始调用 getEnrichedBCard API, saveId:', this.currentSave.id);
             
+            // 在 API 请求期间显示 Loading（在无蒙版 Sprite 上）
+            if (this.sceneImageSprite?.node) {
+                showLoading(this.sceneImageSprite.node);
+            }
+            
             // 获取富化的 B 卡数据
             const bcard = await this.gameAPI.getEnrichedBCard(this.currentSave.id);
+            
+            // API 返回后隐藏 Loading（视频加载时会重新显示）
+            if (this.sceneImageSprite?.node) {
+                hideLoading(this.sceneImageSprite.node);
+            }
             
             // 异步操作完成后，检查组件是否还存在（防止场景切换）
             if (!this.bCardDisplay || !this.node || !this.node.isValid) {
@@ -715,16 +762,17 @@ export class GameSceneController extends Component {
         // 清理视频播放器
         this.cleanupVideoPlayer();
         
-        // 隐藏有蒙版节点，显示无蒙版节点
-        if (this.sceneImageWithMaskSprite) {
-            if (this.sceneImageWithMaskSprite.node) {
-                this.sceneImageWithMaskSprite.node.active = false;
+        // 两个 Sprite 始终激活，通过层级切换显示
+        // 无蒙版节点在上层（siblingIndex 更大）
+        if (this.sceneImageSprite?.node && this.sceneImageWithMaskSprite?.node) {
+            // 只交换两个节点的相对层级，不影响其他节点
+            const idx1 = this.sceneImageSprite.node.getSiblingIndex();
+            const idx2 = this.sceneImageWithMaskSprite.node.getSiblingIndex();
+            if (idx1 < idx2) {
+                // 无蒙版在下层，需要交换
+                this.sceneImageSprite.node.setSiblingIndex(idx2);
+                this.sceneImageWithMaskSprite.node.setSiblingIndex(idx1);
             }
-            // 清空有蒙版 sprite 的内容以防止错误
-            this.sceneImageWithMaskSprite.spriteFrame = null;
-        }
-        if (this.sceneImageSprite?.node) {
-            this.sceneImageSprite.node.active = true;
         }
         
         // 加载图片
@@ -742,16 +790,17 @@ export class GameSceneController extends Component {
         // 清理视频播放器
         this.cleanupVideoPlayer();
         
-        // 隐藏无蒙版节点，显示有蒙版节点
-        if (this.sceneImageSprite) {
-            if (this.sceneImageSprite.node) {
-                this.sceneImageSprite.node.active = false;
+        // 两个 Sprite 始终激活，通过层级切换显示
+        // 有蒙版节点在上层（siblingIndex 更大）
+        if (this.sceneImageSprite?.node && this.sceneImageWithMaskSprite?.node) {
+            // 只交换两个节点的相对层级，不影响其他节点
+            const idx1 = this.sceneImageSprite.node.getSiblingIndex();
+            const idx2 = this.sceneImageWithMaskSprite.node.getSiblingIndex();
+            if (idx2 < idx1) {
+                // 有蒙版在下层，需要交换
+                this.sceneImageWithMaskSprite.node.setSiblingIndex(idx1);
+                this.sceneImageSprite.node.setSiblingIndex(idx2);
             }
-            // 清空无蒙版 sprite 的内容以防止错误
-            this.sceneImageSprite.spriteFrame = null;
-        }
-        if (this.sceneImageWithMaskSprite?.node) {
-            this.sceneImageWithMaskSprite.node.active = true;
         }
         
         // 加载图片
@@ -766,22 +815,33 @@ export class GameSceneController extends Component {
     async renderVideo(videoUrl: string): Promise<void> {
         console.log('[GameSceneController] 渲染视频:', videoUrl);
         
-        // 隐藏有蒙版节点，显示无蒙版节点
-        if (this.sceneImageWithMaskSprite) {
-            if (this.sceneImageWithMaskSprite.node) {
-                this.sceneImageWithMaskSprite.node.active = false;
-            }
-            // 清空有蒙版 sprite 的内容以防止错误
-            this.sceneImageWithMaskSprite.spriteFrame = null;
-        }
         if (!this.sceneImageSprite?.node) {
             console.error('[GameSceneController] sceneImageSprite 未配置');
             return;
         }
         
-        this.sceneImageSprite.node.active = true;
+        // 1. 先切换层级，让无蒙版节点在上层
+        if (this.sceneImageWithMaskSprite?.node) {
+            const idx1 = this.sceneImageSprite.node.getSiblingIndex();
+            const idx2 = this.sceneImageWithMaskSprite.node.getSiblingIndex();
+            if (idx1 < idx2) {
+                this.sceneImageSprite.node.setSiblingIndex(idx2);
+                this.sceneImageWithMaskSprite.node.setSiblingIndex(idx1);
+            }
+        }
         
-        // 获取或添加 VideoTexturePlayer 组件
+        // 2. 确保 Sprite 有有效的 spriteFrame（防止 UV 错误）
+        // 注：VideoTexturePlayer.initVideo() 内部会设置新的 spriteFrame
+        if (!this.sceneImageSprite.spriteFrame) {
+            console.warn('[GameSceneController] sceneImageSprite.spriteFrame 为 null，创建临时占位');
+            const tempTexture = new Texture2D();
+            tempTexture.reset({ width: 1, height: 1, format: Texture2D.PixelFormat.RGBA8888 });
+            const tempFrame = new SpriteFrame();
+            tempFrame.texture = tempTexture;
+            this.sceneImageSprite.spriteFrame = tempFrame;
+        }
+        
+        // 3. 获取或添加 VideoTexturePlayer 组件
         this.videoPlayer = this.sceneImageSprite.node.getComponent(VideoTexturePlayer);
         if (!this.videoPlayer) {
             console.log('[GameSceneController] 添加 VideoTexturePlayer 组件');
@@ -790,7 +850,8 @@ export class GameSceneController extends Component {
             this.videoPlayer.loop = false;
         }
         
-        // 设置视频 URL
+        // 4. 设置视频 URL
+        // Loading 由 VideoTexturePlayer.initVideo() 内部处理
         await this.videoPlayer.setVideoUrl(videoUrl);
         this.currentRenderMode = 'video';
     }
@@ -873,15 +934,14 @@ export class GameSceneController extends Component {
         console.log('  - 无蒙版节点尺寸:', normalTransform?.width, 'x', normalTransform?.height);
         console.log('  - 有蒙版节点尺寸:', maskTransform?.width, 'x', maskTransform?.height);
         
-        // 隐藏无蒙版节点
-        if (this.sceneImageSprite.node) {
-            this.sceneImageSprite.node.active = false;
-        }
-        this.sceneImageSprite.spriteFrame = null;
-        
-        // 显示并设置有蒙版节点
-        if (this.sceneImageWithMaskSprite.node) {
-            this.sceneImageWithMaskSprite.node.active = true;
+        // 两个 Sprite 始终激活，通过层级切换显示
+        // 只交换两个节点的相对层级，不影响其他节点
+        const idx1 = this.sceneImageSprite.node.getSiblingIndex();
+        const idx2 = this.sceneImageWithMaskSprite.node.getSiblingIndex();
+        if (idx2 < idx1) {
+            // 有蒙版在下层，需要交换
+            this.sceneImageWithMaskSprite.node.setSiblingIndex(idx1);
+            this.sceneImageSprite.node.setSiblingIndex(idx2);
         }
         
         // 设置 spriteFrame
@@ -1020,10 +1080,9 @@ export class GameSceneController extends Component {
                 // 忽略错误
             }
             
-            // 清空 sprite 的内容（避免销毁后的 spriteFrame 被使用）
-            if (this.sceneImageSprite) {
-                this.sceneImageSprite.spriteFrame = null;
-            }
+            // 注意: 不要设置 spriteFrame = null
+            // Sprite 节点始终 active，设置 null 会导致 UV 错误
+            // 下次加载图片时会直接覆盖
             
             // 移除组件
             this.sceneImageSprite.node.removeComponent(this.videoPlayer);

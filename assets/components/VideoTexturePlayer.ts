@@ -302,18 +302,13 @@ export class VideoTexturePlayer extends Component {
             this.videoElement = null;
         }
         
-        // 释放 SpriteFrame
-        if (this.sprite && this.sprite.spriteFrame) {
-            const sf = this.sprite.spriteFrame;
-            (sf as any).decRef?.();
-            (sf as any).destroy?.();
-            this.sprite.spriteFrame = null;
-        }
+        // 注意: 不要设置 sprite.spriteFrame = null
+        // Sprite 节点始终 active，设置 null 会导致 UV 错误
+        // 保留引用，下次播放/加载时会直接覆盖
         
-        // 释放纹理
+        // 释放纹理（但保留 sprite 的 spriteFrame 引用）
         if (this.videoTexture) {
-            (this.videoTexture as any).decRef?.();
-            (this.videoTexture as any).destroy?.();
+            // 不要 destroy，因为 spriteFrame 可能还在使用
             this.videoTexture = null;
         }
         

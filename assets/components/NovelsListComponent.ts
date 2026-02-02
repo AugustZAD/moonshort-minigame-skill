@@ -1,7 +1,7 @@
 import { _decorator, Component, Node, Prefab, instantiate, Label, Sprite, director, ScrollView, UITransform, Rect } from 'cc';
 import { GameManager } from '../scripts/core/GameManager';
-import { NovelsAPI } from '../scripts/api/NovelsAPI';
-import { Novel } from '../scripts/types/api.types';
+import { DataStore } from '../scripts/core/DataStore';
+import { Novel, PaginatedResponse } from '../scripts/types/api.types';
 import { NovelItemComponent } from './NovelItemComponent';
 import { SceneHistory } from './SceneHistory';
 import { trackIndexCardClick, trackIndexCardImpression } from '../analytics/UiEvents';
@@ -40,12 +40,13 @@ export class NovelsListComponent extends Component {
     @property({ tooltip: '是否自动加载' })
     autoLoad: boolean = true;
 
-    private novelsAPI: NovelsAPI | null = null;
+    private dataStore: DataStore | null = null;
     private currentPage: number = 1;
     private totalPages: number = 1;
     private isLoading: boolean = false;
     private novels: Novel[] = [];
     private _exposedIds: Set<string> = new Set();
+    private _unsubscribe: (() => void) | null = null;
 
     onLoad() {
         const gameManager = GameManager.getInstance();
@@ -54,7 +55,22 @@ export class NovelsListComponent extends Component {
             return;
         }
 
-        this.novelsAPI = new NovelsAPI(gameManager.getAPI());
+        // 使用 DataStore 而不是直接调用 API
+        this.dataStore = gameManager.getDataStore();
+
+        // 订阅数据更新，当后台刷新完成后自动更新 UI
+        this._unsubscribe = this.dataStore.subscribe<PaginatedResponse<Novel>>(
+            `novels_${this.currentPage}_${this.pageSize}`,
+            (response, isFromCache) => {
+                if (!isFromCache && this.node && this.node.isValid) {
+                    // 数据已更新，重新渲染
+                    console.log('[NovelsListComponent] 数据已更新，刷新 UI');
+                    this.novels = response.items;
+                    this.totalPages = response.pagination.totalPages;
+                    this.renderNovels();
+                }
+            }
+        );
 
         if (this.autoLoad) {
             this.loadNovels();
@@ -113,7 +129,14 @@ export class NovelsListComponent extends Component {
             return;
         }
 
-        if (this.isLoading || !this.novelsAPI) {
+        // 检查是否已登录
+        const gameManager = GameManager.getInstance();
+        if (!gameManager || !gameManager.isLoggedIn()) {
+            console.log('[NovelsListComponent] 未登录，跳过加载');
+            return;
+        }
+
+        if (this.isLoading || !this.dataStore) {
             return;
         }
 
@@ -125,13 +148,26 @@ export class NovelsListComponent extends Component {
 
         if (page !== undefined) {
             this.currentPage = page;
+            // 更新订阅
+            this._unsubscribe?.();
+            this._unsubscribe = this.dataStore.subscribe<PaginatedResponse<Novel>>(
+                `novels_${this.currentPage}_${this.pageSize}`,
+                (response, isFromCache) => {
+                    if (!isFromCache && this.node && this.node.isValid) {
+                        this.novels = response.items;
+                        this.totalPages = response.pagination.totalPages;
+                        this.renderNovels();
+                    }
+                }
+            );
         }
 
         this.setLoadingState(true);
         this.hideAllStates();
 
         try {
-            const response = await this.novelsAPI.getList(this.currentPage, this.pageSize);
+            // 使用 DataStore 获取数据（会优先返回缓存，后台刷新）
+            const response = await this.dataStore.getNovels(this.currentPage, this.pageSize);
             
             // 异步请求后再次检查组件有效性
             if (!this.node || !this.node.isValid) {
@@ -236,11 +272,9 @@ export class NovelsListComponent extends Component {
     private onNovelClick(novel: Novel) {
         console.log('[NovelsListComponent] 点击小说:', novel.title);
         
-        // 记录浏览
-        if (this.novelsAPI) {
-            this.novelsAPI.view(novel.id).catch(err => {
-                console.error('[NovelsListComponent] 记录浏览失败:', err);
-            });
+        // 预加载小说详情和存档数据（提前加载，跳转后直接显示）
+        if (this.dataStore) {
+            this.dataStore.preloadNovelData(novel.id);
         }
 
         // 跳转到 overview 场景，传递 novelId
@@ -319,6 +353,9 @@ export class NovelsListComponent extends Component {
     }
 
     onDestroy() {
+        // 取消订阅
+        this._unsubscribe?.();
+        
         // 清理事件监听
         if (this.containerNode) {
             this.containerNode.removeAllChildren();

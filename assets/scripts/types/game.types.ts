@@ -129,6 +129,17 @@ export interface NarrativeSegment {
 }
 
 /**
+ * TTS 段落（用于语音合成）
+ */
+export interface TTSSegmentData {
+    id: number;
+    role: string;       // 角色名或"旁白"
+    instruction: string; // 语气指令
+    content: string;    // 清洗后的文本
+    speaker: string;    // 音色 ID
+}
+
+/**
  * B 卡富化数据（AI 解析后）
  */
 export interface EnrichedBCard {
@@ -137,6 +148,7 @@ export interface EnrichedBCard {
     nodeName: string;
     decisions: ParsedDecision[];
     firstNarrative?: NarrativeSegment[];  // 结构化叙事数组
+    firstNarrativeTTS?: TTSSegmentData[];  // 首次叙事的 TTS 数据
     introVideoUrl?: string | null;
     endingVideoUrl?: string | null;
     optionVideos?: Array<{ decisionIndex: number; optionIndex: number; videoUrl: string }>;

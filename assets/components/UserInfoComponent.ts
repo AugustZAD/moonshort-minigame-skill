@@ -1,5 +1,6 @@
 import { _decorator, Component, Label } from 'cc';
 import { GameManager } from '../scripts/core/GameManager';
+import { DataStore, UserInfoResponse } from '../scripts/core/DataStore';
 import { UserInfo } from '../scripts/types/api.types';
 
 const { ccclass, property, menu } = _decorator;
@@ -27,30 +28,63 @@ export class UserInfoComponent extends Component {
     gemsPrefix: string = '宝石: ';
 
     private userInfo: UserInfo | null = null;
+    private dataStore: DataStore | null = null;
+    private _unsubscribe: (() => void) | null = null;
 
     onLoad() {
-        if (this.autoLoad) {
-            this.loadUserInfo();
-        }
-    }
-
-    /**
-     * 加载用户信息
-     */
-    loadUserInfo() {
         const gameManager = GameManager.getInstance();
         if (!gameManager) {
             console.error('[UserInfoComponent] GameManager 未初始化');
             return;
         }
 
-        const authManager = gameManager.getAuth();
-        this.userInfo = authManager.getUserInfo();
+        this.dataStore = gameManager.getDataStore();
 
-        if (this.userInfo) {
+        // 订阅用户信息更新
+        this._unsubscribe = this.dataStore.subscribe<UserInfoResponse>('user_info', (data, isFromCache) => {
+            if (this.node && this.node.isValid) {
+                this.userInfo = {
+                    id: data.id,
+                    username: data.username,
+                    gems: data.gems,
+                    isActivated: data.isActivated,
+                    inviteCode: data.inviteCode,
+                };
+                this.updateDisplay();
+            }
+        });
+
+        if (this.autoLoad) {
+            this.loadUserInfo();
+        }
+    }
+
+    onDestroy() {
+        this._unsubscribe?.();
+    }
+
+    /**
+     * 加载用户信息
+     */
+    async loadUserInfo() {
+        if (!this.dataStore) {
+            console.error('[UserInfoComponent] DataStore 未初始化');
+            return;
+        }
+
+        try {
+            // 使用 DataStore 获取用户信息
+            const data = await this.dataStore.getUserInfo();
+            this.userInfo = {
+                id: data.id,
+                username: data.username,
+                gems: data.gems,
+                isActivated: data.isActivated,
+                inviteCode: data.inviteCode,
+            };
             this.updateDisplay();
-        } else {
-            console.warn('[UserInfoComponent] 用户未登录');
+        } catch (error) {
+            console.warn('[UserInfoComponent] 获取用户信息失败:', error);
         }
     }
 
@@ -79,8 +113,11 @@ export class UserInfoComponent extends Component {
     /**
      * 刷新用户信息
      */
-    refresh() {
-        this.loadUserInfo();
+    async refresh() {
+        if (this.dataStore) {
+            this.dataStore.invalidateUserInfo();
+        }
+        await this.loadUserInfo();
     }
 
     /**

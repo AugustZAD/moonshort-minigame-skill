@@ -305,7 +305,7 @@ export class QuickLoginComponent extends Component {
 
     /**
      * Web 端 Google 登录 - OAuth 2.0 redirect 方式
-     * 直接跳转到 Auth.js 的 signin 页面
+     * 直接跳转到 Google OAuth，跳过 Auth.js 选择页面
      */
     private doGoogleLoginWeb() {
         this.setTip('正在跳转到 Google...');
@@ -313,8 +313,8 @@ export class QuickLoginComponent extends Component {
         // 构建回调 URL
         const callbackUrl = encodeURIComponent(window.location.origin + window.location.pathname + '?session=1');
         
-        // 直接跳转到 Auth.js signin 页面，它会自动处理 CSRF
-        window.location.href = `${APIConfig.BASE_URL}/api/auth/signin?callbackUrl=${callbackUrl}`;
+        // 直接跳转到 Google OAuth，跳过中间选择页面
+        window.location.href = `${APIConfig.BASE_URL}/api/auth/signin/google?callbackUrl=${callbackUrl}`;
     }
 
     /**
