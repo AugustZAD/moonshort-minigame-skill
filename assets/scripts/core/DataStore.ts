@@ -43,7 +43,7 @@ interface CacheConfig {
 
 const DEFAULT_CONFIG: CacheConfig = {
     maxAge: 5 * 60 * 1000, // 5 分钟
-    persist: true,
+    persist: false, // 禁用 localStorage 持久化，只使用内存缓存
 };
 
 /**
@@ -77,6 +77,23 @@ export class DataStore {
 
     private constructor() {
         console.log('[DataStore] 初始化...');
+        // 清除旧版本的 localStorage 缓存（一次性迁移）
+        this.migrateFromLocalStorage();
+    }
+
+    /**
+     * 迁移：清除旧版本的 localStorage 缓存
+     */
+    private migrateFromLocalStorage() {
+        try {
+            const keys = Object.keys(localStorage).filter(k => k.startsWith('datastore_'));
+            if (keys.length > 0) {
+                console.log('[DataStore] 清除旧版 localStorage 缓存:', keys.length, '项');
+                keys.forEach(k => localStorage.removeItem(k));
+            }
+        } catch (e) {
+            // ignore
+        }
     }
 
     static getInstance(): DataStore {
