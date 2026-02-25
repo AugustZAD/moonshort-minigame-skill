@@ -5,19 +5,19 @@ const { ccclass, property, menu } = _decorator;
 
 /**
  * Header 控制器
- * 挂载到 header 预制体根节点上，统一管理导航按钮
+ * 直接放到具体的 wnd 界面中使用
  *
  * 节点结构：
  * header (本脚本挂载于此)
  * └── main
- *      ├── icon-back       → 返回上一级 wnd
- *      ├── icon-setting    → 打开 settingWndName 配置的界面
- *      └── icon-notive     → 打开 notificationWndName 配置的界面
+ *      ├── icon-setting    → 打开 settingWndName
+ *      ├── icon-notive     → 打开 notificationWndName
+ *      ├── icon-back       → 关闭当前界面（返回上一级）
+ *      └── bg-coins        → 金币显示
  *
  * 使用方式：
- * 1. 将此脚本挂到 header 根节点
- * 2. 在 Inspector 中配置 settingWndName / notificationWndName
- * 3. 移除子节点上原有的 ClickRouterTo 组件（避免重复触发）
+ * 将 header 预制体拖入需要的 wnd prefab 中，
+ * 在编辑器中按需显示/隐藏 icon-back、bg-coins 等子节点。
  */
 @ccclass('HeaderController')
 @menu('Components/HeaderController')

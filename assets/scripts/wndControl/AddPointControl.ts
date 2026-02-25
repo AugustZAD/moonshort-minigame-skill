@@ -322,7 +322,7 @@ export class AddPointControl extends WndBase {
             }
         }
 
-        // submit 按钮：remaining === 0 显示 btn-start，否则显示 btn-start-disable
+        // submit
         const canSubmit = this.remainingPoints === 0;
         if (this.btnStart) this.btnStart.active = canSubmit;
         if (this.btnStartDisable) this.btnStartDisable.active = !canSubmit;

@@ -35,6 +35,23 @@ interface WndEntry {
  */
 @ccclass('WndManager')
 export class WndManager extends Component {
+    /** 栈变化事件名 */
+    static readonly EVENT_STACK_CHANGED = 'wnd-stack-changed';
+
+    /** 静态回调列表，用于通知栈变化 */
+    private static _stackChangeCallbacks: (() => void)[] = [];
+
+    static addStackChangeListener(fn: () => void) {
+        if (!this._stackChangeCallbacks.includes(fn)) {
+            this._stackChangeCallbacks.push(fn);
+        }
+    }
+
+    static removeStackChangeListener(fn: () => void) {
+        const idx = this._stackChangeCallbacks.indexOf(fn);
+        if (idx >= 0) this._stackChangeCallbacks.splice(idx, 1);
+    }
+
     private static _instance: WndManager | null = null;
 
     /** prefab 缓存 */
@@ -136,6 +153,7 @@ export class WndManager extends Component {
             wndBase?._doOpen(params);
 
             console.log(`[WndManager] open: ${wndName}, 栈深度: ${this._stack.length}`);
+            this._emitStackChanged();
             return node;
         } finally {
             this._loading = false;
@@ -151,6 +169,25 @@ export class WndManager extends Component {
             return null;
         }
         this._destroyTop(false);
+        return this.open(wndName, params);
+    }
+
+    /**
+     * 清空整个栈并打开新 wnd（用于 Tab 切换）
+     * 注意：强制执行，不受 _loading 限制
+     */
+    async replaceAll(wndName: string, params: Record<string, any> = {}): Promise<Node | null> {
+        // Tab 切换必须强制执行，重置 _loading
+        this._loading = false;
+
+        // 销毁所有现有 wnd
+        for (let i = this._stack.length - 1; i >= 0; i--) {
+            const entry = this._stack[i];
+            entry.wndBase?._doClose();
+            if (entry.node?.isValid) entry.node.destroy();
+        }
+        this._stack = [];
+        console.log(`[WndManager] replaceAll: 栈已清空, 准备打开 ${wndName}`);
         return this.open(wndName, params);
     }
 
@@ -187,6 +224,7 @@ export class WndManager extends Component {
         this._stack = [];
         this._wndRoot = null;
         console.log('[WndManager] clear');
+        this._emitStackChanged();
     }
 
     // ==================== 状态查询 ====================
@@ -194,6 +232,11 @@ export class WndManager extends Component {
     get currentWndName(): string { return this._getTop()?.name || ''; }
     get stackSize(): number { return this._stack.length; }
     get canBack(): boolean { return this._stack.length > 1; }
+
+    /** 检查指定 wnd 是否在栈中 */
+    hasWndInStack(name: string): boolean {
+        return this._stack.some(e => e.name === name);
+    }
 
     /** 释放所有缓存的 prefab */
     clearCache() {
@@ -299,10 +342,19 @@ export class WndManager extends Component {
                 newTop.wndBase?._doResume();
             }
         }
+        this._emitStackChanged();
     }
 
     private _getTop(): WndEntry | null {
         return this._stack.length > 0 ? this._stack[this._stack.length - 1] : null;
+    }
+
+    /** 通知栈变化 */
+    private _emitStackChanged() {
+        director.emit(WndManager.EVENT_STACK_CHANGED);
+        for (const fn of WndManager._stackChangeCallbacks) {
+            try { fn(); } catch (e) { console.error('[WndManager] stack listener error:', e); }
+        }
     }
 
     /** 场景加载前清空 wnd 栈 */

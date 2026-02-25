@@ -70,6 +70,12 @@ class NavigatorManager {
         return WndManager.instance.replace(wndName, params);
     }
 
+    /** 清空整个 wnd 栈并打开新 wnd（用于 Tab 切换） */
+    async replaceAll(wndName: string, params?: Record<string, any>): Promise<Node | null> {
+        this.init();
+        return WndManager.instance.replaceAll(wndName, params);
+    }
+
     /** 返回（wnd 栈内返回） */
     back(): boolean {
         this.init();

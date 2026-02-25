@@ -59,8 +59,8 @@ export class BottomMenuController extends Component {
     }
 
     start() {
-        // 根据当前 Wnd 名称同步选中状态
         this._syncSelectedState();
+        this._updateToggleInteractable();
     }
 
     onEnable() {
@@ -89,26 +89,31 @@ export class BottomMenuController extends Component {
         this._syncing = false;
     }
 
+    /**
+     * 已选中的 Toggle 禁用交互（阻止重复点击缩放/重新打开）
+     */
+    private _updateToggleInteractable() {
+        if (this._toggle1) this._toggle1.interactable = !this._toggle1.isChecked;
+        if (this._toggle2) this._toggle2.interactable = !this._toggle2.isChecked;
+    }
+
     private _onToggle1(toggle: Toggle) {
         if (this._syncing || !toggle.isChecked) return;
+        this._updateToggleInteractable();
         this._navigateToTab(this.btn1WndName);
     }
 
     private _onToggle2(toggle: Toggle) {
         if (this._syncing || !toggle.isChecked) return;
+        this._updateToggleInteractable();
         this._navigateToTab(this.btn2WndName);
     }
 
     /**
-     * Tab 切换使用 replace，不增加 wnd 栈深度
-     * 如果目标就是当前 Wnd，则不重复导航
+     * Tab 切换：清空整个栈并打开目标界面
      */
     private _navigateToTab(wndName: string) {
         if (!wndName) return;
-
-        const currentWnd = WndManager.instance.currentWndName;
-        if (currentWnd === wndName) return; // 已在当前 Tab，不重复导航
-
-        Navigator.replace(wndName);
+        Navigator.replaceAll(wndName);
     }
 }
