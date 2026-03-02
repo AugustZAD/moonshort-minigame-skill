@@ -3,7 +3,7 @@ import { GameManager } from '../scripts/core/GameManager';
 import { DataStore } from '../scripts/core/DataStore';
 import { Novel, PaginatedResponse } from '../scripts/types/api.types';
 import { NovelItemComponent } from './NovelItemComponent';
-import { SceneHistory } from './SceneHistory';
+import { ClickRouterTo, NavigationType, RouterMode } from './ClickRouterTo';
 import { trackIndexCardClick, trackIndexCardImpression } from '../analytics/UiEvents';
 import { ANALYTICS_DEBUG } from '../analytics/AnalyticsConfig';
 
@@ -215,12 +215,12 @@ export class NovelsListComponent extends Component {
             // 设置数据（通过查找子节点）
             this.setItemData(itemNode, novel);
 
-            // 绑定点击事件
-            itemNode.on(Node.EventType.TOUCH_END, () => {
-                // 埋点：点击 (Tap)
-                trackIndexCardClick(novel.id, novel.title);
-                this.onNovelClick(novel);
-            }, this);
+            // 使用 ClickRouterTo 通用组件绑定点击跳转
+            const router = itemNode.addComponent(ClickRouterTo);
+            router.navigationType = NavigationType.Wnd;
+            router.mode = RouterMode.Push;
+            router.targetName = 'overviewWnd';
+            router.novelId = novel.id;
         }
 
         // 渲染完成后立即检查一次初始可见状态
@@ -264,24 +264,6 @@ export class NovelsListComponent extends Component {
         if (firstChapterLabel) {
             firstChapterLabel.string = novel.firstChapterTitle || '未设置标题';
         }
-    }
-
-    /**
-     * 小说点击事件
-     */
-    private onNovelClick(novel: Novel) {
-        console.log('[NovelsListComponent] 点击小说:', novel.title);
-        
-        // 预加载小说详情和存档数据（提前加载，跳转后直接显示）
-        if (this.dataStore) {
-            this.dataStore.preloadNovelData(novel.id);
-        }
-
-        // 跳转到 overview 场景，传递 novelId
-        SceneHistory.push('overview', { novelId: novel.id });
-        
-        // 也触发自定义事件（兼容旧代码）
-        this.node.emit('novel-selected', novel);
     }
 
     /**

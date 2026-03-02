@@ -1,4 +1,4 @@
-import { director, Director, game, Game, Node, Scene } from 'cc';
+import { assetManager, director, Director, game, Game, Node, Scene } from 'cc';
 import { Analytics } from '../../analytics/AnalyticsManager';
 import { trackHistoryView, trackHomeView, trackIndexView, trackLoginView, trackNotificationsView, trackSettingsView } from '../../analytics/UiEvents';
 import { SceneParams } from './SceneParams';
@@ -27,6 +27,9 @@ class NavigatorManager {
     private _currentScene: string = '';
     private _inited: boolean = false;
 
+    /** 场景加载后待打开的 wnd */
+    private _pendingWnd: { wndName: string; params: Record<string, any> } | null = null;
+
     static get instance(): NavigatorManager {
         if (!this._instance) {
             this._instance = new NavigatorManager();
@@ -45,15 +48,44 @@ class NavigatorManager {
 
     // ==================== 场景跳转 ====================
 
+    /** 场景资源目录（db://assets/newScenes） */
+    private static readonly SCENE_DIR = 'newScenes';
+
     /**
      * 跳转场景（login / index / game）
      * 场景间是明确的业务跳转，不堆栈
+     * 从 db://assets/newScenes 目录加载
      */
     toScene(sceneName: MainScene, params?: Record<string, any>) {
         this.init();
-        if (params) SceneParams.set(params);
-        console.log(`[Navigator] toScene: ${sceneName}`);
-        director.loadScene(sceneName);
+        console.log(`[Navigator] toScene 调用：sceneName=${sceneName}, params=`, params);
+        if (params) {
+            SceneParams.set(params);
+            console.log('[Navigator] SceneParams 已设置:', JSON.stringify(params, null, 2));
+        }
+        const scenePath = `${NavigatorManager.SCENE_DIR}/${sceneName}`;
+        console.log(`[Navigator] 即将加载场景: ${scenePath}`);
+
+        const bundle = assetManager.getBundle('main');
+        if (bundle) {
+            bundle.loadScene(scenePath, (err, sceneAsset) => {
+                if (err) {
+                    console.error(`[Navigator] 从 ${NavigatorManager.SCENE_DIR} 加载场景失败: ${sceneName}`, err);
+                    return;
+                }
+                director.runScene(sceneAsset.scene);
+            });
+        } else {
+            console.error('[Navigator] main bundle 未就绪，无法加载场景');
+        }
+    }
+
+    /**
+     * 跳转场景后自动打开指定 wnd（场景加载完成后在 WndRoot 下生成）
+     */
+    toSceneThenWnd(sceneName: MainScene, wndName: string, wndParams?: Record<string, any>) {
+        this._pendingWnd = { wndName, params: wndParams || {} };
+        this.toScene(sceneName);
     }
 
     // ==================== wnd 导航 ====================
@@ -93,6 +125,15 @@ class NavigatorManager {
     private _onAfterSceneLaunch(scene: Scene | string) {
         const name = typeof scene === 'string' ? scene : scene?.name;
         if (name) this._currentScene = name;
+
+        // 场景加载后打开待处理的 wnd
+        if (this._pendingWnd) {
+            const pending = this._pendingWnd;
+            this._pendingWnd = null;
+            console.log(`[Navigator] 场景加载完成，打开待处理 wnd: ${pending.wndName}`);
+            this.toWnd(pending.wndName, pending.params);
+        }
+
         trackHomeView();
         trackIndexView();
         trackNotificationsView();

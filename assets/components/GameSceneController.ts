@@ -1,6 +1,7 @@
 import { _decorator, Component, Node, assetManager, ImageAsset, SpriteFrame, Texture2D, director, Sprite, Size, Rect, AudioSource } from 'cc';
 import { SceneParams } from '../scripts/core/SceneParams';
 import { Navigator } from '../scripts/core/Navigator';
+import { WndManager } from '../scripts/core/WndManager';
 import { GameManager } from '../scripts/core/GameManager';
 import { GameAPI } from '../scripts/api/GameAPI';
 import { PlayerSave, GamePhase, EnrichedBCard, ACardPool } from '../scripts/types/game.types';
@@ -115,12 +116,19 @@ export class GameSceneController extends Component {
 
         // 获取场景参数
         console.log('[GameSceneController] 尝试获取 SceneParams...');
-        const params = SceneParams.get<{ saveId?: number, novelId?: string }>(false);
+        const params = SceneParams.get<{ saveId?: number, novelId?: string, openAddPointWnd?: boolean }>(false);
         
         console.log('[GameSceneController] 获取到的 SceneParams:', params);
         
         // 消费参数
         SceneParams.get(true);
+
+        // 如果需要先打开属性分配窗口（无存档时由 overviewWnd 跳转过来）
+        if (params.openAddPointWnd && params.novelId) {
+            console.log('[GameSceneController] 打开属性分配窗口, novelId:', params.novelId);
+            await Navigator.toWnd('addPointWnd', { novelId: params.novelId });
+            return;
+        }
         
         if (!params.saveId) {
             console.error('[GameSceneController] 缺少 saveId 参数');

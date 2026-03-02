@@ -1,4 +1,5 @@
 import { _decorator, Component, Node, Label, Sprite, Prefab, instantiate, assetManager, ImageAsset, SpriteFrame, Texture2D, Button } from 'cc';
+import { ClickRouterTo } from './ClickRouterTo';
 import { showLoading, hideLoading } from '../scripts/utils/SpriteLoading';
 import { SceneParams } from '../scripts/core/SceneParams';
 import { Navigator } from '../scripts/core/Navigator';
@@ -79,6 +80,9 @@ export class NovelOverviewComponent extends Component {
         this.novelsAPI = new NovelsAPI(gameManager.getAPI());
         this.savesAPI = new SavesAPI(gameManager.getAPI());
 
+        // 自动发现 UI 节点（prefab 中可能未配置引用）
+        this.autoDiscoverUI();
+
         // 获取场景参数
         const params = SceneParams.get<{ novelId: string }>();
         
@@ -91,13 +95,167 @@ export class NovelOverviewComponent extends Component {
         this.novelId = params.novelId;
         console.log('[NovelOverviewComponent] 接收到 novelId:', this.novelId);
 
-        // 绑定点赞按钮事件
+        // 绑定点赞按钮事件（先 off 防止重复绑定）
         if (this.likeButton) {
+            this.likeButton.node.off(Button.EventType.CLICK, this.onLikeButtonClick, this);
             this.likeButton.node.on(Button.EventType.CLICK, this.onLikeButtonClick, this);
         }
 
         // 加载小说详情
         this.loadNovelDetail();
+    }
+
+    /**
+     * 自动发现 UI 节点
+     * 当 prefab 中的 @property 引用未配置时，通过节点名称自动查找
+     */
+    private autoDiscoverUI() {
+        // 找到 main 节点（父节点）
+        const mainNode = this.node.parent;
+        if (!mainNode) {
+            console.warn('[NovelOverviewComponent] 找不到父节点');
+            return;
+        }
+
+        // 查找 helper：递归搜索第一个指定名称的子节点
+        const findChild = (root: Node, name: string): Node | null => {
+            for (const child of root.children) {
+                if (child.name === name) return child;
+                const found = findChild(child, name);
+                if (found) return found;
+            }
+            return null;
+        };
+
+        // 标题 Label
+        if (!this.titleLabel) {
+            const titleNode = findChild(mainNode, 'title');
+            if (titleNode) {
+                this.titleLabel = titleNode.getComponent(Label);
+            }
+        }
+
+        // 描述 Label（Introduction 节点）
+        if (!this.descriptionLabel) {
+            const introNode = findChild(mainNode, 'Introduction');
+            if (introNode) {
+                this.descriptionLabel = introNode.getComponent(Label);
+            }
+        }
+
+        // 点赞数 Label（detail > btns > like > number）
+        if (!this.likeCountLabel) {
+            const detailNode = findChild(mainNode, 'detail');
+            if (detailNode) {
+                const statBtns = detailNode.getChildByName('btns');
+                const likeNode = statBtns?.getChildByName('like');
+                const likeNumber = likeNode?.getChildByName('number');
+                if (likeNumber) {
+                    this.likeCountLabel = likeNumber.getComponent(Label);
+                }
+            }
+        }
+
+        // 游玩次数 Label（detail > btns > play > number）
+        if (!this.viewCountLabel) {
+            const detailNode = findChild(mainNode, 'detail');
+            if (detailNode) {
+                const statBtns = detailNode.getChildByName('btns');
+                const playNode = statBtns?.getChildByName('play');
+                const playNumber = playNode?.getChildByName('number');
+                if (playNumber) {
+                    this.viewCountLabel = playNumber.getComponent(Label);
+                }
+            }
+        }
+
+        // 章节数 Label（detail > btns > chapters > number）
+        if (!this.nodeCountLabel) {
+            const detailNode = findChild(mainNode, 'detail');
+            if (detailNode) {
+                const statBtns = detailNode.getChildByName('btns');
+                const chaptersNode = statBtns?.getChildByName('chapters');
+                // prefab 中这里拼写为 nember，兼容两种名称
+                const chaptersNumber = chaptersNode?.getChildByName('number') || chaptersNode?.getChildByName('nember');
+                if (chaptersNumber) {
+                    this.nodeCountLabel = chaptersNumber.getComponent(Label);
+                }
+            }
+        }
+
+        // 标签容器（detail > Tags）
+        if (!this.tagsContainer) {
+            const tagsNode = findChild(mainNode, 'Tags');
+            if (tagsNode) {
+                this.tagsContainer = tagsNode;
+            }
+        }
+
+        // 封面图 Sprite（temp-5 > SpriteSplash）
+        if (!this.coverImage) {
+            const splashNode = findChild(mainNode, 'SpriteSplash');
+            if (splashNode) {
+                this.coverImage = splashNode.getComponent(Sprite);
+            }
+        }
+
+        // 播放按钮（main 直接子节点 btns > btn-play）
+        const bottomBtns = mainNode.getChildByName('btns');
+        if (bottomBtns) {
+            const btnPlayNode = bottomBtns.getChildByName('btn-play');
+            if (btnPlayNode) {
+                // 禁用 prefab 上的 ClickRouterTo，避免与脚本逻辑冲突（它会通过 TOUCH_END 抢先跳转场景）
+                const clickRouter = btnPlayNode.getComponent(ClickRouterTo);
+                if (clickRouter) {
+                    clickRouter.enabled = false;
+                }
+
+                const btnPlay = btnPlayNode.getComponent(Button);
+                if (btnPlay) {
+                    // 清理 prefab 中 target 为 null 的无效事件，重新绑定
+                    btnPlay.clickEvents = [];
+                    btnPlay.node.on(Button.EventType.CLICK, this.onClickRouterToGame, this);
+                }
+            }
+
+            // 点赞按钮（底部 btn-like，即第二个子节点）
+            if (!this.likeButton && bottomBtns.children.length > 1) {
+                const likeBtnNode = bottomBtns.children[1];
+                const likeBtn = likeBtnNode.getComponent(Button);
+                if (likeBtn) {
+                    this.likeButton = likeBtn;
+                    // 清理 clickEvents，统一用脚本绑定
+                    likeBtn.clickEvents = [];
+                }
+
+                // 发现 icon-like-1（未点赞）和 icon-like-2（已点赞）节点
+                if (!this.unlikedNode) {
+                    const iconLike1 = likeBtnNode.getChildByName('icon-like-1');
+                    if (iconLike1) {
+                        this.unlikedNode = iconLike1;
+                    }
+                }
+                if (!this.likedNode) {
+                    const iconLike2 = likeBtnNode.getChildByName('icon-like-2');
+                    if (iconLike2) {
+                        this.likedNode = iconLike2;
+                    }
+                }
+            }
+        }
+
+        console.log('[NovelOverviewComponent] UI 自动发现结果:', {
+            titleLabel: !!this.titleLabel,
+            descriptionLabel: !!this.descriptionLabel,
+            likeCountLabel: !!this.likeCountLabel,
+            viewCountLabel: !!this.viewCountLabel,
+            nodeCountLabel: !!this.nodeCountLabel,
+            coverImage: !!this.coverImage,
+            tagsContainer: !!this.tagsContainer,
+            likeButton: !!this.likeButton,
+            likedNode: !!this.likedNode,
+            unlikedNode: !!this.unlikedNode,
+        });
     }
 
     /**
@@ -120,17 +278,14 @@ export class NovelOverviewComponent extends Component {
     
     /**
      * 跳转到属性分配场景（创建新存档）
+     * 跳转到 game 场景，带上 openAddPointWnd 参数，由 GameSceneLoader 处理
      */
     private navigateToAddPoint() {
-        console.log('[NovelOverviewComponent] 跳转到属性分配场景');
-        
-        // 设置场景参数
-        SceneParams.set({ novelId: this.novelId });
-        
-        console.log('[NovelOverviewComponent] SceneParams 已设置:', { novelId: this.novelId });
-        
-        // 打开属性分配窗口
-        Navigator.toWnd('addPointWnd', { novelId: this.novelId });
+        console.log('[NovelOverviewComponent] 跳转到 game 场景并打开属性分配窗口');
+        Navigator.toScene('game', { 
+            novelId: this.novelId, 
+            openAddPointWnd: true 
+        });
     }
 
     /**
@@ -379,6 +534,14 @@ export class NovelOverviewComponent extends Component {
 
         const title = this.currentNovel?.title || this.titleLabel?.string || undefined;
         trackOverviewPlayClick(this.novelId, title);
+
+        // 检查登录状态
+        const gameManager = GameManager.getInstance();
+        if (!gameManager.isLoggedIn()) {
+            console.warn('[NovelOverviewComponent] 用户未登录，跳转到 login');
+            Navigator.toScene('login');
+            return;
+        }
         
         // 获取该小说的第一个存档或创建新存档
         if (!this.savesAPI) {
@@ -400,8 +563,13 @@ export class NovelOverviewComponent extends Component {
                 console.log('[NovelOverviewComponent] 没有存档，跳转到属性分配页面');
                 this.navigateToAddPoint();
             }
-        } catch (error) {
+        } catch (error: any) {
             console.error('[NovelOverviewComponent] 获取存档失败:', error);
+            // 认证失败时跳转 login
+            if (error?.statusCode === 401 || error?.code === 'UNAUTHORIZED') {
+                console.warn('[NovelOverviewComponent] 认证过期，跳转到 login');
+                Navigator.toScene('login');
+            }
         }
     }
 
