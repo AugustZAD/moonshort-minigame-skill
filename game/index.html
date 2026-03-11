@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>Super Mario Demo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;900&family=Patrick+Hand&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; }
+  body { background: #1F2937; overflow: hidden; }
+  canvas { display: block; margin: 0 auto; }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
+</head>
+<body>
+<script>
+// ============ URL Params ============
+const params = new URLSearchParams(window.location.search);
+const ATTRIBUTE = params.get('attribute') || 'Agility';
+const PRIMARY_COLOR = params.get('primaryColor') || '#E84545';
+
+// ============ Theme Colors ============
+const COLORS = {
+  primary: Phaser.Display.Color.HexStringToColor(PRIMARY_COLOR).color,
+  primaryHex: PRIMARY_COLOR,
+  light: 0xFFF3E0,
+  lightHex: '#FFF3E0',
+  accent: 0x8B2020,
+  accentHex: '#8B2020',
+  neutral: 0x5C4033,
+  neutralHex: '#5C4033',
+  sky: 0x6BAAFF,
+  white: 0xFFFFFF,
+  gold: 0xFFD700,
+  danger: 0xF87171,
+  success: 0x34D399,
+  textPrimary: '#1F2937',
+};
+
+// ============ Sound (Web Audio API) ============
+let audioCtx;
+function getAudioCtx() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  return audioCtx;
+}
+function playSound(frequency, duration = 80, type = 'sine') {
+  const ctx = getAudioCtx();
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.connect(gain);
+  gain.connect(ctx.destination);
+  osc.frequency.value = frequency;
+  osc.type = type;
+  gain.gain.setValueAtTime(0.25, ctx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration / 1000);
+  osc.start(ctx.currentTime);
+  osc.stop(ctx.currentTime + duration / 1000);
+}
+function playCoinSound() { playSound(523, 80); setTimeout(() => playSound(784, 80), 60); }
+function playStompSound() { playSound(200, 120, 'square'); }
+function playDeathSound() { playSound(200, 150); setTimeout(() => playSound(150, 200), 150); }
+function playRatingSound() {
+  [523, 587, 659, 784, 880].forEach((f, i) => setTimeout(() => playSound(f, 120), i * 100));
+}
+
+// ============ WebView Bridge ============
+function notifyGameComplete(result) {
+  const payload = JSON.stringify(result);
+  if (window.webkit?.messageHandlers?.jsBridge) {
+    window.webkit.messageHandlers.jsBridge.postMessage(payload); return;
+  }
+  if (window.jsBridge?.postMessage) {
+    window.jsBridge.postMessage(payload); return;
+  }
+  if (window.parent !== window) {
+    window.parent.postMessage(payload, '*'); return;
+  }
+  console.log('[GameComplete]', result);
+}
+
+// ============ Texture Generator ============
+function createTextures(scene) {
+  if (scene.textures.exists('mario')) return;
+  // Mario (16x16)
+  const mario = scene.textures.createCanvas('mario', 16, 16);
+  const m = mario.getContext();
+  m.fillStyle = '#ff0000'; m.fillRect(3, 0, 10, 4);
+  m.fillStyle = '#ffb566'; m.fillRect(2, 4, 12, 4);
+  m.fillStyle = '#000'; m.fillRect(4, 5, 2, 2); m.fillRect(10, 5, 2, 2);
+  m.fillStyle = '#0000ff'; m.fillRect(2, 8, 12, 5);
+  m.fillStyle = '#ffcc00'; m.fillRect(4, 9, 8, 1);
+  m.fillStyle = '#0000ff'; m.fillRect(2, 13, 5, 3); m.fillRect(9, 13, 5, 3);
+  m.fillStyle = '#8B4513'; m.fillRect(1, 14, 5, 2); m.fillRect(10, 14, 5, 2);
+  mario.refresh();
+
+  // Ground (16x16)
+  const ground = scene.textures.createCanvas('ground', 16, 16);
+  const g = ground.getContext();
+  g.fillStyle = '#8B4513'; g.fillRect(0, 0, 16, 16);
+  g.fillStyle = '#228B22'; g.fillRect(0, 0, 16, 4);
+  g.strokeStyle = '#6B3410'; g.strokeRect(0, 4, 8, 12); g.strokeRect(8, 4, 8, 12);
+  ground.refresh();
+
+  // Brick (16x16)
+  const brick = scene.textures.createCanvas('brick', 16, 16);
+  const b = brick.getContext();
+  b.fillStyle = '#D2691E'; b.fillRect(0, 0, 16, 16);
+  b.strokeStyle = '#8B4513'; b.lineWidth = 1;
+  b.strokeRect(0, 0, 16, 8); b.strokeRect(0, 8, 8, 8); b.strokeRect(8, 8, 8, 8);
+  brick.refresh();
+
+  // Question block (16x16)
+  const qblock = scene.textures.createCanvas('qblock', 16, 16);
+  const q = qblock.getContext();
+  q.fillStyle = '#FFD700'; q.fillRect(0, 0, 16, 16);
+  q.strokeStyle = '#B8860B'; q.strokeRect(0, 0, 16, 16);
+  q.fillStyle = '#fff'; q.font = 'bold 12px Arial'; q.fillText('?', 4, 13);
+  qblock.refresh();
+
+  // Coin (10x10)
+  const coin = scene.textures.createCanvas('coin', 10, 10);
+  const c = coin.getContext();
+  c.fillStyle = '#FFD700'; c.beginPath(); c.arc(5, 5, 5, 0, Math.PI * 2); c.fill();
+  c.fillStyle = '#FFA500'; c.beginPath(); c.arc(5, 5, 3, 0, Math.PI * 2); c.fill();
+  coin.refresh();
+
+  // Goomba (16x16)
+  const goomba = scene.textures.createCanvas('goomba', 16, 16);
+  const e = goomba.getContext();
+  e.fillStyle = '#8B4513'; e.beginPath(); e.arc(8, 6, 7, Math.PI, 0); e.fill();
+  e.fillRect(1, 6, 14, 6);
+  e.fillStyle = '#fff'; e.fillRect(3, 4, 4, 4); e.fillRect(9, 4, 4, 4);
+  e.fillStyle = '#000'; e.fillRect(5, 5, 2, 3); e.fillRect(9, 5, 2, 3);
+  e.fillStyle = '#000'; e.fillRect(0, 12, 6, 4); e.fillRect(10, 12, 6, 4);
+  goomba.refresh();
+
+  // Cloud (32x16)
+  const cloud = scene.textures.createCanvas('cloud', 32, 16);
+  const cl = cloud.getContext();
+  cl.fillStyle = 'rgba(255,255,255,0.9)';
+  cl.beginPath(); cl.arc(8, 10, 6, 0, Math.PI*2); cl.arc(16, 7, 8, 0, Math.PI*2); cl.arc(24, 10, 6, 0, Math.PI*2); cl.fill();
+  cloud.refresh();
+
+  // Pipe (32x48)
+  const pipe = scene.textures.createCanvas('pipe', 32, 48);
+  const p = pipe.getContext();
+  p.fillStyle = '#00aa00'; p.fillRect(4, 10, 24, 38);
+  p.fillStyle = '#00cc00'; p.fillRect(0, 0, 32, 12);
+  p.fillStyle = '#008800'; p.fillRect(4, 10, 4, 38);
+  p.fillStyle = '#00ee00'; p.fillRect(20, 10, 4, 38);
+  pipe.refresh();
+
+  // Flag pole (4x96)
+  const pole = scene.textures.createCanvas('pole', 4, 96);
+  const po = pole.getContext();
+  po.fillStyle = '#888'; po.fillRect(0, 0, 4, 96);
+  po.fillStyle = '#aaa'; po.fillRect(0, 0, 2, 96);
+  pole.refresh();
+
+  // Flag (16x12)
+  const flag = scene.textures.createCanvas('flag', 16, 12);
+  const fl = flag.getContext();
+  fl.fillStyle = PRIMARY_COLOR; fl.beginPath();
+  fl.moveTo(0, 0); fl.lineTo(16, 6); fl.lineTo(0, 12); fl.closePath(); fl.fill();
+  flag.refresh();
+}
+
+// ============ Game Config ============
+const SCALE = 2;
+const TILE = 16 * SCALE;
+const W = 393;
+const H = 736;
+const GROUND_Y = H - TILE * 2;
+const LEVEL_WIDTH = TILE * 60;
+const TIME_LIMIT = 60;
+
+const RATING_THRESHOLDS = { S: 3000, A: 2000, B: 1000 };
+
+function getRating(s) {
+  if (s >= RATING_THRESHOLDS.S) return 'S';
+  if (s >= RATING_THRESHOLDS.A) return 'A';
+  if (s >= RATING_THRESHOLDS.B) return 'B';
+  return 'C';
+}
+function getModifier(r) { return { S: 2, A: 1, B: 0, C: -1 }[r]; }
+
+// ============ Game Scene ============
+class GameScene extends Phaser.Scene {
+  constructor() { super('GameScene'); }
+
+  init() {
+    this.score = 0;
+    this.timeLeft = TIME_LIMIT;
+    this.isGameOver = false;
+    this.isDead = false;
+    this.touchLeft = false;
+    this.touchRight = false;
+    this.touchJump = false;
+  }
+
+  preload() { createTextures(this); }
+
+  create() {
+    // ---- Clouds ----
+    for (let i = 0; i < 8; i++) {
+      this.add.image(80 + i * 250, 60 + (i % 3) * 40, 'cloud')
+        .setScale(SCALE * 1.5).setScrollFactor(0.2).setAlpha(0.7);
+    }
+
+    // ---- Platforms ----
+    this.platforms = this.physics.add.staticGroup();
+    for (let x = 0; x < LEVEL_WIDTH; x += TILE) {
+      this.platforms.create(x, GROUND_Y, 'ground').setScale(SCALE).refreshBody();
+      this.platforms.create(x, GROUND_Y + TILE, 'ground').setScale(SCALE).refreshBody();
+    }
+    // Pit
+    for (let x = TILE * 18; x <= TILE * 20; x += TILE) {
+      this.platforms.getChildren()
+        .filter(c => Math.abs(c.x - x) < 2 && c.y <= GROUND_Y)
+        .forEach(c => c.destroy());
+    }
+
+    // Floating blocks
+    const blocks = [
+      {x:6,y:-3,t:'brick'},{x:7,y:-3,t:'qblock'},{x:8,y:-3,t:'brick'},
+      {x:9,y:-3,t:'qblock'},{x:10,y:-3,t:'brick'},
+      {x:14,y:-5,t:'brick'},{x:15,y:-5,t:'brick'},{x:16,y:-5,t:'qblock'},
+      {x:25,y:-3,t:'qblock'},
+      {x:30,y:-4,t:'brick'},{x:31,y:-4,t:'brick'},{x:32,y:-4,t:'qblock'},
+      {x:40,y:-3,t:'brick'},{x:41,y:-3,t:'qblock'},{x:42,y:-3,t:'brick'},
+      {x:46,y:-5,t:'qblock'},{x:47,y:-5,t:'brick'},
+    ];
+    blocks.forEach(b => {
+      this.platforms.create(b.x * TILE, GROUND_Y + b.y * TILE, b.t)
+        .setScale(SCALE).refreshBody();
+    });
+
+    // ---- Pipes ----
+    this.pipes = this.physics.add.staticGroup();
+    [12, 28, 38, 50].forEach((tx, i) => {
+      this.pipes.create(tx * TILE, GROUND_Y - TILE * (1.2 + i * 0.2), 'pipe')
+        .setScale(SCALE).refreshBody();
+    });
+
+    // ---- Coins ----
+    this.coins = this.physics.add.group({ allowGravity: false });
+    const coinPos = [
+      [6,-4],[7,-4],[8,-4],[9,-4],[10,-4],
+      [14,-6],[15,-6],[16,-6],
+      [22,-2],[23,-2],[24,-2],
+      [25,-4],
+      [30,-5],[31,-5],[32,-5],
+      [35,-2],[36,-2],
+      [40,-4],[41,-4],[42,-4],
+      [46,-6],[47,-6],
+      [52,-2],[53,-2],[54,-2],
+    ];
+    coinPos.forEach(([tx, ty]) => {
+      this.coins.create(tx * TILE, GROUND_Y + ty * TILE, 'coin').setScale(SCALE);
+    });
+
+    // ---- Enemies ----
+    this.enemies = this.physics.add.group();
+    [9, 17, 24, 33, 43, 48].forEach(tx => {
+      const e = this.enemies.create(tx * TILE, GROUND_Y - TILE, 'goomba').setScale(SCALE);
+      e.setBounce(0); e.setVelocityX(-50); e.direction = -1;
+    });
+
+    // ---- Flag (goal) ----
+    this.flagPole = this.physics.add.staticImage(TILE * 56, GROUND_Y - TILE * 3, 'pole')
+      .setScale(SCALE).refreshBody();
+    this.flagImg = this.add.image(TILE * 56 + 14, GROUND_Y - TILE * 5, 'flag').setScale(SCALE);
+
+    // ---- Player ----
+    this.player = this.physics.add.sprite(3 * TILE, GROUND_Y - TILE * 2, 'mario');
+    this.player.setScale(SCALE).setBounce(0.1);
+    this.player.body.setSize(12, 16).setOffset(2, 0);
+
+    // ---- Collisions ----
+    this.physics.add.collider(this.player, this.platforms);
+    this.physics.add.collider(this.player, this.pipes);
+    this.physics.add.collider(this.enemies, this.platforms);
+    this.physics.add.collider(this.enemies, this.pipes, (enemy) => {
+      enemy.setVelocityX(enemy.direction * -50); enemy.direction *= -1; enemy.flipX = !enemy.flipX;
+    });
+
+    // Coin collection
+    this.physics.add.overlap(this.player, this.coins, (p, c) => {
+      c.destroy();
+      this.addScore(100, c.x, c.y);
+      playCoinSound();
+    });
+
+    // Enemy collision
+    this.physics.add.overlap(this.player, this.enemies, (p, e) => {
+      if (p.body.velocity.y > 0 && p.y < e.y - 10) {
+        e.destroy();
+        this.addScore(200, e.x, e.y);
+        p.setVelocityY(-350);
+        playStompSound();
+      } else if (!this.isDead) {
+        this.playerDie();
+      }
+    });
+
+    // Flag overlap
+    this.physics.add.overlap(this.player, this.flagPole, () => {
+      if (!this.isGameOver) this.gameWin();
+    });
+
+    // ---- Camera ----
+    this.cameras.main.setBounds(0, 0, LEVEL_WIDTH, H);
+    this.cameras.main.startFollow(this.player, true, 0.1, 0.1);
+
+    // ---- HUD (L2 layer) ----
+    const hudY = 24;
+    // Score pill
+    this.scoreBox = this.add.rectangle(20, hudY, 130, 32, COLORS.light, 0.9)
+      .setOrigin(0, 0.5).setScrollFactor(0).setDepth(100);
+    this.scoreBox.setStrokeStyle(2.5, COLORS.accent);
+    this.scoreTxt = this.add.text(34, hudY, '★ 0', {
+      fontFamily: 'Nunito', fontSize: '16px', fontStyle: '700',
+      color: COLORS.accentHex,
+    }).setOrigin(0, 0.5).setScrollFactor(0).setDepth(101);
+
+    // Timer pill
+    this.timerBox = this.add.rectangle(W - 20, hudY, 90, 32, COLORS.light, 0.9)
+      .setOrigin(1, 0.5).setScrollFactor(0).setDepth(100);
+    this.timerBox.setStrokeStyle(2.5, COLORS.accent);
+    this.timerTxt = this.add.text(W - 34, hudY, '⏱ ' + TIME_LIMIT, {
+      fontFamily: 'Nunito', fontSize: '16px', fontStyle: '700',
+      color: COLORS.accentHex,
+    }).setOrigin(1, 0.5).setScrollFactor(0).setDepth(101);
+
+    // Timer event
+    this.timerEvent = this.time.addEvent({
+      delay: 1000, loop: true,
+      callback: () => {
+        if (this.isGameOver || this.isDead) return;
+        this.timeLeft--;
+        this.timerTxt.setText('⏱ ' + this.timeLeft);
+        if (this.timeLeft <= 10) this.timerTxt.setColor('#F87171');
+        if (this.timeLeft <= 0) this.playerDie();
+      }
+    });
+
+    // ---- Controls ----
+    this.cursors = this.input.keyboard.createCursorKeys();
+    this.createTouchControls();
+
+    // Fall check
+    this.time.addEvent({ delay: 100, loop: true, callback: () => {
+      if (this.player.y > H + 100 && !this.isDead) this.playerDie();
+    }});
+  }
+
+  addScore(amount, x, y) {
+    this.score += amount;
+    this.scoreTxt.setText('★ ' + this.score);
+    // Scale bounce
+    this.tweens.add({ targets: this.scoreTxt, scaleX: 1.3, scaleY: 1.3, duration: 100, yoyo: true, ease: 'Quad.easeOut' });
+    // Floating +N text
+    const ft = this.add.text(x, y - 10, '+' + amount, {
+      fontFamily: 'Nunito', fontSize: '14px', fontStyle: '700',
+      color: '#34D399', stroke: '#fff', strokeThickness: 2,
+    }).setOrigin(0.5).setDepth(150);
+    this.tweens.add({ targets: ft, y: y - 60, alpha: 0, duration: 600, ease: 'Quad.easeOut', onComplete: () => ft.destroy() });
+  }
+
+  playerDie() {
+    if (this.isDead) return;
+    this.isDead = true;
+    playDeathSound();
+    this.player.setTint(0xff0000);
+    this.player.setVelocity(0, -400);
+    // Floating -N
+    const ft = this.add.text(this.player.x, this.player.y - 10, '-500', {
+      fontFamily: 'Nunito', fontSize: '14px', fontStyle: '700',
+      color: '#F87171', stroke: '#fff', strokeThickness: 2,
+    }).setOrigin(0.5).setDepth(150);
+    this.tweens.add({ targets: ft, y: this.player.y + 40, alpha: 0, duration: 600, ease: 'Quad.easeOut', onComplete: () => ft.destroy() });
+    this.score = Math.max(0, this.score - 500);
+    this.scoreTxt.setText('★ ' + this.score);
+
+    this.time.delayedCall(1500, () => {
+      this.isDead = false;
+      this.scene.restart();
+    });
+  }
+
+  gameWin() {
+    this.isGameOver = true;
+    this.player.setVelocity(0, 0);
+    this.player.body.setAllowGravity(false);
+    // Time bonus
+    const timeBonus = this.timeLeft * 50;
+    this.score += timeBonus;
+    // Flag slide animation
+    this.tweens.add({ targets: this.flagImg, y: GROUND_Y - TILE, duration: 600, ease: 'Quad.easeOut' });
+    // Show time bonus
+    const bt = this.add.text(this.player.x, this.player.y - 40, 'TIME BONUS +' + timeBonus, {
+      fontFamily: 'Nunito', fontSize: '16px', fontStyle: '900',
+      color: '#FFD700', stroke: COLORS.accentHex, strokeThickness: 3,
+    }).setOrigin(0.5).setDepth(150);
+    this.tweens.add({ targets: bt, y: this.player.y - 100, alpha: 0, duration: 1200, ease: 'Quad.easeOut' });
+
+    this.time.delayedCall(1800, () => {
+      this.scene.start('RatingScene', { score: this.score });
+    });
+  }
+
+  update() {
+    if (this.isGameOver || this.isDead) return;
+    const onGround = this.player.body.touching.down || this.player.body.blocked.down;
+    const speed = 220;
+
+    if (this.cursors.left.isDown || this.touchLeft) {
+      this.player.setVelocityX(-speed); this.player.setFlipX(true);
+    } else if (this.cursors.right.isDown || this.touchRight) {
+      this.player.setVelocityX(speed); this.player.setFlipX(false);
+    } else {
+      this.player.setVelocityX(0);
+    }
+
+    if ((this.cursors.up.isDown || this.cursors.space?.isDown || this.touchJump) && onGround) {
+      this.player.setVelocityY(-480);
+    }
+
+    this.enemies?.getChildren().forEach(e => {
+      if (!e.body) return;
+      if (e.body.blocked.left) { e.setVelocityX(50); e.direction = 1; e.flipX = true; }
+      else if (e.body.blocked.right) { e.setVelocityX(-50); e.direction = -1; e.flipX = false; }
+    });
+  }
+
+  createTouchControls() {
+    const btnSize = 56;
+    const margin = 16;
+    const btnY = H - margin - btnSize / 2;
+    const alpha = 0.35;
+
+    const makeBtn = (x, y, w, h, color, label, fontSize) => {
+      const bg = this.add.rectangle(x, y, w, h, color, alpha)
+        .setScrollFactor(0).setDepth(200).setInteractive();
+      bg.setStrokeStyle(2.5, COLORS.accent);
+      const txt = this.add.text(x, y, label, {
+        fontFamily: 'Nunito', fontSize: fontSize || '24px', fontStyle: '700', color: '#fff',
+      }).setOrigin(0.5).setScrollFactor(0).setDepth(201);
+      // Rounded visual via Phaser graphics
+      return bg;
+    };
+
+    const leftBtn = makeBtn(margin + btnSize / 2, btnY, btnSize, btnSize, COLORS.primary, '◀');
+    const rightBtn = makeBtn(margin + btnSize * 1.7, btnY, btnSize, btnSize, COLORS.primary, '▶');
+    const jumpBtn = makeBtn(W - margin - btnSize * 0.7, btnY, btnSize * 1.4, btnSize * 1.4, COLORS.danger, 'JUMP', '15px');
+
+    leftBtn.on('pointerdown', () => this.touchLeft = true);
+    leftBtn.on('pointerup', () => this.touchLeft = false);
+    leftBtn.on('pointerout', () => this.touchLeft = false);
+    rightBtn.on('pointerdown', () => this.touchRight = true);
+    rightBtn.on('pointerup', () => this.touchRight = false);
+    rightBtn.on('pointerout', () => this.touchRight = false);
+    jumpBtn.on('pointerdown', () => this.touchJump = true);
+    jumpBtn.on('pointerup', () => this.touchJump = false);
+    jumpBtn.on('pointerout', () => this.touchJump = false);
+  }
+}
+
+// ============ Rating Scene ============
+class RatingScene extends Phaser.Scene {
+  constructor() { super('RatingScene'); }
+
+  init(data) { this.finalScore = data.score || 0; }
+
+  create() {
+    const rating = getRating(this.finalScore);
+    const modifier = getModifier(rating);
+    const ratingColors = { S: '#FFD700', A: COLORS.primaryHex, B: '#9CA3AF', C: '#F87171' };
+    const ratingColor = ratingColors[rating];
+    const modText = modifier > 0 ? `+${modifier} Bonus` : modifier < 0 ? `${modifier} Penalty` : 'No Change';
+
+    // 1. Background overlay (300ms fade)
+    const overlay = this.add.rectangle(W / 2, H / 2, W, H, 0x000000, 0).setDepth(300);
+    this.tweens.add({ targets: overlay, fillAlpha: 0.6, duration: 300 });
+
+    // 2. Result card (bottom-up, 400ms)
+    const cardW = 320;
+    const cardH = 360;
+    const cardX = W / 2;
+    const cardY = H / 2 - 20;
+
+    // Card bg
+    const card = this.add.rectangle(cardX, H + cardH, cardW, cardH, COLORS.light, 1)
+      .setDepth(301).setStrokeStyle(3, COLORS.accent);
+    this.tweens.add({ targets: card, y: cardY, duration: 400, ease: 'Back.easeOut', delay: 300 });
+
+    // Card shadow (Kenney flat shadow)
+    const shadow = this.add.rectangle(cardX + 3, H + cardH + 3, cardW, cardH, COLORS.accent, 1).setDepth(300.5);
+    this.tweens.add({ targets: shadow, y: cardY + 3, duration: 400, ease: 'Back.easeOut', delay: 300 });
+
+    // Title
+    const title = this.add.text(cardX, cardY - 140, '✦ STAGE CLEAR ✦', {
+      fontFamily: 'Nunito', fontSize: '22px', fontStyle: '900',
+      color: COLORS.accentHex,
+    }).setOrigin(0.5).setDepth(302).setAlpha(0);
+    this.tweens.add({ targets: title, alpha: 1, y: cardY - 130, duration: 300, delay: 700 });
+
+    // 3. Rating letter (scale 0 → 1.4 → 1.0, 600ms)
+    const ratingTxt = this.add.text(cardX, cardY - 30, rating, {
+      fontFamily: 'Nunito', fontSize: '80px', fontStyle: '900',
+      color: ratingColor, stroke: COLORS.accentHex, strokeThickness: 4,
+    }).setOrigin(0.5).setDepth(302).setScale(0);
+    this.tweens.add({
+      targets: ratingTxt, scaleX: 1.4, scaleY: 1.4, duration: 300, delay: 900, ease: 'Back.easeOut',
+      onStart: () => playRatingSound(),
+      onComplete: () => {
+        this.tweens.add({ targets: ratingTxt, scaleX: 1, scaleY: 1, duration: 300, ease: 'Quad.easeInOut' });
+      }
+    });
+
+    // 4. Particles for S/A
+    if (rating === 'S' || rating === 'A') {
+      this.time.delayedCall(1100, () => {
+        for (let i = 0; i < 20; i++) {
+          const px = cardX + Phaser.Math.Between(-120, 120);
+          const py = cardY + Phaser.Math.Between(-80, 40);
+          const star = this.add.text(px, py, '★', {
+            fontSize: Phaser.Math.Between(12, 24) + 'px',
+            color: rating === 'S' ? '#FFD700' : COLORS.primaryHex,
+          }).setDepth(303).setAlpha(1);
+          this.tweens.add({
+            targets: star,
+            y: py - Phaser.Math.Between(40, 120),
+            alpha: 0,
+            duration: Phaser.Math.Between(800, 1500),
+            ease: 'Quad.easeOut',
+            onComplete: () => star.destroy(),
+          });
+        }
+      });
+    }
+
+    // C rank shake
+    if (rating === 'C') {
+      this.time.delayedCall(1200, () => {
+        this.tweens.add({ targets: [card, shadow], x: '+=4', duration: 50, yoyo: true, repeat: 5 });
+      });
+    }
+
+    // 5. Score + attribute info (delay 200ms after rating)
+    const scoreTxt = this.add.text(cardX, cardY + 40, 'SCORE  ' + this.finalScore, {
+      fontFamily: 'Nunito', fontSize: '18px', fontStyle: '700',
+      color: COLORS.textPrimary,
+    }).setOrigin(0.5).setDepth(302).setAlpha(0);
+    this.tweens.add({ targets: scoreTxt, alpha: 1, duration: 300, delay: 1400 });
+
+    const attrTxt = this.add.text(cardX, cardY + 72, `${ATTRIBUTE}  ${modText} · Lasts 1 Round`, {
+      fontFamily: 'Patrick Hand', fontSize: '15px',
+      color: COLORS.neutralHex,
+    }).setOrigin(0.5).setDepth(302).setAlpha(0);
+    this.tweens.add({ targets: attrTxt, alpha: 1, duration: 300, delay: 1600 });
+
+    // 6. Continue button (delay 400ms, thumb zone)
+    const btnW = 220;
+    const btnH = 52;
+    const btnY = cardY + 130;
+
+    const btnShadow = this.add.rectangle(cardX + 3, btnY + 3, btnW, btnH, COLORS.accent, 1)
+      .setDepth(302).setAlpha(0);
+    const btn = this.add.rectangle(cardX, btnY, btnW, btnH, COLORS.primary, 1)
+      .setDepth(303).setAlpha(0).setInteractive({ useHandCursor: true });
+    btn.setStrokeStyle(2.5, COLORS.accent);
+    const btnTxt = this.add.text(cardX, btnY, 'Continue', {
+      fontFamily: 'Nunito', fontSize: '18px', fontStyle: '900',
+      color: '#fff',
+    }).setOrigin(0.5).setDepth(304).setAlpha(0);
+
+    this.tweens.add({ targets: [btn, btnShadow, btnTxt], alpha: 1, duration: 300, delay: 1900 });
+
+    // Button press effect
+    btn.on('pointerdown', () => {
+      btn.setPosition(cardX + 2, btnY + 2);
+      btnTxt.setPosition(cardX + 2, btnY + 2);
+      btnShadow.setAlpha(0);
+    });
+    btn.on('pointerup', () => {
+      btn.setPosition(cardX, btnY);
+      btnTxt.setPosition(cardX, btnY);
+      btnShadow.setAlpha(1);
+
+      notifyGameComplete({
+        rating,
+        score: this.finalScore,
+        attribute: ATTRIBUTE,
+        modifier,
+      });
+
+      // Restart game
+      this.scene.start('GameScene');
+    });
+    btn.on('pointerout', () => {
+      btn.setPosition(cardX, btnY);
+      btnTxt.setPosition(cardX, btnY);
+      btnShadow.setAlpha(1);
+    });
+  }
+}
+
+// ============ Initialize Game ============
+const config = {
+  type: Phaser.AUTO,
+  width: W,
+  height: H,
+  backgroundColor: COLORS.sky,
+  physics: {
+    default: 'arcade',
+    arcade: { gravity: { y: 900 }, debug: false }
+  },
+  scene: [GameScene, RatingScene],
+  scale: {
+    mode: Phaser.Scale.FIT,
+    autoCenter: Phaser.Scale.CENTER_BOTH
+  }
+};
+const game = new Phaser.Game(config);
+</script>
+</body>
+</html>
