@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>2048</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;900&family=Patrick+Hand&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; }
+  body { background: #1F2937; overflow: hidden; touch-action: none; }
+  canvas { display: block; margin: 0 auto; }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
+</head>
+<body>
+<script>
+// ============ URL Params ============
+const params = new URLSearchParams(window.location.search);
+const ATTRIBUTE = params.get('attribute') || 'Wisdom';
+const PRIMARY_COLOR = params.get('primaryColor') || '#E8804A';
+
+// ============ Theme Colors ============
+const COLORS = {
+  primary: Phaser.Display.Color.HexStringToColor(PRIMARY_COLOR).color,
+  primaryHex: PRIMARY_COLOR,
+  light: 0xFFF8F0,
+  lightHex: '#FFF8F0',
+  accent: 0x6B3A2A,
+  accentHex: '#6B3A2A',
+  neutral: 0x7C6B5D,
+  neutralHex: '#7C6B5D',
+  bg: 0xFAF0E6,
+  boardBg: 0xBBADA0,
+  cellBg: 0xCDC1B4,
+  white: 0xFFFFFF,
+  gold: 0xFFD700,
+  danger: 0xF87171,
+  success: 0x34D399,
+  textDark: '#776E65',
+  textLight: '#F9F6F2',
+};
+
+// Tile colors (Kenney flat palette — no gradients)
+const TILE_STYLES = {
+  2:    { bg: 0xEEE4DA, color: '#776E65' },
+  4:    { bg: 0xEDE0C8, color: '#776E65' },
+  8:    { bg: 0xF2B179, color: '#F9F6F2' },
+  16:   { bg: 0xF59563, color: '#F9F6F2' },
+  32:   { bg: 0xF67C5F, color: '#F9F6F2' },
+  64:   { bg: 0xF65E3B, color: '#F9F6F2' },
+  128:  { bg: 0xEDCF72, color: '#F9F6F2' },
+  256:  { bg: 0xEDCC61, color: '#F9F6F2' },
+  512:  { bg: 0xEDC850, color: '#F9F6F2' },
+  1024: { bg: 0xEDC53F, color: '#F9F6F2' },
+  2048: { bg: 0xEDC22E, color: '#F9F6F2' },
+};
+function getTileStyle(val) {
+  return TILE_STYLES[val] || { bg: 0x3C3A32, color: '#F9F6F2' };
+}
+
+// ============ Sound (Web Audio API) ============
+let audioCtx;
+function getAudioCtx() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  return audioCtx;
+}
+function playSound(freq, dur = 80, type = 'sine') {
+  const ctx = getAudioCtx();
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.connect(gain); gain.connect(ctx.destination);
+  osc.frequency.value = freq; osc.type = type;
+  gain.gain.setValueAtTime(0.2, ctx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + dur / 1000);
+  osc.start(ctx.currentTime); osc.stop(ctx.currentTime + dur / 1000);
+}
+function playMergeSound() { playSound(523, 80); setTimeout(() => playSound(659, 60), 40); }
+function playMoveSound() { playSound(330, 40, 'triangle'); }
+function playBigMergeSound() { playSound(440, 100); setTimeout(() => playSound(554, 100), 80); setTimeout(() => playSound(659, 120), 160); }
+function playRatingSound() {
+  [523, 587, 659, 784, 880].forEach((f, i) => setTimeout(() => playSound(f, 120), i * 100));
+}
+
+// ============ WebView Bridge ============
+function notifyGameComplete(result) {
+  const payload = JSON.stringify(result);
+  if (window.webkit?.messageHandlers?.jsBridge) { window.webkit.messageHandlers.jsBridge.postMessage(payload); return; }
+  if (window.jsBridge?.postMessage) { window.jsBridge.postMessage(payload); return; }
+  if (window.parent !== window) { window.parent.postMessage(payload, '*'); return; }
+  console.log('[GameComplete]', result);
+}
+
+// ============ Constants ============
+const W = 393;
+const H = 736;
+const GRID = 4;
+const BOARD_PAD = 20;
+const BOARD_SIZE = W - BOARD_PAD * 2;
+const CELL_GAP = 8;
+const CELL_SIZE = (BOARD_SIZE - CELL_GAP * (GRID + 1)) / GRID;
+const BOARD_X = BOARD_PAD;
+const BOARD_Y = 200;
+
+const WIN_TILE = 128;
+const RATING_THRESHOLDS = { S: 1200, A: 800, B: 400, C: 200 };
+function getRating(score, maxTile) {
+  if (maxTile >= WIN_TILE && score >= RATING_THRESHOLDS.S) return 'S';
+  if (maxTile >= WIN_TILE) return 'A';
+  if (score >= RATING_THRESHOLDS.A) return 'A';
+  if (score >= RATING_THRESHOLDS.B) return 'B';
+  if (score >= RATING_THRESHOLDS.C) return 'C';
+  return 'D';
+}
+function getModifier(r) { return { S: 2, A: 1, B: 0, C: -1, D: -2 }[r]; }
+
+// ============ 2048 Logic ============
+function emptyGrid() {
+  return Array.from({ length: GRID }, () => Array(GRID).fill(0));
+}
+
+function addRandom(grid) {
+  const empty = [];
+  for (let r = 0; r < GRID; r++)
+    for (let c = 0; c < GRID; c++)
+      if (grid[r][c] === 0) empty.push([r, c]);
+  if (empty.length === 0) return false;
+  const [r, c] = empty[Math.floor(Math.random() * empty.length)];
+  grid[r][c] = Math.random() < 0.9 ? 2 : 4;
+  return [r, c];
+}
+
+function slideRow(row) {
+  const filtered = row.filter(v => v !== 0);
+  const result = [];
+  let mergeScore = 0;
+  const merges = [];
+  let i = 0;
+  while (i < filtered.length) {
+    if (i + 1 < filtered.length && filtered[i] === filtered[i + 1]) {
+      const merged = filtered[i] * 2;
+      result.push(merged);
+      mergeScore += merged;
+      merges.push(result.length - 1);
+      i += 2;
+    } else {
+      result.push(filtered[i]);
+      i++;
+    }
+  }
+  while (result.length < GRID) result.push(0);
+  return { row: result, mergeScore, merges };
+}
+
+function moveGrid(grid, direction) {
+  let totalScore = 0;
+  let moved = false;
+  const newGrid = emptyGrid();
+  const allMerges = [];
+
+  for (let i = 0; i < GRID; i++) {
+    let line;
+    switch (direction) {
+      case 'left':  line = [...grid[i]]; break;
+      case 'right': line = [...grid[i]].reverse(); break;
+      case 'up':    line = grid.map(r => r[i]); break;
+      case 'down':  line = grid.map(r => r[i]).reverse(); break;
+    }
+
+    const { row, mergeScore, merges } = slideRow(line);
+    totalScore += mergeScore;
+
+    if (direction === 'right' || direction === 'down') row.reverse();
+
+    for (let j = 0; j < GRID; j++) {
+      switch (direction) {
+        case 'left': case 'right': newGrid[i][j] = row[j]; break;
+        case 'up': case 'down': newGrid[j][i] = row[j]; break;
+      }
+    }
+  }
+
+  for (let r = 0; r < GRID; r++)
+    for (let c = 0; c < GRID; c++)
+      if (newGrid[r][c] !== grid[r][c]) moved = true;
+
+  return { grid: newGrid, score: totalScore, moved };
+}
+
+function canMove(grid) {
+  for (let r = 0; r < GRID; r++)
+    for (let c = 0; c < GRID; c++) {
+      if (grid[r][c] === 0) return true;
+      if (c < GRID - 1 && grid[r][c] === grid[r][c + 1]) return true;
+      if (r < GRID - 1 && grid[r][c] === grid[r + 1][c]) return true;
+    }
+  return false;
+}
+
+function getMaxTile(grid) {
+  let max = 0;
+  for (const row of grid) for (const v of row) if (v > max) max = v;
+  return max;
+}
+
+// ============ Game Scene ============
+class GameScene extends Phaser.Scene {
+  constructor() { super('GameScene'); }
+
+  init() {
+    this.grid = emptyGrid();
+    this.score = 0;
+    this.bestMerge = 0;
+    this.isAnimating = false;
+    this.isGameOver = false;
+    this.tileObjects = {};
+  }
+
+  create() {
+    this.cameras.main.setBackgroundColor(COLORS.bg);
+
+    // ---- Title ----
+    this.add.text(W / 2, 48, 'Merge ' + WIN_TILE, {
+      fontFamily: 'Nunito', fontSize: '36px', fontStyle: '900',
+      color: COLORS.accentHex,
+    }).setOrigin(0.5);
+
+    this.add.text(W / 2, 82, 'Swipe to merge tiles!', {
+      fontFamily: 'Patrick Hand', fontSize: '15px',
+      color: COLORS.neutralHex,
+    }).setOrigin(0.5);
+
+    // ---- HUD pills (L2) ----
+    const hudY = 130;
+    // Score pill
+    this.scoreBox = this.add.rectangle(BOARD_PAD, hudY, 140, 36, COLORS.light, 1)
+      .setOrigin(0, 0.5).setStrokeStyle(2.5, COLORS.accent);
+    this.scoreTxt = this.add.text(BOARD_PAD + 14, hudY, '★ 0', {
+      fontFamily: 'Nunito', fontSize: '16px', fontStyle: '700',
+      color: COLORS.accentHex,
+    }).setOrigin(0, 0.5);
+
+    // Best tile pill
+    this.bestBox = this.add.rectangle(W - BOARD_PAD, hudY, 110, 36, COLORS.light, 1)
+      .setOrigin(1, 0.5).setStrokeStyle(2.5, COLORS.accent);
+    this.bestTxt = this.add.text(W - BOARD_PAD - 14, hudY, 'BEST 0', {
+      fontFamily: 'Nunito', fontSize: '14px', fontStyle: '700',
+      color: COLORS.accentHex,
+    }).setOrigin(1, 0.5);
+
+    // ---- Board background ----
+    const boardGfx = this.add.graphics();
+    boardGfx.fillStyle(COLORS.boardBg, 1);
+    boardGfx.fillRoundedRect(BOARD_X, BOARD_Y, BOARD_SIZE, BOARD_SIZE, 12);
+
+    // Cell backgrounds
+    for (let r = 0; r < GRID; r++) {
+      for (let c = 0; c < GRID; c++) {
+        const { x, y } = this.cellPos(r, c);
+        boardGfx.fillStyle(COLORS.cellBg, 1);
+        boardGfx.fillRoundedRect(x, y, CELL_SIZE, CELL_SIZE, 8);
+      }
+    }
+
+    // ---- Init grid ----
+    addRandom(this.grid);
+    addRandom(this.grid);
+    this.renderTiles();
+
+    // ---- Swipe input ----
+    this.input.on('pointerdown', (p) => { this.swipeStart = { x: p.x, y: p.y }; });
+    this.input.on('pointerup', (p) => {
+      if (!this.swipeStart || this.isAnimating || this.isGameOver) return;
+      const dx = p.x - this.swipeStart.x;
+      const dy = p.y - this.swipeStart.y;
+      const absDx = Math.abs(dx);
+      const absDy = Math.abs(dy);
+      if (Math.max(absDx, absDy) < 30) return;
+      let dir;
+      if (absDx > absDy) dir = dx > 0 ? 'right' : 'left';
+      else dir = dy > 0 ? 'down' : 'up';
+      this.doMove(dir);
+    });
+
+    // ---- Keyboard ----
+    this.input.keyboard.on('keydown', (e) => {
+      if (this.isAnimating || this.isGameOver) return;
+      const map = { ArrowLeft: 'left', ArrowRight: 'right', ArrowUp: 'up', ArrowDown: 'down' };
+      if (map[e.key]) this.doMove(map[e.key]);
+    });
+
+    // ---- Restart button (L3, top-right corner) ----
+    const restartBtn = this.add.rectangle(W - BOARD_PAD, 50, 40, 40, COLORS.light, 1)
+      .setOrigin(1, 0.5).setStrokeStyle(2, COLORS.accent).setInteractive({ useHandCursor: true });
+    this.add.text(W - BOARD_PAD - 20, 50, '↻', {
+      fontFamily: 'Nunito', fontSize: '22px', fontStyle: '700',
+      color: COLORS.accentHex,
+    }).setOrigin(0.5);
+    restartBtn.on('pointerdown', () => { restartBtn.setPosition(W - BOARD_PAD + 1, 51); });
+    restartBtn.on('pointerup', () => { this.scene.restart(); });
+    restartBtn.on('pointerout', () => { restartBtn.setPosition(W - BOARD_PAD, 50); });
+  }
+
+  cellPos(r, c) {
+    return {
+      x: BOARD_X + CELL_GAP + c * (CELL_SIZE + CELL_GAP),
+      y: BOARD_Y + CELL_GAP + r * (CELL_SIZE + CELL_GAP),
+    };
+  }
+
+  renderTiles() {
+    // Clear old tiles
+    Object.values(this.tileObjects).forEach(t => { t.bg?.destroy(); t.txt?.destroy(); });
+    this.tileObjects = {};
+
+    for (let r = 0; r < GRID; r++) {
+      for (let c = 0; c < GRID; c++) {
+        const val = this.grid[r][c];
+        if (val === 0) continue;
+        this.createTileAt(r, c, val);
+      }
+    }
+  }
+
+  createTileAt(r, c, val, animate = false) {
+    const { x, y } = this.cellPos(r, c);
+    const style = getTileStyle(val);
+    const cx = x + CELL_SIZE / 2;
+    const cy = y + CELL_SIZE / 2;
+
+    const bg = this.add.graphics();
+    bg.fillStyle(style.bg, 1);
+    bg.fillRoundedRect(x, y, CELL_SIZE, CELL_SIZE, 8);
+
+    const fontSize = val >= 1024 ? '22px' : val >= 128 ? '26px' : '30px';
+    const txt = this.add.text(cx, cy, String(val), {
+      fontFamily: 'Nunito', fontSize, fontStyle: '900',
+      color: style.color,
+    }).setOrigin(0.5);
+
+    if (animate) {
+      bg.setScale(0); bg.setPosition(cx, cy);
+      bg.x = 0; bg.y = 0; // reset for tween
+      txt.setScale(0);
+      this.tweens.add({ targets: [bg, txt], scaleX: 1, scaleY: 1, duration: 150, ease: 'Back.easeOut' });
+    }
+
+    const key = `${r}-${c}`;
+    this.tileObjects[key] = { bg, txt };
+    return { bg, txt };
+  }
+
+  doMove(direction) {
+    const { grid: newGrid, score: moveScore, moved } = moveGrid(this.grid, direction);
+    if (!moved) return;
+
+    this.isAnimating = true;
+    playMoveSound();
+
+    // Update state
+    this.grid = newGrid;
+    this.score += moveScore;
+    this.scoreTxt.setText('★ ' + this.score);
+
+    // Score feedback
+    if (moveScore > 0) {
+      if (moveScore >= 256) playBigMergeSound();
+      else playMergeSound();
+      this.showScorePopup(moveScore);
+      this.tweens.add({ targets: this.scoreTxt, scaleX: 1.3, scaleY: 1.3, duration: 100, yoyo: true, ease: 'Quad.easeOut' });
+    }
+
+    // Update best tile
+    const maxTile = getMaxTile(this.grid);
+    if (maxTile > this.bestMerge) {
+      this.bestMerge = maxTile;
+      this.bestTxt.setText('BEST ' + maxTile);
+      this.tweens.add({ targets: this.bestTxt, scaleX: 1.2, scaleY: 1.2, duration: 100, yoyo: true });
+    }
+
+    // Re-render
+    this.renderTiles();
+
+    // Add new tile
+    this.time.delayedCall(80, () => {
+      const pos = addRandom(this.grid);
+      if (pos) {
+        const [nr, nc] = pos;
+        const key = `${nr}-${nc}`;
+        if (this.tileObjects[key]) { this.tileObjects[key].bg?.destroy(); this.tileObjects[key].txt?.destroy(); }
+        this.createTileAt(nr, nc, this.grid[nr][nc], true);
+      }
+      this.isAnimating = false;
+
+      // Check game over or win
+      if (maxTile >= WIN_TILE && !this.isGameOver) {
+        this.isGameOver = true;
+        this.time.delayedCall(500, () => this.scene.start('RatingScene', { score: this.score, maxTile }));
+      } else if (!canMove(this.grid)) {
+        this.isGameOver = true;
+        this.time.delayedCall(600, () => this.scene.start('RatingScene', { score: this.score, maxTile }));
+      }
+    });
+  }
+
+  showScorePopup(amount) {
+    const ft = this.add.text(W / 2, BOARD_Y - 20, '+' + amount, {
+      fontFamily: 'Nunito', fontSize: '18px', fontStyle: '700',
+      color: '#34D399', stroke: '#fff', strokeThickness: 2,
+    }).setOrigin(0.5).setDepth(50);
+    this.tweens.add({ targets: ft, y: BOARD_Y - 60, alpha: 0, duration: 700, ease: 'Quad.easeOut', onComplete: () => ft.destroy() });
+  }
+}
+
+// ============ Rating Scene ============
+class RatingScene extends Phaser.Scene {
+  constructor() { super('RatingScene'); }
+
+  init(data) {
+    this.finalScore = data.score || 0;
+    this.maxTile = data.maxTile || 0;
+  }
+
+  create() {
+    this.cameras.main.setBackgroundColor(COLORS.bg);
+
+    const rating = getRating(this.finalScore, this.maxTile);
+    const modifier = getModifier(rating);
+    const ratingColors = { S: '#FFD700', A: COLORS.primaryHex, B: '#9CA3AF', C: '#FB7185', D: '#DC2626' };
+    const ratingColor = ratingColors[rating];
+    const modText = modifier > 0 ? `+${modifier} Bonus` : modifier < 0 ? `${modifier} Penalty` : 'No Change';
+
+    // 1. Background overlay (300ms)
+    const overlay = this.add.rectangle(W / 2, H / 2, W, H, 0x000000, 0).setDepth(300);
+    this.tweens.add({ targets: overlay, fillAlpha: 0.5, duration: 300 });
+
+    // 2. Result card
+    const cardW = 320;
+    const cardH = 380;
+    const cardX = W / 2;
+    const cardY = H / 2 - 20;
+
+    const shadow = this.add.rectangle(cardX + 3, H + cardH + 3, cardW, cardH, COLORS.accent, 1).setDepth(300.5);
+    this.tweens.add({ targets: shadow, y: cardY + 3, duration: 400, ease: 'Back.easeOut', delay: 300 });
+
+    const card = this.add.rectangle(cardX, H + cardH, cardW, cardH, COLORS.light, 1)
+      .setDepth(301).setStrokeStyle(3, COLORS.accent);
+    this.tweens.add({ targets: card, y: cardY, duration: 400, ease: 'Back.easeOut', delay: 300 });
+
+    // Title
+    const title = this.add.text(cardX, cardY - 150, this.maxTile >= WIN_TILE ? '✦ YOU WIN! ✦' : '✦ GAME OVER ✦', {
+      fontFamily: 'Nunito', fontSize: '22px', fontStyle: '900',
+      color: COLORS.accentHex,
+    }).setOrigin(0.5).setDepth(302).setAlpha(0);
+    this.tweens.add({ targets: title, alpha: 1, y: cardY - 140, duration: 300, delay: 700 });
+
+    // 3. Rating letter
+    const ratingTxt = this.add.text(cardX, cardY - 40, rating, {
+      fontFamily: 'Nunito', fontSize: '80px', fontStyle: '900',
+      color: ratingColor, stroke: COLORS.accentHex, strokeThickness: 4,
+    }).setOrigin(0.5).setDepth(302).setScale(0);
+    this.tweens.add({
+      targets: ratingTxt, scaleX: 1.4, scaleY: 1.4, duration: 300, delay: 900, ease: 'Back.easeOut',
+      onStart: () => playRatingSound(),
+      onComplete: () => {
+        this.tweens.add({ targets: ratingTxt, scaleX: 1, scaleY: 1, duration: 300, ease: 'Quad.easeInOut' });
+      }
+    });
+
+    // 4. Particles for S/A
+    if (rating === 'S' || rating === 'A') {
+      this.time.delayedCall(1100, () => {
+        for (let i = 0; i < 20; i++) {
+          const px = cardX + Phaser.Math.Between(-120, 120);
+          const py = cardY + Phaser.Math.Between(-80, 40);
+          const star = this.add.text(px, py, '★', {
+            fontSize: Phaser.Math.Between(12, 24) + 'px',
+            color: rating === 'S' ? '#FFD700' : COLORS.primaryHex,
+          }).setDepth(303);
+          this.tweens.add({
+            targets: star, y: py - Phaser.Math.Between(40, 120), alpha: 0,
+            duration: Phaser.Math.Between(800, 1500), ease: 'Quad.easeOut',
+            onComplete: () => star.destroy(),
+          });
+        }
+      });
+    }
+
+    // C/D rank shake
+    if (rating === 'C' || rating === 'D') {
+      this.time.delayedCall(1200, () => {
+        this.tweens.add({
+          targets: [card, shadow],
+          x: '+=4',
+          duration: 50,
+          yoyo: true,
+          repeat: rating === 'D' ? 9 : 5
+        });
+      });
+    }
+
+    // 5. Score + Best tile + Attribute
+    const scoreTxt = this.add.text(cardX, cardY + 30, 'SCORE  ' + this.finalScore, {
+      fontFamily: 'Nunito', fontSize: '18px', fontStyle: '700',
+      color: COLORS.textDark,
+    }).setOrigin(0.5).setDepth(302).setAlpha(0);
+    this.tweens.add({ targets: scoreTxt, alpha: 1, duration: 300, delay: 1400 });
+
+    const bestTxt = this.add.text(cardX, cardY + 58, 'BEST TILE  ' + this.maxTile, {
+      fontFamily: 'Nunito', fontSize: '15px', fontStyle: '700',
+      color: COLORS.neutralHex,
+    }).setOrigin(0.5).setDepth(302).setAlpha(0);
+    this.tweens.add({ targets: bestTxt, alpha: 1, duration: 300, delay: 1500 });
+
+    const attrTxt = this.add.text(cardX, cardY + 88, `${ATTRIBUTE}  ${modText} · Lasts 1 Round`, {
+      fontFamily: 'Patrick Hand', fontSize: '15px',
+      color: COLORS.neutralHex,
+    }).setOrigin(0.5).setDepth(302).setAlpha(0);
+    this.tweens.add({ targets: attrTxt, alpha: 1, duration: 300, delay: 1600 });
+
+    // 6. Continue button
+    const btnW = 220;
+    const btnH = 52;
+    const btnY = cardY + 145;
+
+    const btnShadow = this.add.rectangle(cardX + 3, btnY + 3, btnW, btnH, COLORS.accent, 1)
+      .setDepth(302).setAlpha(0);
+    const btn = this.add.rectangle(cardX, btnY, btnW, btnH, COLORS.primary, 1)
+      .setDepth(303).setAlpha(0).setInteractive({ useHandCursor: true });
+    btn.setStrokeStyle(2.5, COLORS.accent);
+    const btnTxt = this.add.text(cardX, btnY, 'Continue', {
+      fontFamily: 'Nunito', fontSize: '18px', fontStyle: '900', color: '#fff',
+    }).setOrigin(0.5).setDepth(304).setAlpha(0);
+
+    this.tweens.add({ targets: [btn, btnShadow, btnTxt], alpha: 1, duration: 300, delay: 1900 });
+
+    btn.on('pointerdown', () => {
+      btn.setPosition(cardX + 2, btnY + 2);
+      btnTxt.setPosition(cardX + 2, btnY + 2);
+      btnShadow.setAlpha(0);
+    });
+    btn.on('pointerup', () => {
+      btn.setPosition(cardX, btnY);
+      btnTxt.setPosition(cardX, btnY);
+      btnShadow.setAlpha(1);
+
+      notifyGameComplete({
+        rating,
+        score: this.finalScore,
+        attribute: ATTRIBUTE,
+        modifier,
+      });
+
+      this.scene.start('GameScene');
+    });
+    btn.on('pointerout', () => {
+      btn.setPosition(cardX, btnY);
+      btnTxt.setPosition(cardX, btnY);
+      btnShadow.setAlpha(1);
+    });
+  }
+}
+
+// ============ Initialize Game ============
+const config = {
+  type: Phaser.AUTO,
+  width: W,
+  height: H,
+  backgroundColor: COLORS.bg,
+  scene: [GameScene, RatingScene],
+  scale: {
+    mode: Phaser.Scale.FIT,
+    autoCenter: Phaser.Scale.CENTER_BOTH
+  }
+};
+const game = new Phaser.Game(config);
+</script>
+</body>
+</html>

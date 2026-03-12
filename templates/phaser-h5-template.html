@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no,viewport-fit=cover">
+<title>MiniGame Template</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;900&family=Patrick+Hand&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100%; height: 100%; background: #1f2937; overflow: hidden; }
+  canvas { display: block; margin: 0 auto; }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
+</head>
+<body>
+<script>
+// Host params
+const params = new URLSearchParams(window.location.search);
+const ATTRIBUTE = params.get('attribute') || 'Charm';
+const PRIMARY_COLOR = params.get('primaryColor') || '#ff6b9d';
+const COLOR_OBJ = Phaser.Display.Color.HexStringToColor(PRIMARY_COLOR);
+
+const COLORS = {
+  primary: COLOR_OBJ.color,
+  primaryHex: PRIMARY_COLOR,
+  accent: '#1f2937',
+  light: '#fff5fb',
+  neutral: '#6b7280',
+  success: '#34d399',
+  danger: '#f87171',
+  gold: '#ffd700',
+  white: '#ffffff'
+};
+
+const W = 393;
+const H = 736;
+const ROUND_SECONDS = 20;
+const RATING_THRESHOLDS = { S: 100, A: 70, B: 40, C: 20 };
+
+function getRating(score) {
+  if (score >= RATING_THRESHOLDS.S) return 'S';
+  if (score >= RATING_THRESHOLDS.A) return 'A';
+  if (score >= RATING_THRESHOLDS.B) return 'B';
+  if (score >= RATING_THRESHOLDS.C) return 'C';
+  return 'D';
+}
+
+function getModifier(rating) {
+  return { S: 2, A: 1, B: 0, C: -1, D: -2 }[rating];
+}
+
+function notifyGameComplete(result) {
+  const payload = JSON.stringify(result);
+
+  if (window.webkit?.messageHandlers?.jsBridge) {
+    window.webkit.messageHandlers.jsBridge.postMessage(payload);
+    return;
+  }
+  if (window.jsBridge?.postMessage) {
+    window.jsBridge.postMessage(payload);
+    return;
+  }
+  if (window.parent !== window) {
+    window.parent.postMessage(payload, '*');
+    return;
+  }
+  console.log('[GameComplete]', result);
+}
+
+class GameScene extends Phaser.Scene {
+  constructor() {
+    super('GameScene');
+  }
+
+  init() {
+    this.score = 0;
+    this.timeLeft = ROUND_SECONDS;
+    this.isOver = false;
+  }
+
+  create() {
+    this.cameras.main.setBackgroundColor('#f8fafc');
+
+    this.add.text(W / 2, 60, 'Tap Sprint', {
+      fontFamily: 'Nunito',
+      fontSize: '36px',
+      fontStyle: '900',
+      color: '#111827'
+    }).setOrigin(0.5);
+
+    this.add.text(W / 2, 95, 'Fast taps, clean finish.', {
+      fontFamily: 'Patrick Hand',
+      fontSize: '18px',
+      color: COLORS.neutral
+    }).setOrigin(0.5);
+
+    this.scoreText = this.add.text(24, 135, 'Score: 0', {
+      fontFamily: 'Nunito',
+      fontSize: '22px',
+      fontStyle: '700',
+      color: '#111827'
+    });
+
+    this.timerText = this.add.text(W - 24, 135, 'Time: ' + this.timeLeft, {
+      fontFamily: 'Nunito',
+      fontSize: '22px',
+      fontStyle: '700',
+      color: '#111827'
+    }).setOrigin(1, 0);
+
+    this.tapBtnShadow = this.add.rectangle(W / 2 + 3, H - 180 + 3, 230, 72, 0x1f2937, 1)
+      .setStrokeStyle(2, 0x1f2937);
+    this.tapBtn = this.add.rectangle(W / 2, H - 180, 230, 72, COLORS.primary, 1)
+      .setStrokeStyle(2, 0x1f2937)
+      .setInteractive({ useHandCursor: true });
+    this.tapText = this.add.text(W / 2, H - 180, 'TAP', {
+      fontFamily: 'Nunito',
+      fontSize: '28px',
+      fontStyle: '900',
+      color: COLORS.white
+    }).setOrigin(0.5);
+
+    this.tapBtn.on('pointerdown', () => {
+      if (this.isOver) return;
+      this.tapBtn.setPosition(W / 2 + 2, H - 178);
+      this.tapText.setPosition(W / 2 + 2, H - 178);
+      this.tapBtnShadow.setVisible(false);
+      this.addScore(5);
+    });
+
+    this.tapBtn.on('pointerup', () => {
+      this.tapBtn.setPosition(W / 2, H - 180);
+      this.tapText.setPosition(W / 2, H - 180);
+      this.tapBtnShadow.setVisible(true);
+    });
+
+    this.tapBtn.on('pointerout', () => {
+      this.tapBtn.setPosition(W / 2, H - 180);
+      this.tapText.setPosition(W / 2, H - 180);
+      this.tapBtnShadow.setVisible(true);
+    });
+
+    this.time.addEvent({
+      delay: 1000,
+      repeat: ROUND_SECONDS - 1,
+      callback: () => {
+        if (this.isOver) return;
+        this.timeLeft -= 1;
+        this.timerText.setText('Time: ' + this.timeLeft);
+        if (this.timeLeft <= 0) {
+          this.finishGame();
+        }
+      }
+    });
+  }
+
+  addScore(amount) {
+    this.score += amount;
+    this.scoreText.setText('Score: ' + this.score);
+    this.tweens.add({
+      targets: this.scoreText,
+      scaleX: 1.15,
+      scaleY: 1.15,
+      yoyo: true,
+      duration: 120,
+      ease: 'Quad.easeOut'
+    });
+  }
+
+  finishGame() {
+    if (this.isOver) return;
+    this.isOver = true;
+    this.scene.start('ResultScene', {
+      score: this.score,
+      durationMs: ROUND_SECONDS * 1000
+    });
+  }
+}
+
+class ResultScene extends Phaser.Scene {
+  constructor() {
+    super('ResultScene');
+  }
+
+  init(data) {
+    this.finalScore = data.score || 0;
+    this.durationMs = data.durationMs || 0;
+  }
+
+  create() {
+    this.cameras.main.setBackgroundColor('#f3f4f6');
+    const rating = getRating(this.finalScore);
+    const modifier = getModifier(rating);
+    const modText = modifier > 0
+      ? '+' + modifier + ' Bonus'
+      : modifier < 0
+        ? String(modifier) + ' Penalty'
+        : 'No Change';
+    const ratingColor = {
+      S: COLORS.gold,
+      A: COLORS.primaryHex,
+      B: '#9ca3af',
+      C: '#fb7185',
+      D: '#dc2626'
+    }[rating];
+
+    this.add.text(W / 2, 110, 'Settlement', {
+      fontFamily: 'Nunito',
+      fontSize: '32px',
+      fontStyle: '900',
+      color: '#111827'
+    }).setOrigin(0.5);
+
+    this.add.text(W / 2, 245, rating, {
+      fontFamily: 'Nunito',
+      fontSize: '96px',
+      fontStyle: '900',
+      color: ratingColor,
+      stroke: '#111827',
+      strokeThickness: 4
+    }).setOrigin(0.5);
+
+    this.add.text(W / 2, 330, 'Score ' + this.finalScore, {
+      fontFamily: 'Nunito',
+      fontSize: '24px',
+      fontStyle: '700',
+      color: '#111827'
+    }).setOrigin(0.5);
+
+    this.add.text(W / 2, 370, ATTRIBUTE + ' ' + modText + ' (1 round)', {
+      fontFamily: 'Patrick Hand',
+      fontSize: '20px',
+      color: '#374151'
+    }).setOrigin(0.5);
+
+    const ctaW = 230;
+    const ctaH = 56;
+    const ctaY = H - 150;
+
+    const ctaShadow = this.add.rectangle(W / 2 + 3, ctaY + 3, ctaW, ctaH, 0x1f2937, 1);
+    const cta = this.add.rectangle(W / 2, ctaY, ctaW, ctaH, COLORS.primary, 1)
+      .setStrokeStyle(2, 0x1f2937)
+      .setInteractive({ useHandCursor: true });
+    const ctaText = this.add.text(W / 2, ctaY, 'Continue', {
+      fontFamily: 'Nunito',
+      fontSize: '24px',
+      fontStyle: '900',
+      color: '#ffffff'
+    }).setOrigin(0.5);
+
+    cta.on('pointerdown', () => {
+      cta.setPosition(W / 2 + 2, ctaY + 2);
+      ctaText.setPosition(W / 2 + 2, ctaY + 2);
+      ctaShadow.setVisible(false);
+    });
+
+    cta.on('pointerup', () => {
+      cta.setPosition(W / 2, ctaY);
+      ctaText.setPosition(W / 2, ctaY);
+      ctaShadow.setVisible(true);
+
+      notifyGameComplete({
+        rating,
+        score: this.finalScore,
+        attribute: ATTRIBUTE,
+        modifier,
+        gameId: 'template',
+        durationMs: this.durationMs
+      });
+
+      this.scene.start('GameScene');
+    });
+
+    cta.on('pointerout', () => {
+      cta.setPosition(W / 2, ctaY);
+      ctaText.setPosition(W / 2, ctaY);
+      ctaShadow.setVisible(true);
+    });
+  }
+}
+
+const config = {
+  type: Phaser.AUTO,
+  width: W,
+  height: H,
+  scene: [GameScene, ResultScene],
+  scale: {
+    mode: Phaser.Scale.FIT,
+    autoCenter: Phaser.Scale.CENTER_BOTH
+  }
+};
+
+new Phaser.Game(config);
+</script>
+</body>
+</html>

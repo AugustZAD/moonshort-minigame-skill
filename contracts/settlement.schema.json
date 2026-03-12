@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://moonshort.local/contracts/settlement.schema.json",
+  "title": "MiniGameSettlement",
+  "type": "object",
+  "required": [
+    "rating",
+    "score",
+    "attribute",
+    "modifier"
+  ],
+  "properties": {
+    "rating": {
+      "type": "string",
+      "enum": [
+        "S",
+        "A",
+        "B",
+        "C",
+        "D"
+      ]
+    },
+    "score": {
+      "type": "number"
+    },
+    "attribute": {
+      "type": "string",
+      "minLength": 1
+    },
+    "modifier": {
+      "type": "integer",
+      "enum": [
+        2,
+        1,
+        0,
+        -1,
+        -2
+      ]
+    }
+  },
+  "additionalProperties": true
+}
