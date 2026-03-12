@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no,viewport-fit=cover">
+<title>QTE Hold Release</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;900&family=Patrick+Hand&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100%; height: 100%; background: #1f2937; overflow: hidden; }
+  canvas { display: block; margin: 0 auto; }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
+</head>
+<body>
+<script>
+const params = new URLSearchParams(window.location.search);
+const ATTRIBUTE = params.get('attribute') || 'Charm';
+const PRIMARY_COLOR = params.get('primaryColor') || '#ff6b9d';
+
+const W = 393;
+const H = 736;
+const ROUND_SECONDS = 36;
+const RATING_THRESHOLDS = { S: 340, A: 255, B: 175, C: 105 };
+const MODIFIER_BY_RATING = { S: 2, A: 1, B: 0, C: -1, D: -2 };
+
+function getRating(score) {
+  if (score >= RATING_THRESHOLDS.S) return 'S';
+  if (score >= RATING_THRESHOLDS.A) return 'A';
+  if (score >= RATING_THRESHOLDS.B) return 'B';
+  if (score >= RATING_THRESHOLDS.C) return 'C';
+  return 'D';
+}
+
+function getModifier(rating) {
+  return MODIFIER_BY_RATING[rating];
+}
+
+function notifyGameComplete(result) {
+  const payload = JSON.stringify(result);
+  if (window.webkit?.messageHandlers?.jsBridge) {
+    window.webkit.messageHandlers.jsBridge.postMessage(payload);
+    return;
+  }
+  if (window.jsBridge?.postMessage) {
+    window.jsBridge.postMessage(payload);
+    return;
+  }
+  if (window.parent !== window) {
+    window.parent.postMessage(payload, '*');
+    return;
+  }
+  console.log('[GameComplete]', result);
+}
+
+function clamp(v, min, max) {
+  return Math.max(min, Math.min(max, v));
+}
+
+function hexToRgb(hex) {
+  const raw = hex.replace('#', '');
+  const full = raw.length === 3
+    ? raw.split('').map((c) => c + c).join('')
+    : raw;
+  const value = parseInt(full, 16);
+  return {
+    r: (value >> 16) & 255,
+    g: (value >> 8) & 255,
+    b: value & 255
+  };
+}
+
+function rgbToHex(r, g, b) {
+  const toHex = (n) => clamp(Math.round(n), 0, 255).toString(16).padStart(2, '0');
+  return '#' + toHex(r) + toHex(g) + toHex(b);
+}
+
+function blendHex(a, b, t) {
+  const ca = hexToRgb(a);
+  const cb = hexToRgb(b);
+  return rgbToHex(
+    ca.r + (cb.r - ca.r) * t,
+    ca.g + (cb.g - ca.g) * t,
+    ca.b + (cb.b - ca.b) * t
+  );
+}
+
+function fallbackPalette(primaryColor) {
+  return {
+    primary: primaryColor,
+    light: blendHex(primaryColor, '#ffffff', 0.84),
+    accent: blendHex(primaryColor, '#111827', 0.56),
+    neutral: blendHex(primaryColor, '#1f2937', 0.75)
+  };
+}
+
+async function fetchScenePalette(primaryColor) {
+  const payload = {
+    mode: 'transformer',
+    num_colors: 4,
+    temperature: '1.2',
+    num_results: 20,
+    adjacency: [
+      '0', '65', '45', '35',
+      '65', '0', '35', '65',
+      '45', '35', '0', '35',
+      '35', '65', '35', '0'
+    ],
+    palette: [primaryColor, '-', '-', '-']
+  };
+  const response = await fetch('https://api.huemint.com/color', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+  const data = await response.json();
+  if (!data || !Array.isArray(data.results) || data.results.length === 0) {
+    throw new Error('No palette from Huemint');
+  }
+  const best = data.results.slice().sort((a, b) => a.score - b.score)[0];
+  return {
+    primary: best.palette[0],
+    light: best.palette[1],
+    accent: best.palette[2],
+    neutral: best.palette[3]
+  };
+}
+
+function colorSet(palette) {
+  return {
+    primaryHex: palette.primary,
+    lightHex: palette.light,
+    accentHex: palette.accent,
+    neutralHex: palette.neutral,
+    primary: Phaser.Display.Color.HexStringToColor(palette.primary).color,
+    light: Phaser.Display.Color.HexStringToColor(palette.light).color,
+    accent: Phaser.Display.Color.HexStringToColor(palette.accent).color,
+    neutral: Phaser.Display.Color.HexStringToColor(palette.neutral).color,
+    white: 0xffffff,
+    dark: 0x111827,
+    success: 0x34d399,
+    danger: 0xf87171,
+    gold: 0xffd700
+  };
+}
+
+function makeButton(scene, cfg) {
+  const x = cfg.x;
+  const y = cfg.y;
+  const w = cfg.w;
+  const h = cfg.h;
+  const shadow = scene.add.rectangle(x + 3, y + 3, w, h, scene.C.accent, 1).setDepth(20);
+  const body = scene.add.rectangle(x, y, w, h, scene.C.primary, 1)
+    .setStrokeStyle(2.5, scene.C.accent)
+    .setInteractive({ useHandCursor: true })
+    .setDepth(21);
+  const label = scene.add.text(x, y, cfg.label, {
+    fontFamily: 'Nunito',
+    fontSize: cfg.fontSize + 'px',
+    fontStyle: '900',
+    color: '#ffffff'
+  }).setOrigin(0.5).setDepth(22);
+
+  const release = (emitTap) => {
+    body.setPosition(x, y);
+    label.setPosition(x, y);
+    shadow.setVisible(true);
+    if (emitTap && cfg.onTap) cfg.onTap();
+  };
+
+  body.on('pointerdown', () => {
+    body.setPosition(x + 2, y + 2);
+    label.setPosition(x + 2, y + 2);
+    shadow.setVisible(false);
+  });
+  body.on('pointerup', () => release(true));
+  body.on('pointerout', () => release(false));
+}
+
+class BootScene extends Phaser.Scene {
+  constructor() {
+    super('BootScene');
+  }
+
+  async create() {
+    this.cameras.main.setBackgroundColor('#111827');
+    this.add.text(W / 2, H / 2 - 16, 'QTE Hold Release', {
+      fontFamily: 'Nunito',
+      fontSize: '34px',
+      fontStyle: '900',
+      color: '#ffffff'
+    }).setOrigin(0.5);
+    const statusText = this.add.text(W / 2, H / 2 + 24, 'Loading palette...', {
+      fontFamily: 'Patrick Hand',
+      fontSize: '22px',
+      color: '#e5e7eb'
+    }).setOrigin(0.5);
+
+    const fallback = fallbackPalette(PRIMARY_COLOR);
+    try {
+      window.__PALETTE__ = await fetchScenePalette(PRIMARY_COLOR);
+      statusText.setText('Palette ready');
+    } catch (error) {
+      window.__PALETTE__ = fallback;
+      statusText.setText('Using fallback palette');
+    }
+
+    this.time.delayedCall(260, () => this.scene.start('GameScene'));
+  }
+}
+
+class GameScene extends Phaser.Scene {
+  constructor() {
+    super('GameScene');
+  }
+
+  init() {
+    this.score = 0;
+    this.timeLeft = ROUND_SECONDS;
+    this.isOver = false;
+    this.charge = 0;
+    this.charging = false;
+    this.targetCenter = 50;
+    this.targetWidth = 22;
+    this.targetDriftMs = 1800;
+    this.overheatMs = 0;
+    this.combo = 0;
+    this.maxCombo = 0;
+    this.totalHits = 0;
+    this.totalMiss = 0;
+  }
+
+  create() {
+    this.C = colorSet(window.__PALETTE__ || fallbackPalette(PRIMARY_COLOR));
+    this.cameras.main.setBackgroundColor(this.C.lightHex);
+
+    const dots = this.add.graphics();
+    dots.fillStyle(this.C.primary, 0.09);
+    for (let x = 20; x < W; x += 28) {
+      for (let y = 18; y < H; y += 30) {
+        dots.fillCircle(x + ((y / 30) % 2 ? 5 : -3), y, 2.2);
+      }
+    }
+
+    this.add.rectangle(W / 2, 82, 350, 118, this.C.white, 1).setStrokeStyle(2.5, this.C.accent);
+    this.add.text(W / 2, 46, 'QTE Hold Release', {
+      fontFamily: 'Nunito',
+      fontSize: '28px',
+      fontStyle: '900',
+      color: this.C.accentHex
+    }).setOrigin(0.5);
+    this.add.text(W / 2, 78, 'Hold to charge, release in sweet spot.', {
+      fontFamily: 'Patrick Hand',
+      fontSize: '19px',
+      color: this.C.neutralHex
+    }).setOrigin(0.5);
+
+    this.scorePill = this.add.rectangle(24, 112, 138, 34, this.C.light, 1)
+      .setOrigin(0, 0.5).setStrokeStyle(2, this.C.accent);
+    this.scoreText = this.add.text(35, 112, 'Score 0', {
+      fontFamily: 'Nunito',
+      fontSize: '16px',
+      fontStyle: '700',
+      color: this.C.accentHex
+    }).setOrigin(0, 0.5);
+
+    this.timerPill = this.add.rectangle(W - 24, 112, 126, 34, this.C.light, 1)
+      .setOrigin(1, 0.5).setStrokeStyle(2, this.C.accent);
+    this.timerText = this.add.text(W - 34, 112, 'Time ' + this.timeLeft, {
+      fontFamily: 'Nunito',
+      fontSize: '16px',
+      fontStyle: '700',
+      color: this.C.accentHex
+    }).setOrigin(1, 0.5);
+
+    this.add.rectangle(W / 2, 356, 312, 328, this.C.white, 0.95).setStrokeStyle(2.5, this.C.accent);
+    this.cueCircle = this.add.circle(W / 2, 276, 80, this.C.light, 1).setStrokeStyle(5, this.C.accent);
+    this.cueText = this.add.text(W / 2, 276, 'HOLD', {
+      fontFamily: 'Nunito',
+      fontSize: '34px',
+      fontStyle: '900',
+      color: this.C.neutralHex
+    }).setOrigin(0.5);
+
+    this.add.text(W / 2, 354, 'Power Meter', {
+      fontFamily: 'Nunito',
+      fontSize: '16px',
+      fontStyle: '700',
+      color: this.C.accentHex
+    }).setOrigin(0.5);
+    this.windowBg = this.add.rectangle(W / 2, 382, 240, 24, this.C.light, 1).setStrokeStyle(2, this.C.accent);
+    this.targetZone = this.add.rectangle(W / 2, 382, 56, 18, this.C.success, 0.7);
+    this.windowBar = this.add.rectangle(W / 2 - 116, 382, 0, 18, this.C.primary, 1).setOrigin(0, 0.5);
+    this.statusText = this.add.text(W / 2, 552, 'Press and hold to charge...', {
+      fontFamily: 'Patrick Hand',
+      fontSize: '20px',
+      color: this.C.neutralHex
+    }).setOrigin(0.5);
+    this.comboText = this.add.text(W / 2, 582, 'Combo x0', {
+      fontFamily: 'Nunito',
+      fontSize: '20px',
+      fontStyle: '700',
+      color: this.C.accentHex
+    }).setOrigin(0.5);
+    const bx = W / 2;
+    const by = H - 132;
+    const bw = 236;
+    const bh = 64;
+    this.holdShadow = this.add.rectangle(bx + 3, by + 3, bw, bh, this.C.accent, 1).setDepth(20);
+    this.holdBody = this.add.rectangle(bx, by, bw, bh, this.C.primary, 1)
+      .setStrokeStyle(2.5, this.C.accent)
+      .setInteractive({ useHandCursor: true })
+      .setDepth(21);
+    this.holdLabel = this.add.text(bx, by, 'HOLD', {
+      fontFamily: 'Nunito',
+      fontSize: '30px',
+      fontStyle: '900',
+      color: '#ffffff'
+    }).setOrigin(0.5).setDepth(22);
+
+    this.holdBody.on('pointerdown', () => {
+      this.holdBody.setPosition(bx + 2, by + 2);
+      this.holdLabel.setPosition(bx + 2, by + 2);
+      this.holdShadow.setVisible(false);
+      this.charging = true;
+      this.cueText.setText('CHARGE');
+      this.cueText.setColor(this.C.primaryHex);
+      this.setStatus('Charging...', this.C.primaryHex);
+    });
+    this.holdBody.on('pointerup', () => this.releaseHold());
+    this.holdBody.on('pointerout', () => this.releaseHold());
+
+    this.refreshTargetZone();
+  }
+
+  setStatus(text, colorHex) {
+    this.statusText.setText(text);
+    this.statusText.setColor(colorHex || this.C.neutralHex);
+    this.comboText.setText('Combo x' + this.combo);
+  }
+
+  addScore(delta) {
+    this.score = Math.max(0, this.score + delta);
+    this.scoreText.setText('Score ' + Math.round(this.score));
+    this.tweens.add({
+      targets: this.scoreText,
+      scaleX: 1.14,
+      scaleY: 1.14,
+      yoyo: true,
+      duration: 110,
+      ease: 'Quad.easeOut'
+    });
+  }
+
+  refreshTargetZone() {
+    const startX = W / 2 - 116;
+    const zoneWidth = 240 * (this.targetWidth / 100);
+    const zoneX = startX + 240 * (this.targetCenter / 100);
+    this.targetZone.x = zoneX;
+    this.targetZone.width = zoneWidth;
+  }
+
+  releaseHold() {
+    if (this.isOver) return;
+    if (!this.charging) return;
+
+    this.charging = false;
+    this.holdBody.setPosition(W / 2, H - 132);
+    this.holdLabel.setPosition(W / 2, H - 132);
+    this.holdShadow.setVisible(true);
+
+    const low = this.targetCenter - this.targetWidth / 2;
+    const high = this.targetCenter + this.targetWidth / 2;
+    if (this.charge >= low && this.charge <= high) {
+      const gain = 18 + Math.min(this.combo, 4) * 3;
+      this.combo += 1;
+      this.maxCombo = Math.max(this.maxCombo, this.combo);
+      this.totalHits += 1;
+      this.addScore(gain);
+      this.cueText.setText('PERFECT');
+      this.cueText.setColor('#059669');
+      this.setStatus('Sweet release +' + gain, '#059669');
+      this.targetCenter = clamp(this.targetCenter + (Math.random() - 0.5) * 36, 16, 84);
+      this.targetWidth = clamp(this.targetWidth - 1.2, 12, 22);
+      this.refreshTargetZone();
+      return;
+    }
+
+    this.combo = 0;
+    this.totalMiss += 1;
+    this.addScore(-6);
+    this.cueText.setText('MISS');
+    this.cueText.setColor('#dc2626');
+    this.setStatus('Bad release -6', '#dc2626');
+    this.targetCenter = 20 + Math.random() * 60;
+    this.targetWidth = 20;
+    this.refreshTargetZone();
+  }
+
+  finishGame(reason) {
+    if (this.isOver) return;
+    this.isOver = true;
+    this.scene.start('ResultScene', {
+      score: Math.round(this.score),
+      maxCombo: this.maxCombo,
+      hits: this.totalHits,
+      misses: this.totalMiss,
+      reason: reason || 'time'
+    });
+  }
+
+  update(time, delta) {
+    if (this.isOver) return;
+
+    this.timeLeft = Math.max(0, this.timeLeft - delta / 1000);
+    this.timerText.setText('Time ' + Math.ceil(this.timeLeft));
+
+    if (this.charging) {
+      this.charge = clamp(this.charge + delta * 0.085, 0, 100);
+      this.overheatMs = this.charge >= 100 ? this.overheatMs + delta : 0;
+      this.cueCircle.setStrokeStyle(5, this.C.primary);
+      if (this.overheatMs > 420) {
+        this.charging = false;
+        this.combo = 0;
+        this.totalMiss += 1;
+        this.addScore(-8);
+        this.charge = 0;
+        this.overheatMs = 0;
+        this.cueText.setText('OVER');
+        this.cueText.setColor('#dc2626');
+        this.setStatus('Overcharge -8', '#dc2626');
+      }
+    } else {
+      this.charge = clamp(this.charge - delta * 0.035, 0, 100);
+      this.overheatMs = 0;
+      if (this.cueText.text !== 'PERFECT' && this.cueText.text !== 'MISS') {
+        this.cueText.setText('HOLD');
+        this.cueText.setColor(this.C.neutralHex);
+      }
+      this.cueCircle.setStrokeStyle(5, this.C.accent);
+    }
+    this.windowBar.width = 232 * (this.charge / 100);
+
+    this.targetDriftMs -= delta;
+    if (this.targetDriftMs <= 0) {
+      this.targetDriftMs = 1400 + Math.random() * 1200;
+      this.targetCenter = clamp(this.targetCenter + (Math.random() - 0.5) * 26, 16, 84);
+      this.refreshTargetZone();
+    }
+
+    if (this.timeLeft <= 0) this.finishGame('time');
+  }
+}
+
+class ResultScene extends Phaser.Scene {
+  constructor() {
+    super('ResultScene');
+  }
+
+  init(data) {
+    this.finalScore = data.score || 0;
+    this.maxCombo = data.maxCombo || 0;
+    this.hits = data.hits || 0;
+    this.misses = data.misses || 0;
+  }
+
+  create() {
+    const C = colorSet(window.__PALETTE__ || fallbackPalette(PRIMARY_COLOR));
+    this.C = C;
+    this.cameras.main.setBackgroundColor(C.lightHex);
+
+    const rating = getRating(this.finalScore);
+    const modifier = getModifier(rating);
+    const ratingColor = { S: '#ffd700', A: C.primaryHex, B: '#9ca3af', C: '#fb7185', D: '#dc2626' }[rating];
+    const modText = modifier > 0 ? '+' + modifier : String(modifier);
+
+    this.add.rectangle(W / 2, 94, 350, 116, C.white, 1).setStrokeStyle(2.5, C.accent);
+    this.add.text(W / 2, 50, 'Settlement', {
+      fontFamily: 'Nunito',
+      fontSize: '32px',
+      fontStyle: '900',
+      color: C.accentHex
+    }).setOrigin(0.5);
+    this.add.text(W / 2, 86, 'QTE Hold Release', {
+      fontFamily: 'Patrick Hand',
+      fontSize: '21px',
+      color: C.neutralHex
+    }).setOrigin(0.5);
+
+    this.add.text(W / 2, 252, rating, {
+      fontFamily: 'Nunito',
+      fontSize: '108px',
+      fontStyle: '900',
+      color: ratingColor,
+      stroke: '#111827',
+      strokeThickness: 4
+    }).setOrigin(0.5);
+
+    this.add.text(W / 2, 336, 'Score ' + this.finalScore, {
+      fontFamily: 'Nunito',
+      fontSize: '28px',
+      fontStyle: '800',
+      color: C.accentHex
+    }).setOrigin(0.5);
+    this.add.text(W / 2, 372, ATTRIBUTE + ' ' + modText, {
+      fontFamily: 'Patrick Hand',
+      fontSize: '24px',
+      color: C.neutralHex
+    }).setOrigin(0.5);
+
+    this.add.rectangle(110, 448, 130, 78, C.white, 1).setStrokeStyle(2, C.accent);
+    this.add.text(110, 432, 'Max Combo', {
+      fontFamily: 'Nunito',
+      fontSize: '15px',
+      fontStyle: '700',
+      color: C.neutralHex
+    }).setOrigin(0.5);
+    this.add.text(110, 463, String(this.maxCombo), {
+      fontFamily: 'Nunito',
+      fontSize: '30px',
+      fontStyle: '900',
+      color: C.accentHex
+    }).setOrigin(0.5);
+
+    this.add.rectangle(282, 448, 130, 78, C.white, 1).setStrokeStyle(2, C.accent);
+    this.add.text(282, 432, 'Hits / Miss', {
+      fontFamily: 'Nunito',
+      fontSize: '15px',
+      fontStyle: '700',
+      color: C.neutralHex
+    }).setOrigin(0.5);
+    this.add.text(282, 463, this.hits + ' / ' + this.misses, {
+      fontFamily: 'Nunito',
+      fontSize: '28px',
+      fontStyle: '900',
+      color: C.accentHex
+    }).setOrigin(0.5);
+
+    makeButton(this, {
+      x: W / 2,
+      y: H - 132,
+      w: 234,
+      h: 58,
+      label: 'Continue',
+      fontSize: 26,
+      onTap: () => {
+        notifyGameComplete({
+          rating: rating,
+          score: this.finalScore,
+          attribute: ATTRIBUTE,
+          modifier: modifier,
+          gameId: 'qte-hold-release',
+          maxCombo: this.maxCombo,
+          hits: this.hits,
+          misses: this.misses
+        });
+      }
+    });
+  }
+}
+
+const config = {
+  type: Phaser.AUTO,
+  width: W,
+  height: H,
+  scale: {
+    mode: Phaser.Scale.FIT,
+    autoCenter: Phaser.Scale.CENTER_BOTH
+  },
+  scene: [BootScene, GameScene, ResultScene]
+};
+
+window.__game = new Phaser.Game(config);
+</script>
+</body>
+</html>

@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no,viewport-fit=cover">
+<title>Breakout Blitz</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;900&family=Patrick+Hand&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100%; height: 100%; background: #172033; overflow: hidden; }
+  canvas { display: block; margin: 0 auto; }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
+</head>
+<body>
+<script>
+const params = new URLSearchParams(window.location.search);
+const ATTRIBUTE = params.get('attribute') || 'Charm';
+const PRIMARY_COLOR = params.get('primaryColor') || '#ff6b9d';
+
+const W = 393;
+const H = 736;
+const ROUND_SECONDS = 45;
+const RATING_THRESHOLDS = { S: 460, A: 350, B: 245, C: 145 };
+const MODIFIER_BY_RATING = { S: 2, A: 1, B: 0, C: -1, D: -2 };
+
+function getRating(score) {
+  if (score >= RATING_THRESHOLDS.S) return 'S';
+  if (score >= RATING_THRESHOLDS.A) return 'A';
+  if (score >= RATING_THRESHOLDS.B) return 'B';
+  if (score >= RATING_THRESHOLDS.C) return 'C';
+  return 'D';
+}
+
+function getModifier(rating) {
+  return MODIFIER_BY_RATING[rating];
+}
+
+function notifyGameComplete(result) {
+  const payload = JSON.stringify(result);
+  if (window.webkit?.messageHandlers?.jsBridge) {
+    window.webkit.messageHandlers.jsBridge.postMessage(payload);
+    return;
+  }
+  if (window.jsBridge?.postMessage) {
+    window.jsBridge.postMessage(payload);
+    return;
+  }
+  if (window.parent !== window) {
+    window.parent.postMessage(payload, '*');
+    return;
+  }
+  console.log('[GameComplete]', result);
+}
+
+function clamp(v, min, max) {
+  return Math.max(min, Math.min(max, v));
+}
+
+function hexToRgb(hex) {
+  const raw = hex.replace('#', '');
+  const full = raw.length === 3 ? raw.split('').map((c) => c + c).join('') : raw;
+  const value = parseInt(full, 16);
+  return {
+    r: (value >> 16) & 255,
+    g: (value >> 8) & 255,
+    b: value & 255
+  };
+}
+
+function rgbToHex(r, g, b) {
+  const toHex = (n) => clamp(Math.round(n), 0, 255).toString(16).padStart(2, '0');
+  return '#' + toHex(r) + toHex(g) + toHex(b);
+}
+
+function blendHex(a, b, t) {
+  const ca = hexToRgb(a);
+  const cb = hexToRgb(b);
+  return rgbToHex(
+    ca.r + (cb.r - ca.r) * t,
+    ca.g + (cb.g - ca.g) * t,
+    ca.b + (cb.b - ca.b) * t
+  );
+}
+
+function colorSet(primaryColor) {
+  const palette = {
+    primary: primaryColor,
+    light: blendHex(primaryColor, '#f8fafc', 0.87),
+    accent: blendHex(primaryColor, '#111827', 0.62),
+    neutral: blendHex(primaryColor, '#1f2937', 0.76)
+  };
+  return {
+    primaryHex: palette.primary,
+    lightHex: palette.light,
+    accentHex: palette.accent,
+    neutralHex: palette.neutral,
+    primary: Phaser.Display.Color.HexStringToColor(palette.primary).color,
+    light: Phaser.Display.Color.HexStringToColor(palette.light).color,
+    accent: Phaser.Display.Color.HexStringToColor(palette.accent).color,
+    neutral: Phaser.Display.Color.HexStringToColor(palette.neutral).color,
+    white: 0xffffff,
+    dark: 0x111827,
+    success: 0x22c55e,
+    danger: 0xef4444,
+    gold: 0xffd700
+  };
+}
+
+const C = colorSet(PRIMARY_COLOR);
+
+function makeButton(scene, cfg) {
+  const shadow = scene.add.rectangle(cfg.x + 3, cfg.y + 3, cfg.w, cfg.h, C.accent, 1).setDepth(20);
+  const body = scene.add.rectangle(cfg.x, cfg.y, cfg.w, cfg.h, cfg.fill || C.primary, 1)
+    .setStrokeStyle(2.5, C.accent)
+    .setInteractive({ useHandCursor: true })
+    .setDepth(21);
+  const label = scene.add.text(cfg.x, cfg.y, cfg.label, {
+    fontFamily: 'Nunito',
+    fontSize: (cfg.fontSize || 22) + 'px',
+    fontStyle: '900',
+    color: '#ffffff'
+  }).setOrigin(0.5).setDepth(22);
+
+  const release = (emitTap) => {
+    body.setPosition(cfg.x, cfg.y);
+    label.setPosition(cfg.x, cfg.y);
+    shadow.setVisible(true);
+    if (emitTap && cfg.onTap) cfg.onTap();
+  };
+
+  body.on('pointerdown', () => {
+    body.setPosition(cfg.x + 2, cfg.y + 2);
+    label.setPosition(cfg.x + 2, cfg.y + 2);
+    shadow.setVisible(false);
+  });
+  body.on('pointerup', () => release(true));
+  body.on('pointerout', () => release(false));
+  return { shadow, body, label };
+}
+
+class GameScene extends Phaser.Scene {
+  constructor() {
+    super('GameScene');
+  }
+
+  init() {
+    this.score = 0;
+    this.timeLeft = ROUND_SECONDS;
+    this.isOver = false;
+    this.combo = 0;
+    this.maxCombo = 0;
+    this.bricksBroken = 0;
+    this.drops = 0;
+    this.paddleSpeed = 360;
+    this.paddleDir = 0;
+  }
+
+  create() {
+    this.cameras.main.setBackgroundColor(C.lightHex);
+
+    const dots = this.add.graphics();
+    dots.fillStyle(C.primary, 0.08);
+    for (let x = 16; x < W; x += 26) {
+      for (let y = 12; y < H; y += 28) {
+        dots.fillCircle(x + ((y / 28) % 2 ? 4 : -2), y, 2);
+      }
+    }
+
+    this.add.rectangle(W / 2, 82, 350, 118, C.white, 1).setStrokeStyle(2.5, C.accent);
+    this.add.text(W / 2, 46, 'Breakout Blitz', {
+      fontFamily: 'Nunito',
+      fontSize: '30px',
+      fontStyle: '900',
+      color: C.accentHex
+    }).setOrigin(0.5);
+    this.add.text(W / 2, 78, 'Sweep the paddle and keep the rally alive.', {
+      fontFamily: 'Patrick Hand',
+      fontSize: '20px',
+      color: C.neutralHex
+    }).setOrigin(0.5);
+
+    this.add.rectangle(24, 112, 142, 34, C.light, 1).setOrigin(0, 0.5).setStrokeStyle(2, C.accent);
+    this.scoreText = this.add.text(36, 112, 'Score 0', {
+      fontFamily: 'Nunito',
+      fontSize: '16px',
+      fontStyle: '700',
+      color: C.accentHex
+    }).setOrigin(0, 0.5);
+
+    this.add.rectangle(W - 24, 112, 126, 34, C.light, 1).setOrigin(1, 0.5).setStrokeStyle(2, C.accent);
+    this.timerText = this.add.text(W - 36, 112, 'Time ' + this.timeLeft, {
+      fontFamily: 'Nunito',
+      fontSize: '16px',
+      fontStyle: '700',
+      color: C.accentHex
+    }).setOrigin(1, 0.5);
+
+    this.add.rectangle(W / 2, 386, 322, 390, C.white, 0.96).setStrokeStyle(2.5, C.accent);
+    this.add.text(W / 2, 172, 'Drag the paddle or use the move buttons below.', {
+      fontFamily: 'Nunito',
+      fontSize: '16px',
+      fontStyle: '700',
+      color: C.neutralHex
+    }).setOrigin(0.5);
+
+    this.playTop = 196;
+    this.playBottom = 546;
+    this.playLeft = 42;
+    this.playRight = 351;
+
+    this.playBorder = this.add.rectangle(W / 2, 371, this.playRight - this.playLeft, this.playBottom - this.playTop, C.light, 1)
+      .setStrokeStyle(2, C.accent);
+    this.graphics = this.add.graphics();
+
+    this.statusText = this.add.text(W / 2, 570, 'Clear rows fast to rebuild your combo', {
+      fontFamily: 'Patrick Hand',
+      fontSize: '20px',
+      color: C.neutralHex
+    }).setOrigin(0.5);
+    this.comboText = this.add.text(W / 2, 600, 'Combo x0', {
+      fontFamily: 'Nunito',
+      fontSize: '20px',
+      fontStyle: '700',
+      color: C.accentHex
+    }).setOrigin(0.5);
+
+    makeButton(this, { x: W / 2 - 82, y: H - 68, w: 112, h: 54, label: 'Left', fontSize: 22, onTap: () => { this.paddleDir = -1; this.time.delayedCall(180, () => { this.paddleDir = 0; }); } });
+    makeButton(this, { x: W / 2 + 82, y: H - 68, w: 112, h: 54, label: 'Right', fontSize: 22, onTap: () => { this.paddleDir = 1; this.time.delayedCall(180, () => { this.paddleDir = 0; }); } });
+
+    this.cursors = this.input.keyboard.createCursorKeys();
+    this.input.on('pointermove', (pointer) => {
+      if (pointer.isDown) {
+        this.paddle.x = clamp(pointer.x, this.playLeft + this.paddle.width / 2, this.playRight - this.paddle.width / 2);
+      }
+    });
+    this.input.on('pointerdown', (pointer) => {
+      if (pointer.y < 610) {
+        this.paddle.x = clamp(pointer.x, this.playLeft + this.paddle.width / 2, this.playRight - this.paddle.width / 2);
+      }
+    });
+
+    this.paddle = { x: W / 2, y: 510, width: 82, height: 16 };
+    this.resetBall(true);
+    this.buildBricks();
+    this.drawPlayfield();
+  }
+
+  buildBricks() {
+    this.bricks = [];
+    const rows = 5;
+    const cols = 6;
+    const brickW = 42;
+    const brickH = 18;
+    const offsetX = 56;
+    const offsetY = 216;
+    for (let row = 0; row < rows; row += 1) {
+      for (let col = 0; col < cols; col += 1) {
+        this.bricks.push({
+          x: offsetX + col * 47,
+          y: offsetY + row * 26,
+          w: brickW,
+          h: brickH,
+          tint: row % 2 === 0 ? C.primary : C.accent
+        });
+      }
+    }
+  }
+
+  resetBall(center) {
+    const angle = Phaser.Math.DegToRad(Phaser.Math.Between(-130, -50));
+    const speed = 246;
+    this.ball = {
+      x: center ? W / 2 : this.paddle.x,
+      y: 484,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed,
+      r: 8
+    };
+  }
+
+  setStatus(text, color) {
+    this.statusText.setText(text);
+    this.statusText.setColor(color || C.neutralHex);
+    this.comboText.setText('Combo x' + this.combo);
+  }
+
+  addScore(delta) {
+    this.score = Math.max(0, this.score + delta);
+    this.scoreText.setText('Score ' + Math.round(this.score));
+    this.tweens.add({
+      targets: this.scoreText,
+      scaleX: 1.12,
+      scaleY: 1.12,
+      yoyo: true,
+      duration: 110
+    });
+  }
+
+  drawPlayfield() {
+    this.graphics.clear();
+    this.graphics.fillStyle(C.light, 1);
+    this.graphics.fillRect(this.playLeft, this.playTop, this.playRight - this.playLeft, this.playBottom - this.playTop);
+
+    this.graphics.fillStyle(C.accent, 1);
+    this.graphics.fillRoundedRect(this.paddle.x - this.paddle.width / 2, this.paddle.y - this.paddle.height / 2, this.paddle.width, this.paddle.height, 6);
+    this.graphics.fillStyle(C.primary, 1);
+    this.graphics.fillCircle(this.ball.x, this.ball.y, this.ball.r);
+    this.graphics.fillStyle(C.white, 0.95);
+    this.graphics.fillCircle(this.ball.x + 2, this.ball.y - 2, 2);
+
+    for (const brick of this.bricks) {
+      this.graphics.fillStyle(brick.tint, 1);
+      this.graphics.fillRoundedRect(brick.x, brick.y, brick.w, brick.h, 5);
+      this.graphics.lineStyle(2, C.dark, 0.14);
+      this.graphics.strokeRoundedRect(brick.x, brick.y, brick.w, brick.h, 5);
+    }
+  }
+
+  bouncePaddle() {
+    if (this.ball.y + this.ball.r < this.paddle.y - this.paddle.height / 2) return false;
+    if (this.ball.y - this.ball.r > this.paddle.y + this.paddle.height / 2) return false;
+    if (this.ball.x + this.ball.r < this.paddle.x - this.paddle.width / 2) return false;
+    if (this.ball.x - this.ball.r > this.paddle.x + this.paddle.width / 2) return false;
+
+    const impact = (this.ball.x - this.paddle.x) / (this.paddle.width / 2);
+    this.ball.vy = -Math.abs(this.ball.vy);
+    this.ball.vx = impact * 220;
+    this.ball.y = this.paddle.y - this.paddle.height / 2 - this.ball.r - 1;
+    return true;
+  }
+
+  hitBrick() {
+    for (let i = 0; i < this.bricks.length; i += 1) {
+      const brick = this.bricks[i];
+      if (
+        this.ball.x + this.ball.r >= brick.x &&
+        this.ball.x - this.ball.r <= brick.x + brick.w &&
+        this.ball.y + this.ball.r >= brick.y &&
+        this.ball.y - this.ball.r <= brick.y + brick.h
+      ) {
+        this.bricks.splice(i, 1);
+        this.ball.vy *= -1;
+        this.bricksBroken += 1;
+        this.combo += 1;
+        this.maxCombo = Math.max(this.maxCombo, this.combo);
+        const gain = 12 + Math.min(this.combo, 5) * 2;
+        this.addScore(gain);
+        this.setStatus('Brick cleared +' + gain, '#059669');
+        if (this.bricks.length === 0) {
+          this.addScore(40);
+          this.setStatus('Board clear +40', '#059669');
+          this.buildBricks();
+          this.combo += 1;
+          this.maxCombo = Math.max(this.maxCombo, this.combo);
+          this.ball.vx *= 1.04;
+          this.ball.vy *= 1.04;
+        }
+        return true;
+      }
+    }
+    return false;
+  }
+
+  finishGame() {
+    if (this.isOver) return;
+    this.isOver = true;
+    this.scene.start('ResultScene', {
+      score: Math.round(this.score),
+      maxCombo: this.maxCombo,
+      hits: this.bricksBroken,
+      misses: this.drops
+    });
+  }
+
+  update(time, delta) {
+    if (this.isOver) return;
+
+    if (this.cursors.left.isDown) this.paddleDir = -1;
+    else if (this.cursors.right.isDown) this.paddleDir = 1;
+    else if (!this.input.activePointer.isDown) this.paddleDir = 0;
+
+    this.timeLeft = Math.max(0, this.timeLeft - delta / 1000);
+    this.timerText.setText('Time ' + Math.ceil(this.timeLeft));
+
+    const dt = delta / 1000;
+    this.paddle.x = clamp(this.paddle.x + this.paddleDir * this.paddleSpeed * dt, this.playLeft + this.paddle.width / 2, this.playRight - this.paddle.width / 2);
+
+    this.ball.x += this.ball.vx * dt;
+    this.ball.y += this.ball.vy * dt;
+
+    if (this.ball.x <= this.playLeft + this.ball.r) {
+      this.ball.x = this.playLeft + this.ball.r;
+      this.ball.vx = Math.abs(this.ball.vx);
+    }
+    if (this.ball.x >= this.playRight - this.ball.r) {
+      this.ball.x = this.playRight - this.ball.r;
+      this.ball.vx = -Math.abs(this.ball.vx);
+    }
+    if (this.ball.y <= this.playTop + this.ball.r) {
+      this.ball.y = this.playTop + this.ball.r;
+      this.ball.vy = Math.abs(this.ball.vy);
+    }
+
+    this.bouncePaddle();
+    this.hitBrick();
+
+    if (this.ball.y > this.playBottom + 12) {
+      this.drops += 1;
+      this.combo = 0;
+      this.addScore(-10);
+      this.setStatus('Ball lost -10', '#dc2626');
+      this.resetBall(false);
+    }
+
+    this.drawPlayfield();
+    if (this.timeLeft <= 0) this.finishGame();
+  }
+}
+
+class ResultScene extends Phaser.Scene {
+  constructor() {
+    super('ResultScene');
+  }
+
+  init(data) {
+    this.finalScore = data.score || 0;
+    this.maxCombo = data.maxCombo || 0;
+    this.hits = data.hits || 0;
+    this.misses = data.misses || 0;
+  }
+
+  create() {
+    this.cameras.main.setBackgroundColor(C.lightHex);
+    const rating = getRating(this.finalScore);
+    const modifier = getModifier(rating);
+    const modText = modifier > 0 ? '+' + modifier : String(modifier);
+    const ratingColor = { S: '#ffd700', A: C.primaryHex, B: '#9ca3af', C: '#fb7185', D: '#dc2626' }[rating];
+
+    this.add.rectangle(W / 2, 94, 350, 116, C.white, 1).setStrokeStyle(2.5, C.accent);
+    this.add.text(W / 2, 50, 'Settlement', {
+      fontFamily: 'Nunito',
+      fontSize: '32px',
+      fontStyle: '900',
+      color: C.accentHex
+    }).setOrigin(0.5);
+    this.add.text(W / 2, 86, 'Breakout Blitz', {
+      fontFamily: 'Patrick Hand',
+      fontSize: '21px',
+      color: C.neutralHex
+    }).setOrigin(0.5);
+
+    this.add.text(W / 2, 252, rating, {
+      fontFamily: 'Nunito',
+      fontSize: '108px',
+      fontStyle: '900',
+      color: ratingColor,
+      stroke: '#111827',
+      strokeThickness: 4
+    }).setOrigin(0.5);
+
+    this.add.text(W / 2, 336, 'Score ' + this.finalScore, {
+      fontFamily: 'Nunito',
+      fontSize: '28px',
+      fontStyle: '800',
+      color: C.accentHex
+    }).setOrigin(0.5);
+    this.add.text(W / 2, 372, ATTRIBUTE + ' ' + modText, {
+      fontFamily: 'Patrick Hand',
+      fontSize: '24px',
+      color: C.neutralHex
+    }).setOrigin(0.5);
+
+    this.add.rectangle(110, 448, 130, 78, C.white, 1).setStrokeStyle(2, C.accent);
+    this.add.text(110, 432, 'Max Combo', {
+      fontFamily: 'Nunito',
+      fontSize: '15px',
+      fontStyle: '700',
+      color: C.neutralHex
+    }).setOrigin(0.5);
+    this.add.text(110, 463, String(this.maxCombo), {
+      fontFamily: 'Nunito',
+      fontSize: '30px',
+      fontStyle: '900',
+      color: C.accentHex
+    }).setOrigin(0.5);
+
+    this.add.rectangle(282, 448, 130, 78, C.white, 1).setStrokeStyle(2, C.accent);
+    this.add.text(282, 432, 'Bricks / Drop', {
+      fontFamily: 'Nunito',
+      fontSize: '15px',
+      fontStyle: '700',
+      color: C.neutralHex
+    }).setOrigin(0.5);
+    this.add.text(282, 463, this.hits + ' / ' + this.misses, {
+      fontFamily: 'Nunito',
+      fontSize: '28px',
+      fontStyle: '900',
+      color: C.accentHex
+    }).setOrigin(0.5);
+
+    makeButton(this, {
+      x: W / 2,
+      y: H - 132,
+      w: 234,
+      h: 58,
+      label: 'Continue',
+      fontSize: 26,
+      onTap: () => {
+        notifyGameComplete({
+          rating: rating,
+          score: this.finalScore,
+          attribute: ATTRIBUTE,
+          modifier: modifier,
+          gameId: 'breakout-blitz',
+          maxCombo: this.maxCombo,
+          hits: this.hits,
+          misses: this.misses
+        });
+      }
+    });
+  }
+}
+
+const config = {
+  type: Phaser.AUTO,
+  width: W,
+  height: H,
+  scale: {
+    mode: Phaser.Scale.FIT,
+    autoCenter: Phaser.Scale.CENTER_BOTH
+  },
+  backgroundColor: C.lightHex,
+  scene: [GameScene, ResultScene]
+};
+
+window.__game = new Phaser.Game(config);
+</script>
+</body>
+</html>

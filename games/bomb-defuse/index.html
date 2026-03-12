@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no,viewport-fit=cover">
+<title>Bomb Defuse</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;900&family=Patrick+Hand&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100%; height: 100%; background: #172033; overflow: hidden; }
+  canvas { display: block; margin: 0 auto; }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
+</head>
+<body>
+<script>
+const params = new URLSearchParams(window.location.search);
+const ATTRIBUTE = params.get('attribute') || 'Wisdom';
+const PRIMARY_COLOR = params.get('primaryColor') || '#ff6b9d';
+
+const W = 393;
+const H = 736;
+const ROUND_SECONDS = 55;
+const RATING_THRESHOLDS = { S: 360, A: 275, B: 190, C: 110 };
+const MODIFIER_BY_RATING = { S: 2, A: 1, B: 0, C: -1, D: -2 };
+const WIRE_COLORS = [
+  { key: 'red', label: 'RED', fill: 0xf87171 },
+  { key: 'blue', label: 'BLUE', fill: 0x38bdf8 },
+  { key: 'yellow', label: 'YELL', fill: 0xfacc15 },
+  { key: 'green', label: 'GRN', fill: 0x22c55e }
+];
+
+function getRating(score) {
+  if (score >= RATING_THRESHOLDS.S) return 'S';
+  if (score >= RATING_THRESHOLDS.A) return 'A';
+  if (score >= RATING_THRESHOLDS.B) return 'B';
+  if (score >= RATING_THRESHOLDS.C) return 'C';
+  return 'D';
+}
+
+function getModifier(rating) {
+  return MODIFIER_BY_RATING[rating];
+}
+
+function notifyGameComplete(result) {
+  const payload = JSON.stringify(result);
+  if (window.webkit?.messageHandlers?.jsBridge) {
+    window.webkit.messageHandlers.jsBridge.postMessage(payload);
+    return;
+  }
+  if (window.jsBridge?.postMessage) {
+    window.jsBridge.postMessage(payload);
+    return;
+  }
+  if (window.parent !== window) {
+    window.parent.postMessage(payload, '*');
+    return;
+  }
+  console.log('[GameComplete]', result);
+}
+
+function clamp(v, min, max) {
+  return Math.max(min, Math.min(max, v));
+}
+
+function hexToRgb(hex) {
+  const raw = hex.replace('#', '');
+  const full = raw.length === 3 ? raw.split('').map((c) => c + c).join('') : raw;
+  const value = parseInt(full, 16);
+  return {
+    r: (value >> 16) & 255,
+    g: (value >> 8) & 255,
+    b: value & 255
+  };
+}
+
+function rgbToHex(r, g, b) {
+  const toHex = (n) => clamp(Math.round(n), 0, 255).toString(16).padStart(2, '0');
+  return '#' + toHex(r) + toHex(g) + toHex(b);
+}
+
+function blendHex(a, b, t) {
+  const ca = hexToRgb(a);
+  const cb = hexToRgb(b);
+  return rgbToHex(
+    ca.r + (cb.r - ca.r) * t,
+    ca.g + (cb.g - ca.g) * t,
+    ca.b + (cb.b - ca.b) * t
+  );
+}
+
+function colorSet(primaryColor) {
+  const palette = {
+    primary: primaryColor,
+    light: blendHex(primaryColor, '#f8fafc', 0.88),
+    accent: blendHex(primaryColor, '#111827', 0.62),
+    neutral: blendHex(primaryColor, '#1f2937', 0.76)
+  };
+  return {
+    primaryHex: palette.primary,
+    lightHex: palette.light,
+    accentHex: palette.accent,
+    neutralHex: palette.neutral,
+    primary: Phaser.Display.Color.HexStringToColor(palette.primary).color,
+    light: Phaser.Display.Color.HexStringToColor(palette.light).color,
+    accent: Phaser.Display.Color.HexStringToColor(palette.accent).color,
+    neutral: Phaser.Display.Color.HexStringToColor(palette.neutral).color,
+    white: 0xffffff,
+    dark: 0x111827,
+    success: 0x22c55e,
+    danger: 0xef4444,
+    gold: 0xffd700
+  };
+}
+
+const C = colorSet(PRIMARY_COLOR);
+
+function makeButton(scene, cfg) {
+  const shadow = scene.add.rectangle(cfg.x + 3, cfg.y + 3, cfg.w, cfg.h, C.accent, 1).setDepth(20);
+  const body = scene.add.rectangle(cfg.x, cfg.y, cfg.w, cfg.h, cfg.fill || C.primary, 1)
+    .setStrokeStyle(2.5, C.accent)
+    .setInteractive({ useHandCursor: true })
+    .setDepth(21);
+  const label = scene.add.text(cfg.x, cfg.y, cfg.label, {
+    fontFamily: 'Nunito',
+    fontSize: (cfg.fontSize || 22) + 'px',
+    fontStyle: '900',
+    color: cfg.textColor || '#ffffff'
+  }).setOrigin(0.5).setDepth(22);
+
+  const release = (emitTap) => {
+    body.setPosition(cfg.x, cfg.y);
+    label.setPosition(cfg.x, cfg.y);
+    shadow.setVisible(true);
+    if (emitTap && cfg.onTap) cfg.onTap();
+  };
+
+  body.on('pointerdown', () => {
+    body.setPosition(cfg.x + 2, cfg.y + 2);
+    label.setPosition(cfg.x + 2, cfg.y + 2);
+    shadow.setVisible(false);
+  });
+  body.on('pointerup', () => release(true));
+  body.on('pointerout', () => release(false));
+  return { shadow, body, label };
+}
+
+class GameScene extends Phaser.Scene {
+  constructor() {
+    super('GameScene');
+  }
+
+  init() {
+    this.score = 0;
+    this.timeLeft = ROUND_SECONDS;
+    this.isOver = false;
+    this.combo = 0;
+    this.maxCombo = 0;
+    this.correctCuts = 0;
+    this.wrongCuts = 0;
+    this.rounds = 0;
+    this.wireNodes = [];
+  }
+
+  create() {
+    this.cameras.main.setBackgroundColor(C.lightHex);
+
+    const dots = this.add.graphics();
+    dots.fillStyle(C.primary, 0.08);
+    for (let x = 16; x < W; x += 26) {
+      for (let y = 12; y < H; y += 28) {
+        dots.fillCircle(x + ((y / 28) % 2 ? 4 : -2), y, 2);
+      }
+    }
+
+    this.add.rectangle(W / 2, 82, 350, 118, C.white, 1).setStrokeStyle(2.5, C.accent);
+    this.add.text(W / 2, 46, 'Bomb Defuse', {
+      fontFamily: 'Nunito',
+      fontSize: '30px',
+      fontStyle: '900',
+      color: C.accentHex
+    }).setOrigin(0.5);
+    this.add.text(W / 2, 78, 'Read the clue and cut exactly one safe wire.', {
+      fontFamily: 'Patrick Hand',
+      fontSize: '19px',
+      color: C.neutralHex
+    }).setOrigin(0.5);
+
+    this.add.rectangle(24, 112, 142, 34, C.light, 1).setOrigin(0, 0.5).setStrokeStyle(2, C.accent);
+    this.scoreText = this.add.text(36, 112, 'Score 0', {
+      fontFamily: 'Nunito',
+      fontSize: '16px',
+      fontStyle: '700',
+      color: C.accentHex
+    }).setOrigin(0, 0.5);
+
+    this.add.rectangle(W - 24, 112, 126, 34, C.light, 1).setOrigin(1, 0.5).setStrokeStyle(2, C.accent);
+    this.timerText = this.add.text(W - 36, 112, 'Time ' + this.timeLeft, {
+      fontFamily: 'Nunito',
+      fontSize: '16px',
+      fontStyle: '700',
+      color: C.accentHex
+    }).setOrigin(1, 0.5);
+
+    this.add.rectangle(W / 2, 390, 322, 404, C.white, 0.96).setStrokeStyle(2.5, C.accent);
+    this.roundText = this.add.text(W / 2, 174, 'Bomb 1', {
+      fontFamily: 'Nunito',
+      fontSize: '18px',
+      fontStyle: '700',
+      color: C.accentHex
+    }).setOrigin(0.5);
+    this.clueText = this.add.text(W / 2, 214, '', {
+      fontFamily: 'Patrick Hand',
+      fontSize: '26px',
+      color: C.neutralHex,
+      align: 'center',
+      wordWrap: { width: 284 }
+    }).setOrigin(0.5);
+
+    this.statusText = this.add.text(W / 2, 600, 'Wrong wire breaks your combo', {
+      fontFamily: 'Patrick Hand',
+      fontSize: '20px',
+      color: C.neutralHex
+    }).setOrigin(0.5);
+    this.comboText = this.add.text(W / 2, 632, 'Combo x0', {
+      fontFamily: 'Nunito',
+      fontSize: '20px',
+      fontStyle: '700',
+      color: C.accentHex
+    }).setOrigin(0.5);
+
+    this.nextRound();
+  }
+
+  addScore(delta) {
+    this.score = Math.max(0, this.score + delta);
+    this.scoreText.setText('Score ' + Math.round(this.score));
+    this.tweens.add({
+      targets: this.scoreText,
+      scaleX: 1.12,
+      scaleY: 1.12,
+      yoyo: true,
+      duration: 110
+    });
+  }
+
+  setStatus(text, color) {
+    this.statusText.setText(text);
+    this.statusText.setColor(color || C.neutralHex);
+    this.comboText.setText('Combo x' + this.combo);
+  }
+
+  buildRound() {
+    const clueType = Phaser.Utils.Array.GetRandom(['color', 'position', 'number']);
+    const colors = Phaser.Utils.Array.Shuffle(WIRE_COLORS.slice()).slice(0, 4);
+    const wires = colors.map((color, index) => ({
+      id: index,
+      color,
+      number: index + 1,
+      x1: 80,
+      x2: 313,
+      y: 300 + index * 58
+    }));
+
+    let answer;
+    let clue;
+    if (clueType === 'color') {
+      answer = Phaser.Math.Between(0, 3);
+      clue = 'Cut the ' + wires[answer].color.label + ' wire.';
+    } else if (clueType === 'position') {
+      const labels = ['left-most', 'second', 'third', 'right-most'];
+      answer = Phaser.Math.Between(0, 3);
+      clue = answer === 0 ? 'Cut the left-most wire.' : answer === 3 ? 'Cut the right-most wire.' : 'Cut the ' + labels[answer] + ' wire from the top.';
+    } else {
+      answer = Phaser.Math.Between(0, 3);
+      clue = 'Cut wire #' + wires[answer].number + '.';
+    }
+
+    return { wires, answer, clue };
+  }
+
+  clearWireNodes() {
+    for (const wire of this.wireNodes) {
+      wire.shadow.destroy();
+      wire.body.destroy();
+      wire.label.destroy();
+      wire.number.destroy();
+    }
+    this.wireNodes = [];
+  }
+
+  nextRound() {
+    this.clearWireNodes();
+    this.rounds += 1;
+    const round = this.buildRound();
+    this.answerIndex = round.answer;
+    this.roundText.setText('Bomb ' + this.rounds);
+    this.clueText.setText(round.clue);
+
+    for (const wire of round.wires) {
+      const shadow = this.add.rectangle((wire.x1 + wire.x2) / 2 + 3, wire.y + 3, 234, 34, C.accent, 1);
+      const body = this.add.rectangle((wire.x1 + wire.x2) / 2, wire.y, 234, 34, wire.color.fill, 1)
+        .setStrokeStyle(2.5, C.accent)
+        .setInteractive({ useHandCursor: true });
+      const label = this.add.text(wire.x1 + 18, wire.y, wire.color.label, {
+        fontFamily: 'Nunito',
+        fontSize: '18px',
+        fontStyle: '900',
+        color: wire.color.key === 'yellow' ? '#111827' : '#ffffff'
+      }).setOrigin(0, 0.5);
+      const number = this.add.text(wire.x2 - 22, wire.y, '#' + wire.number, {
+        fontFamily: 'Nunito',
+        fontSize: '18px',
+        fontStyle: '900',
+        color: wire.color.key === 'yellow' ? '#111827' : '#ffffff'
+      }).setOrigin(1, 0.5);
+
+      body.on('pointerdown', () => {
+        body.setPosition(body.x + 2, body.y + 2);
+        label.setPosition(label.x + 2, label.y + 2);
+        number.setPosition(number.x + 2, number.y + 2);
+        shadow.setVisible(false);
+      });
+      const release = (emitTap) => {
+        body.setPosition((wire.x1 + wire.x2) / 2, wire.y);
+        label.setPosition(wire.x1 + 18, wire.y);
+        number.setPosition(wire.x2 - 22, wire.y);
+        shadow.setVisible(true);
+        if (emitTap) this.cutWire(wire.id);
+      };
+      body.on('pointerup', () => release(true));
+      body.on('pointerout', () => release(false));
+
+      this.wireNodes.push({ shadow, body, label, number });
+    }
+  }
+
+  cutWire(index) {
+    if (this.isOver) return;
+    if (index === this.answerIndex) {
+      this.correctCuts += 1;
+      this.combo += 1;
+      this.maxCombo = Math.max(this.maxCombo, this.combo);
+      const gain = 22 + Math.min(this.combo, 4) * 3;
+      this.addScore(gain);
+      this.setStatus('Safe cut +' + gain, '#059669');
+    } else {
+      this.wrongCuts += 1;
+      this.combo = 0;
+      this.addScore(-10);
+      this.setStatus('Wrong wire -10', '#dc2626');
+    }
+    this.nextRound();
+  }
+
+  finishGame() {
+    if (this.isOver) return;
+    this.isOver = true;
+    this.scene.start('ResultScene', {
+      score: Math.round(this.score),
+      maxCombo: this.maxCombo,
+      hits: this.correctCuts,
+      misses: this.wrongCuts
+    });
+  }
+
+  update(time, delta) {
+    if (this.isOver) return;
+    this.timeLeft = Math.max(0, this.timeLeft - delta / 1000);
+    this.timerText.setText('Time ' + Math.ceil(this.timeLeft));
+    if (this.timeLeft <= 0) this.finishGame();
+  }
+}
+
+class ResultScene extends Phaser.Scene {
+  constructor() {
+    super('ResultScene');
+  }
+
+  init(data) {
+    this.finalScore = data.score || 0;
+    this.maxCombo = data.maxCombo || 0;
+    this.hits = data.hits || 0;
+    this.misses = data.misses || 0;
+  }
+
+  create() {
+    this.cameras.main.setBackgroundColor(C.lightHex);
+    const rating = getRating(this.finalScore);
+    const modifier = getModifier(rating);
+    const modText = modifier > 0 ? '+' + modifier : String(modifier);
+    const ratingColor = { S: '#ffd700', A: C.primaryHex, B: '#9ca3af', C: '#fb7185', D: '#dc2626' }[rating];
+
+    this.add.rectangle(W / 2, 94, 350, 116, C.white, 1).setStrokeStyle(2.5, C.accent);
+    this.add.text(W / 2, 50, 'Settlement', {
+      fontFamily: 'Nunito',
+      fontSize: '32px',
+      fontStyle: '900',
+      color: C.accentHex
+    }).setOrigin(0.5);
+    this.add.text(W / 2, 86, 'Bomb Defuse', {
+      fontFamily: 'Patrick Hand',
+      fontSize: '21px',
+      color: C.neutralHex
+    }).setOrigin(0.5);
+
+    this.add.text(W / 2, 252, rating, {
+      fontFamily: 'Nunito',
+      fontSize: '108px',
+      fontStyle: '900',
+      color: ratingColor,
+      stroke: '#111827',
+      strokeThickness: 4
+    }).setOrigin(0.5);
+
+    this.add.text(W / 2, 336, 'Score ' + this.finalScore, {
+      fontFamily: 'Nunito',
+      fontSize: '28px',
+      fontStyle: '800',
+      color: C.accentHex
+    }).setOrigin(0.5);
+    this.add.text(W / 2, 372, ATTRIBUTE + ' ' + modText, {
+      fontFamily: 'Patrick Hand',
+      fontSize: '24px',
+      color: C.neutralHex
+    }).setOrigin(0.5);
+
+    this.add.rectangle(110, 448, 130, 78, C.white, 1).setStrokeStyle(2, C.accent);
+    this.add.text(110, 432, 'Max Combo', {
+      fontFamily: 'Nunito',
+      fontSize: '15px',
+      fontStyle: '700',
+      color: C.neutralHex
+    }).setOrigin(0.5);
+    this.add.text(110, 463, String(this.maxCombo), {
+      fontFamily: 'Nunito',
+      fontSize: '30px',
+      fontStyle: '900',
+      color: C.accentHex
+    }).setOrigin(0.5);
+
+    this.add.rectangle(282, 448, 130, 78, C.white, 1).setStrokeStyle(2, C.accent);
+    this.add.text(282, 432, 'Safe / Wrong', {
+      fontFamily: 'Nunito',
+      fontSize: '15px',
+      fontStyle: '700',
+      color: C.neutralHex
+    }).setOrigin(0.5);
+    this.add.text(282, 463, this.hits + ' / ' + this.misses, {
+      fontFamily: 'Nunito',
+      fontSize: '28px',
+      fontStyle: '900',
+      color: C.accentHex
+    }).setOrigin(0.5);
+
+    makeButton(this, {
+      x: W / 2,
+      y: H - 132,
+      w: 234,
+      h: 58,
+      label: 'Continue',
+      fontSize: 26,
+      onTap: () => {
+        notifyGameComplete({
+          rating: rating,
+          score: this.finalScore,
+          attribute: ATTRIBUTE,
+          modifier: modifier,
+          gameId: 'bomb-defuse',
+          maxCombo: this.maxCombo,
+          hits: this.hits,
+          misses: this.misses
+        });
+      }
+    });
+  }
+}
+
+const config = {
+  type: Phaser.AUTO,
+  width: W,
+  height: H,
+  scale: {
+    mode: Phaser.Scale.FIT,
+    autoCenter: Phaser.Scale.CENTER_BOTH
+  },
+  backgroundColor: C.lightHex,
+  scene: [GameScene, ResultScene]
+};
+
+window.__game = new Phaser.Game(config);
+</script>
+</body>
+</html>

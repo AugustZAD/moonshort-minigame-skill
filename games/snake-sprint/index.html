@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no,viewport-fit=cover">
+<title>Snake Sprint</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;900&family=Patrick+Hand&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100%; height: 100%; background: #172033; overflow: hidden; }
+  canvas { display: block; margin: 0 auto; }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
+</head>
+<body>
+<script>
+const params = new URLSearchParams(window.location.search);
+const ATTRIBUTE = params.get('attribute') || 'Charm';
+const PRIMARY_COLOR = params.get('primaryColor') || '#ff6b9d';
+
+const W = 393;
+const H = 736;
+const ROUND_SECONDS = 45;
+const RATING_THRESHOLDS = { S: 420, A: 315, B: 220, C: 125 };
+const MODIFIER_BY_RATING = { S: 2, A: 1, B: 0, C: -1, D: -2 };
+
+function getRating(score) {
+  if (score >= RATING_THRESHOLDS.S) return 'S';
+  if (score >= RATING_THRESHOLDS.A) return 'A';
+  if (score >= RATING_THRESHOLDS.B) return 'B';
+  if (score >= RATING_THRESHOLDS.C) return 'C';
+  return 'D';
+}
+
+function getModifier(rating) {
+  return MODIFIER_BY_RATING[rating];
+}
+
+function notifyGameComplete(result) {
+  const payload = JSON.stringify(result);
+  if (window.webkit?.messageHandlers?.jsBridge) {
+    window.webkit.messageHandlers.jsBridge.postMessage(payload);
+    return;
+  }
+  if (window.jsBridge?.postMessage) {
+    window.jsBridge.postMessage(payload);
+    return;
+  }
+  if (window.parent !== window) {
+    window.parent.postMessage(payload, '*');
+    return;
+  }
+  console.log('[GameComplete]', result);
+}
+
+function clamp(v, min, max) {
+  return Math.max(min, Math.min(max, v));
+}
+
+function hexToRgb(hex) {
+  const raw = hex.replace('#', '');
+  const full = raw.length === 3 ? raw.split('').map((c) => c + c).join('') : raw;
+  const value = parseInt(full, 16);
+  return {
+    r: (value >> 16) & 255,
+    g: (value >> 8) & 255,
+    b: value & 255
+  };
+}
+
+function rgbToHex(r, g, b) {
+  const toHex = (n) => clamp(Math.round(n), 0, 255).toString(16).padStart(2, '0');
+  return '#' + toHex(r) + toHex(g) + toHex(b);
+}
+
+function blendHex(a, b, t) {
+  const ca = hexToRgb(a);
+  const cb = hexToRgb(b);
+  return rgbToHex(
+    ca.r + (cb.r - ca.r) * t,
+    ca.g + (cb.g - ca.g) * t,
+    ca.b + (cb.b - ca.b) * t
+  );
+}
+
+function colorSet(primaryColor) {
+  const palette = {
+    primary: primaryColor,
+    light: blendHex(primaryColor, '#f8fafc', 0.86),
+    accent: blendHex(primaryColor, '#111827', 0.6),
+    neutral: blendHex(primaryColor, '#1f2937', 0.76)
+  };
+  return {
+    primaryHex: palette.primary,
+    lightHex: palette.light,
+    accentHex: palette.accent,
+    neutralHex: palette.neutral,
+    primary: Phaser.Display.Color.HexStringToColor(palette.primary).color,
+    light: Phaser.Display.Color.HexStringToColor(palette.light).color,
+    accent: Phaser.Display.Color.HexStringToColor(palette.accent).color,
+    neutral: Phaser.Display.Color.HexStringToColor(palette.neutral).color,
+    white: 0xffffff,
+    dark: 0x111827,
+    success: 0x22c55e,
+    danger: 0xef4444,
+    gold: 0xffd700
+  };
+}
+
+const C = colorSet(PRIMARY_COLOR);
+
+function makeButton(scene, cfg) {
+  const shadow = scene.add.rectangle(cfg.x + 3, cfg.y + 3, cfg.w, cfg.h, C.accent, 1).setDepth(20);
+  const body = scene.add.rectangle(cfg.x, cfg.y, cfg.w, cfg.h, cfg.fill || C.primary, 1)
+    .setStrokeStyle(2.5, C.accent)
+    .setInteractive({ useHandCursor: true })
+    .setDepth(21);
+  const label = scene.add.text(cfg.x, cfg.y, cfg.label, {
+    fontFamily: 'Nunito',
+    fontSize: (cfg.fontSize || 22) + 'px',
+    fontStyle: '900',
+    color: '#ffffff'
+  }).setOrigin(0.5).setDepth(22);
+
+  const release = (emitTap) => {
+    body.setPosition(cfg.x, cfg.y);
+    label.setPosition(cfg.x, cfg.y);
+    shadow.setVisible(true);
+    if (emitTap && cfg.onTap) cfg.onTap();
+  };
+
+  body.on('pointerdown', () => {
+    body.setPosition(cfg.x + 2, cfg.y + 2);
+    label.setPosition(cfg.x + 2, cfg.y + 2);
+    shadow.setVisible(false);
+  });
+  body.on('pointerup', () => release(true));
+  body.on('pointerout', () => release(false));
+  return { shadow, body, label };
+}
+
+class GameScene extends Phaser.Scene {
+  constructor() {
+    super('GameScene');
+  }
+
+  init() {
+    this.score = 0;
+    this.timeLeft = ROUND_SECONDS;
+    this.isOver = false;
+    this.gridCols = 13;
+    this.gridRows = 18;
+    this.cell = 22;
+    this.boardX = 54;
+    this.boardY = 196;
+    this.stepMs = 170;
+    this.stepTimer = 0;
+    this.snake = [];
+    this.direction = 'right';
+    this.pendingDirection = 'right';
+    this.apples = 0;
+    this.crashes = 0;
+    this.combo = 0;
+    this.maxCombo = 0;
+    this.moveAccumulator = 0;
+    this.survivalTick = 0;
+  }
+
+  create() {
+    this.cameras.main.setBackgroundColor(C.lightHex);
+
+    const dots = this.add.graphics();
+    dots.fillStyle(C.primary, 0.08);
+    for (let x = 16; x < W; x += 26) {
+      for (let y = 12; y < H; y += 28) {
+        dots.fillCircle(x + ((y / 28) % 2 ? 4 : -2), y, 2);
+      }
+    }
+
+    this.add.rectangle(W / 2, 82, 350, 118, C.white, 1).setStrokeStyle(2.5, C.accent);
+    this.add.text(W / 2, 46, 'Snake Sprint', {
+      fontFamily: 'Nunito',
+      fontSize: '30px',
+      fontStyle: '900',
+      color: C.accentHex
+    }).setOrigin(0.5);
+    this.add.text(W / 2, 78, 'Collect fruit, grow fast, do not fold into yourself.', {
+      fontFamily: 'Patrick Hand',
+      fontSize: '19px',
+      color: C.neutralHex
+    }).setOrigin(0.5);
+
+    this.add.rectangle(24, 112, 142, 34, C.light, 1).setOrigin(0, 0.5).setStrokeStyle(2, C.accent);
+    this.scoreText = this.add.text(36, 112, 'Score 0', {
+      fontFamily: 'Nunito',
+      fontSize: '16px',
+      fontStyle: '700',
+      color: C.accentHex
+    }).setOrigin(0, 0.5);
+
+    this.add.rectangle(W - 24, 112, 126, 34, C.light, 1).setOrigin(1, 0.5).setStrokeStyle(2, C.accent);
+    this.timerText = this.add.text(W - 36, 112, 'Time ' + this.timeLeft, {
+      fontFamily: 'Nunito',
+      fontSize: '16px',
+      fontStyle: '700',
+      color: C.accentHex
+    }).setOrigin(1, 0.5);
+
+    this.add.rectangle(W / 2, 396, 322, 404, C.white, 0.96).setStrokeStyle(2.5, C.accent);
+    this.add.text(W / 2, 174, 'Swipe or tap arrows to steer before the next step.', {
+      fontFamily: 'Nunito',
+      fontSize: '16px',
+      fontStyle: '700',
+      color: C.neutralHex
+    }).setOrigin(0.5);
+
+    this.boardBg = this.add.rectangle(W / 2, 394, this.gridCols * this.cell + 8, this.gridRows * this.cell + 8, C.light, 1)
+      .setStrokeStyle(2, C.accent);
+    this.gridGraphics = this.add.graphics();
+    this.entityGraphics = this.add.graphics();
+
+    this.statusText = this.add.text(W / 2, 586, 'Each apple speeds the round up a little', {
+      fontFamily: 'Patrick Hand',
+      fontSize: '20px',
+      color: C.neutralHex
+    }).setOrigin(0.5);
+    this.comboText = this.add.text(W / 2, 616, 'Combo x0', {
+      fontFamily: 'Nunito',
+      fontSize: '20px',
+      fontStyle: '700',
+      color: C.accentHex
+    }).setOrigin(0.5);
+
+    makeButton(this, { x: W / 2, y: H - 110, w: 78, h: 52, label: 'Up', fontSize: 22, onTap: () => this.queueDirection('up') });
+    makeButton(this, { x: W / 2 - 92, y: H - 58, w: 78, h: 52, label: 'Left', fontSize: 20, onTap: () => this.queueDirection('left') });
+    makeButton(this, { x: W / 2, y: H - 58, w: 78, h: 52, label: 'Down', fontSize: 20, onTap: () => this.queueDirection('down') });
+    makeButton(this, { x: W / 2 + 92, y: H - 58, w: 78, h: 52, label: 'Right', fontSize: 18, onTap: () => this.queueDirection('right') });
+
+    this.cursors = this.input.keyboard.createCursorKeys();
+    this.addSwipeInput();
+    this.resetSnake();
+    this.spawnFruit();
+    this.drawBoard();
+  }
+
+  addSwipeInput() {
+    this.swipeStart = null;
+    this.input.on('pointerdown', (pointer) => {
+      this.swipeStart = { x: pointer.x, y: pointer.y };
+    });
+    this.input.on('pointerup', (pointer) => {
+      if (!this.swipeStart) return;
+      const dx = pointer.x - this.swipeStart.x;
+      const dy = pointer.y - this.swipeStart.y;
+      if (Math.abs(dx) < 16 && Math.abs(dy) < 16) return;
+      if (Math.abs(dx) > Math.abs(dy)) {
+        this.queueDirection(dx > 0 ? 'right' : 'left');
+      } else {
+        this.queueDirection(dy > 0 ? 'down' : 'up');
+      }
+      this.swipeStart = null;
+    });
+  }
+
+  resetSnake() {
+    this.snake = [
+      { x: 4, y: 9 },
+      { x: 3, y: 9 },
+      { x: 2, y: 9 }
+    ];
+    this.direction = 'right';
+    this.pendingDirection = 'right';
+    this.stepMs = 170;
+  }
+
+  spawnFruit() {
+    const occupied = new Set(this.snake.map((cell) => cell.x + ':' + cell.y));
+    const free = [];
+    for (let y = 0; y < this.gridRows; y += 1) {
+      for (let x = 0; x < this.gridCols; x += 1) {
+        if (!occupied.has(x + ':' + y)) free.push({ x, y });
+      }
+    }
+    this.fruit = Phaser.Utils.Array.GetRandom(free);
+  }
+
+  queueDirection(next) {
+    const opposite = {
+      up: 'down',
+      down: 'up',
+      left: 'right',
+      right: 'left'
+    };
+    if (opposite[this.direction] === next) return;
+    this.pendingDirection = next;
+  }
+
+  setStatus(text, color) {
+    this.statusText.setText(text);
+    this.statusText.setColor(color || C.neutralHex);
+    this.comboText.setText('Combo x' + this.combo);
+  }
+
+  addScore(delta) {
+    this.score = Math.max(0, this.score + delta);
+    this.scoreText.setText('Score ' + Math.round(this.score));
+    this.tweens.add({
+      targets: this.scoreText,
+      scaleX: 1.12,
+      scaleY: 1.12,
+      yoyo: true,
+      duration: 110
+    });
+  }
+
+  moveSnake() {
+    this.direction = this.pendingDirection;
+    const head = { x: this.snake[0].x, y: this.snake[0].y };
+    if (this.direction === 'up') head.y -= 1;
+    if (this.direction === 'down') head.y += 1;
+    if (this.direction === 'left') head.x -= 1;
+    if (this.direction === 'right') head.x += 1;
+
+    const out = head.x < 0 || head.x >= this.gridCols || head.y < 0 || head.y >= this.gridRows;
+    const selfHit = this.snake.some((part) => part.x === head.x && part.y === head.y);
+    if (out || selfHit) {
+      this.crashes += 1;
+      this.combo = 0;
+      this.addScore(-12);
+      this.setStatus('Crash reset -12', '#dc2626');
+      this.resetSnake();
+      this.spawnFruit();
+      return;
+    }
+
+    this.snake.unshift(head);
+    if (head.x === this.fruit.x && head.y === this.fruit.y) {
+      this.apples += 1;
+      this.combo += 1;
+      this.maxCombo = Math.max(this.maxCombo, this.combo);
+      const gain = 18 + Math.min(this.combo, 5) * 2;
+      this.addScore(gain);
+      this.setStatus('Fruit chain +' + gain, '#059669');
+      this.stepMs = Math.max(92, this.stepMs - 3);
+      this.spawnFruit();
+    } else {
+      this.snake.pop();
+    }
+  }
+
+  drawBoard() {
+    this.gridGraphics.clear();
+    this.gridGraphics.lineStyle(1, C.accent, 0.12);
+    for (let x = 0; x <= this.gridCols; x += 1) {
+      this.gridGraphics.moveTo(this.boardX + x * this.cell, this.boardY);
+      this.gridGraphics.lineTo(this.boardX + x * this.cell, this.boardY + this.gridRows * this.cell);
+    }
+    for (let y = 0; y <= this.gridRows; y += 1) {
+      this.gridGraphics.moveTo(this.boardX, this.boardY + y * this.cell);
+      this.gridGraphics.lineTo(this.boardX + this.gridCols * this.cell, this.boardY + y * this.cell);
+    }
+    this.gridGraphics.strokePath();
+
+    this.entityGraphics.clear();
+    for (let i = 0; i < this.snake.length; i += 1) {
+      const part = this.snake[i];
+      const px = this.boardX + part.x * this.cell + 2;
+      const py = this.boardY + part.y * this.cell + 2;
+      const fill = i === 0 ? C.accent : C.primary;
+      this.entityGraphics.fillStyle(fill, 1);
+      this.entityGraphics.fillRoundedRect(px, py, this.cell - 4, this.cell - 4, 6);
+    }
+    if (this.fruit) {
+      const fx = this.boardX + this.fruit.x * this.cell + this.cell / 2;
+      const fy = this.boardY + this.fruit.y * this.cell + this.cell / 2;
+      this.entityGraphics.fillStyle(C.danger, 1);
+      this.entityGraphics.fillCircle(fx, fy, 8);
+      this.entityGraphics.fillStyle(C.white, 0.9);
+      this.entityGraphics.fillCircle(fx + 2, fy - 2, 2);
+    }
+  }
+
+  finishGame() {
+    if (this.isOver) return;
+    this.isOver = true;
+    this.scene.start('ResultScene', {
+      score: Math.round(this.score),
+      maxCombo: this.maxCombo,
+      hits: this.apples,
+      misses: this.crashes
+    });
+  }
+
+  update(time, delta) {
+    if (this.isOver) return;
+
+    if (Phaser.Input.Keyboard.JustDown(this.cursors.left)) this.queueDirection('left');
+    if (Phaser.Input.Keyboard.JustDown(this.cursors.right)) this.queueDirection('right');
+    if (Phaser.Input.Keyboard.JustDown(this.cursors.up)) this.queueDirection('up');
+    if (Phaser.Input.Keyboard.JustDown(this.cursors.down)) this.queueDirection('down');
+
+    this.timeLeft = Math.max(0, this.timeLeft - delta / 1000);
+    this.timerText.setText('Time ' + Math.ceil(this.timeLeft));
+
+    this.survivalTick += delta;
+    if (this.survivalTick >= 1000) {
+      this.survivalTick -= 1000;
+      this.addScore(3);
+    }
+
+    this.stepTimer += delta;
+    if (this.stepTimer >= this.stepMs) {
+      this.stepTimer = 0;
+      this.moveSnake();
+      this.drawBoard();
+    }
+
+    if (this.timeLeft <= 0) this.finishGame();
+  }
+}
+
+class ResultScene extends Phaser.Scene {
+  constructor() {
+    super('ResultScene');
+  }
+
+  init(data) {
+    this.finalScore = data.score || 0;
+    this.maxCombo = data.maxCombo || 0;
+    this.hits = data.hits || 0;
+    this.misses = data.misses || 0;
+  }
+
+  create() {
+    this.cameras.main.setBackgroundColor(C.lightHex);
+    const rating = getRating(this.finalScore);
+    const modifier = getModifier(rating);
+    const modText = modifier > 0 ? '+' + modifier : String(modifier);
+    const ratingColor = { S: '#ffd700', A: C.primaryHex, B: '#9ca3af', C: '#fb7185', D: '#dc2626' }[rating];
+
+    this.add.rectangle(W / 2, 94, 350, 116, C.white, 1).setStrokeStyle(2.5, C.accent);
+    this.add.text(W / 2, 50, 'Settlement', {
+      fontFamily: 'Nunito',
+      fontSize: '32px',
+      fontStyle: '900',
+      color: C.accentHex
+    }).setOrigin(0.5);
+    this.add.text(W / 2, 86, 'Snake Sprint', {
+      fontFamily: 'Patrick Hand',
+      fontSize: '21px',
+      color: C.neutralHex
+    }).setOrigin(0.5);
+
+    this.add.text(W / 2, 252, rating, {
+      fontFamily: 'Nunito',
+      fontSize: '108px',
+      fontStyle: '900',
+      color: ratingColor,
+      stroke: '#111827',
+      strokeThickness: 4
+    }).setOrigin(0.5);
+
+    this.add.text(W / 2, 336, 'Score ' + this.finalScore, {
+      fontFamily: 'Nunito',
+      fontSize: '28px',
+      fontStyle: '800',
+      color: C.accentHex
+    }).setOrigin(0.5);
+    this.add.text(W / 2, 372, ATTRIBUTE + ' ' + modText, {
+      fontFamily: 'Patrick Hand',
+      fontSize: '24px',
+      color: C.neutralHex
+    }).setOrigin(0.5);
+
+    this.add.rectangle(110, 448, 130, 78, C.white, 1).setStrokeStyle(2, C.accent);
+    this.add.text(110, 432, 'Max Combo', {
+      fontFamily: 'Nunito',
+      fontSize: '15px',
+      fontStyle: '700',
+      color: C.neutralHex
+    }).setOrigin(0.5);
+    this.add.text(110, 463, String(this.maxCombo), {
+      fontFamily: 'Nunito',
+      fontSize: '30px',
+      fontStyle: '900',
+      color: C.accentHex
+    }).setOrigin(0.5);
+
+    this.add.rectangle(282, 448, 130, 78, C.white, 1).setStrokeStyle(2, C.accent);
+    this.add.text(282, 432, 'Apples / Crash', {
+      fontFamily: 'Nunito',
+      fontSize: '15px',
+      fontStyle: '700',
+      color: C.neutralHex
+    }).setOrigin(0.5);
+    this.add.text(282, 463, this.hits + ' / ' + this.misses, {
+      fontFamily: 'Nunito',
+      fontSize: '28px',
+      fontStyle: '900',
+      color: C.accentHex
+    }).setOrigin(0.5);
+
+    makeButton(this, {
+      x: W / 2,
+      y: H - 132,
+      w: 234,
+      h: 58,
+      label: 'Continue',
+      fontSize: 26,
+      onTap: () => {
+        notifyGameComplete({
+          rating: rating,
+          score: this.finalScore,
+          attribute: ATTRIBUTE,
+          modifier: modifier,
+          gameId: 'snake-sprint',
+          maxCombo: this.maxCombo,
+          hits: this.hits,
+          misses: this.misses
+        });
+      }
+    });
+  }
+}
+
+const config = {
+  type: Phaser.AUTO,
+  width: W,
+  height: H,
+  scale: {
+    mode: Phaser.Scale.FIT,
+    autoCenter: Phaser.Scale.CENTER_BOTH
+  },
+  backgroundColor: C.lightHex,
+  scene: [GameScene, ResultScene]
+};
+
+window.__game = new Phaser.Game(config);
+</script>
+</body>
+</html>

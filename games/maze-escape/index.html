@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no,viewport-fit=cover">
+<title>Maze Escape</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;900&family=Patrick+Hand&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100%; height: 100%; background: #172033; overflow: hidden; }
+  canvas { display: block; margin: 0 auto; }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
+</head>
+<body>
+<script>
+const params = new URLSearchParams(window.location.search);
+const ATTRIBUTE = params.get('attribute') || 'Wisdom';
+const PRIMARY_COLOR = params.get('primaryColor') || '#ff6b9d';
+
+const W = 393;
+const H = 736;
+const ROUND_SECONDS = 50;
+const RATING_THRESHOLDS = { S: 360, A: 270, B: 190, C: 110 };
+const MODIFIER_BY_RATING = { S: 2, A: 1, B: 0, C: -1, D: -2 };
+const MAZES = [
+  [
+    '###########',
+    '#S....#...#',
+    '#.##.#.#.#E',
+    '#....#.#..#',
+    '###.##.##.#',
+    '#...#....##',
+    '#.#.#.##..#',
+    '#.#...#...#',
+    '#.#####.#.#',
+    '#....K..#.#',
+    '###########'
+  ],
+  [
+    '###########',
+    '#S...#....#',
+    '#.##.#.##.#',
+    '#..#.#..#.#',
+    '##.#.##.#.#',
+    '#..#....#.#',
+    '#.#######.#',
+    '#.....K...#',
+    '#.#######.#',
+    '#...#....E#',
+    '###########'
+  ],
+  [
+    '###########',
+    '#S......#E#',
+    '#.#####.#.#',
+    '#.#...#.#.#',
+    '#.#.#.#.#.#',
+    '#...#...#.#',
+    '###.#####.#',
+    '#...#.....#',
+    '#.#.#.###.#',
+    '#.#..K....#',
+    '###########'
+  ],
+  [
+    '###########',
+    '#S.#......#',
+    '#..#.####.#',
+    '##.#....#.#',
+    '#..####.#.#',
+    '#.#....#..#',
+    '#.#.##.##.#',
+    '#...#..K#.#',
+    '#.###.###.#',
+    '#.....#..E#',
+    '###########'
+  ]
+];
+
+function getRating(score) {
+  if (score >= RATING_THRESHOLDS.S) return 'S';
+  if (score >= RATING_THRESHOLDS.A) return 'A';
+  if (score >= RATING_THRESHOLDS.B) return 'B';
+  if (score >= RATING_THRESHOLDS.C) return 'C';
+  return 'D';
+}
+
+function getModifier(rating) {
+  return MODIFIER_BY_RATING[rating];
+}
+
+function notifyGameComplete(result) {
+  const payload = JSON.stringify(result);
+  if (window.webkit?.messageHandlers?.jsBridge) {
+    window.webkit.messageHandlers.jsBridge.postMessage(payload);
+    return;
+  }
+  if (window.jsBridge?.postMessage) {
+    window.jsBridge.postMessage(payload);
+    return;
+  }
+  if (window.parent !== window) {
+    window.parent.postMessage(payload, '*');
+    return;
+  }
+  console.log('[GameComplete]', result);
+}
+
+function clamp(v, min, max) {
+  return Math.max(min, Math.min(max, v));
+}
+
+function hexToRgb(hex) {
+  const raw = hex.replace('#', '');
+  const full = raw.length === 3 ? raw.split('').map((c) => c + c).join('') : raw;
+  const value = parseInt(full, 16);
+  return {
+    r: (value >> 16) & 255,
+    g: (value >> 8) & 255,
+    b: value & 255
+  };
+}
+
+function rgbToHex(r, g, b) {
+  const toHex = (n) => clamp(Math.round(n), 0, 255).toString(16).padStart(2, '0');
+  return '#' + toHex(r) + toHex(g) + toHex(b);
+}
+
+function blendHex(a, b, t) {
+  const ca = hexToRgb(a);
+  const cb = hexToRgb(b);
+  return rgbToHex(
+    ca.r + (cb.r - ca.r) * t,
+    ca.g + (cb.g - ca.g) * t,
+    ca.b + (cb.b - ca.b) * t
+  );
+}
+
+function colorSet(primaryColor) {
+  const palette = {
+    primary: primaryColor,
+    light: blendHex(primaryColor, '#f8fafc', 0.88),
+    accent: blendHex(primaryColor, '#111827', 0.62),
+    neutral: blendHex(primaryColor, '#1f2937', 0.76)
+  };
+  return {
+    primaryHex: palette.primary,
+    lightHex: palette.light,
+    accentHex: palette.accent,
+    neutralHex: palette.neutral,
+    primary: Phaser.Display.Color.HexStringToColor(palette.primary).color,
+    light: Phaser.Display.Color.HexStringToColor(palette.light).color,
+    accent: Phaser.Display.Color.HexStringToColor(palette.accent).color,
+    neutral: Phaser.Display.Color.HexStringToColor(palette.neutral).color,
+    white: 0xffffff,
+    dark: 0x111827,
+    success: 0x22c55e,
+    danger: 0xef4444,
+    gold: 0xffd700
+  };
+}
+
+const C = colorSet(PRIMARY_COLOR);
+
+function makeButton(scene, cfg) {
+  const shadow = scene.add.rectangle(cfg.x + 3, cfg.y + 3, cfg.w, cfg.h, C.accent, 1).setDepth(20);
+  const body = scene.add.rectangle(cfg.x, cfg.y, cfg.w, cfg.h, cfg.fill || C.primary, 1)
+    .setStrokeStyle(2.5, C.accent)
+    .setInteractive({ useHandCursor: true })
+    .setDepth(21);
+  const label = scene.add.text(cfg.x, cfg.y, cfg.label, {
+    fontFamily: 'Nunito',
+    fontSize: (cfg.fontSize || 22) + 'px',
+    fontStyle: '900',
+    color: cfg.textColor || '#ffffff'
+  }).setOrigin(0.5).setDepth(22);
+
+  const release = (emitTap) => {
+    body.setPosition(cfg.x, cfg.y);
+    label.setPosition(cfg.x, cfg.y);
+    shadow.setVisible(true);
+    if (emitTap && cfg.onTap) cfg.onTap();
+  };
+
+  body.on('pointerdown', () => {
+    body.setPosition(cfg.x + 2, cfg.y + 2);
+    label.setPosition(cfg.x + 2, cfg.y + 2);
+    shadow.setVisible(false);
+  });
+  body.on('pointerup', () => release(true));
+  body.on('pointerout', () => release(false));
+}
+
+class GameScene extends Phaser.Scene {
+  constructor() {
+    super('GameScene');
+  }
+
+  init() {
+    this.score = 0;
+    this.timeLeft = ROUND_SECONDS;
+    this.isOver = false;
+    this.combo = 0;
+    this.maxCombo = 0;
+    this.escapes = 0;
+    this.bumps = 0;
+    this.mazeIndex = 0;
+    this.cell = 24;
+    this.boardX = 64;
+    this.boardY = 208;
+  }
+
+  create() {
+    this.cameras.main.setBackgroundColor(C.lightHex);
+
+    const dots = this.add.graphics();
+    dots.fillStyle(C.primary, 0.08);
+    for (let x = 16; x < W; x += 26) {
+      for (let y = 12; y < H; y += 28) {
+        dots.fillCircle(x + ((y / 28) % 2 ? 4 : -2), y, 2);
+      }
+    }
+
+    this.add.rectangle(W / 2, 82, 350, 118, C.white, 1).setStrokeStyle(2.5, C.accent);
+    this.add.text(W / 2, 46, 'Maze Escape', {
+      fontFamily: 'Nunito',
+      fontSize: '30px',
+      fontStyle: '900',
+      color: C.accentHex
+    }).setOrigin(0.5);
+    this.add.text(W / 2, 78, 'Grab the key, then route to the exit.', {
+      fontFamily: 'Patrick Hand',
+      fontSize: '20px',
+      color: C.neutralHex
+    }).setOrigin(0.5);
+
+    this.add.rectangle(24, 112, 142, 34, C.light, 1).setOrigin(0, 0.5).setStrokeStyle(2, C.accent);
+    this.scoreText = this.add.text(36, 112, 'Score 0', {
+      fontFamily: 'Nunito',
+      fontSize: '16px',
+      fontStyle: '700',
+      color: C.accentHex
+    }).setOrigin(0, 0.5);
+
+    this.add.rectangle(W - 24, 112, 126, 34, C.light, 1).setOrigin(1, 0.5).setStrokeStyle(2, C.accent);
+    this.timerText = this.add.text(W - 36, 112, 'Time ' + this.timeLeft, {
+      fontFamily: 'Nunito',
+      fontSize: '16px',
+      fontStyle: '700',
+      color: C.accentHex
+    }).setOrigin(1, 0.5);
+
+    this.add.rectangle(W / 2, 390, 322, 404, C.white, 0.96).setStrokeStyle(2.5, C.accent);
+    this.mazeLabel = this.add.text(W / 2, 176, 'Maze 1', {
+      fontFamily: 'Nunito',
+      fontSize: '18px',
+      fontStyle: '700',
+      color: C.accentHex
+    }).setOrigin(0.5);
+    this.graphics = this.add.graphics();
+
+    this.statusText = this.add.text(W / 2, 596, 'Walls waste time, clean routes build combo', {
+      fontFamily: 'Patrick Hand',
+      fontSize: '20px',
+      color: C.neutralHex
+    }).setOrigin(0.5);
+    this.comboText = this.add.text(W / 2, 626, 'Combo x0', {
+      fontFamily: 'Nunito',
+      fontSize: '20px',
+      fontStyle: '700',
+      color: C.accentHex
+    }).setOrigin(0.5);
+
+    makeButton(this, { x: W / 2, y: H - 106, w: 78, h: 48, label: 'Up', fontSize: 20, onTap: () => this.tryMove(0, -1) });
+    makeButton(this, { x: W / 2 - 92, y: H - 56, w: 78, h: 48, label: 'Left', fontSize: 20, onTap: () => this.tryMove(-1, 0) });
+    makeButton(this, { x: W / 2, y: H - 56, w: 78, h: 48, label: 'Down', fontSize: 18, onTap: () => this.tryMove(0, 1) });
+    makeButton(this, { x: W / 2 + 92, y: H - 56, w: 78, h: 48, label: 'Right', fontSize: 18, onTap: () => this.tryMove(1, 0) });
+
+    this.cursors = this.input.keyboard.createCursorKeys();
+    this.installSwipe();
+    this.loadMaze(0);
+  }
+
+  installSwipe() {
+    this.swipeStart = null;
+    this.input.on('pointerdown', (pointer) => {
+      this.swipeStart = { x: pointer.x, y: pointer.y };
+    });
+    this.input.on('pointerup', (pointer) => {
+      if (!this.swipeStart) return;
+      const dx = pointer.x - this.swipeStart.x;
+      const dy = pointer.y - this.swipeStart.y;
+      if (Math.abs(dx) < 18 && Math.abs(dy) < 18) return;
+      if (Math.abs(dx) > Math.abs(dy)) this.tryMove(dx > 0 ? 1 : -1, 0);
+      else this.tryMove(0, dy > 0 ? 1 : -1);
+      this.swipeStart = null;
+    });
+  }
+
+  loadMaze(index) {
+    this.map = MAZES[index % MAZES.length];
+    this.mazeIndex = index % MAZES.length;
+    this.hasKey = false;
+    this.mazeBumps = 0;
+    for (let y = 0; y < this.map.length; y += 1) {
+      for (let x = 0; x < this.map[y].length; x += 1) {
+        const cell = this.map[y][x];
+        if (cell === 'S') this.player = { x, y };
+        if (cell === 'K') this.key = { x, y };
+        if (cell === 'E') this.exit = { x, y };
+      }
+    }
+    this.mazeLabel.setText('Maze ' + (this.escapes + 1));
+    this.drawMaze();
+  }
+
+  addScore(delta) {
+    this.score = Math.max(0, this.score + delta);
+    this.scoreText.setText('Score ' + Math.round(this.score));
+    this.tweens.add({
+      targets: this.scoreText,
+      scaleX: 1.12,
+      scaleY: 1.12,
+      yoyo: true,
+      duration: 110
+    });
+  }
+
+  setStatus(text, color) {
+    this.statusText.setText(text);
+    this.statusText.setColor(color || C.neutralHex);
+    this.comboText.setText('Combo x' + this.combo);
+  }
+
+  cellBlocked(x, y) {
+    return this.map[y][x] === '#';
+  }
+
+  tryMove(dx, dy) {
+    if (this.isOver) return;
+    const nextX = this.player.x + dx;
+    const nextY = this.player.y + dy;
+    if (nextX < 0 || nextY < 0 || nextY >= this.map.length || nextX >= this.map[0].length || this.cellBlocked(nextX, nextY)) {
+      this.bumps += 1;
+      this.mazeBumps += 1;
+      this.combo = 0;
+      this.addScore(-2);
+      this.setStatus('Wall bump -2', '#dc2626');
+      return;
+    }
+
+    this.player.x = nextX;
+    this.player.y = nextY;
+    if (!this.hasKey && this.player.x === this.key.x && this.player.y === this.key.y) {
+      this.hasKey = true;
+      this.addScore(14);
+      this.setStatus('Key found +14', '#059669');
+    } else if (this.player.x === this.exit.x && this.player.y === this.exit.y) {
+      if (!this.hasKey) {
+        this.setStatus('Exit is locked, grab the key first', '#b45309');
+      } else {
+        const cleanBonus = Math.max(0, 14 - this.mazeBumps * 2);
+        const gain = 36 + cleanBonus + Math.min(this.combo, 4) * 4;
+        this.escapes += 1;
+        this.combo += 1;
+        this.maxCombo = Math.max(this.maxCombo, this.combo);
+        this.addScore(gain);
+        this.setStatus('Maze clear +' + gain, '#059669');
+        this.loadMaze(this.mazeIndex + 1);
+      }
+    }
+    this.drawMaze();
+  }
+
+  drawMaze() {
+    this.graphics.clear();
+    for (let y = 0; y < this.map.length; y += 1) {
+      for (let x = 0; x < this.map[y].length; x += 1) {
+        const cell = this.map[y][x];
+        const px = this.boardX + x * this.cell;
+        const py = this.boardY + y * this.cell;
+        if (cell === '#') {
+          this.graphics.fillStyle(C.accent, 1);
+          this.graphics.fillRoundedRect(px, py, this.cell - 2, this.cell - 2, 5);
+        } else {
+          this.graphics.fillStyle(C.light, 1);
+          this.graphics.fillRoundedRect(px, py, this.cell - 2, this.cell - 2, 4);
+        }
+      }
+    }
+
+    if (!this.hasKey) {
+      this.graphics.fillStyle(C.gold, 1);
+      this.graphics.fillCircle(this.boardX + this.key.x * this.cell + this.cell / 2 - 1, this.boardY + this.key.y * this.cell + this.cell / 2, 8);
+      this.graphics.lineStyle(2, C.accent, 1);
+      this.graphics.strokeCircle(this.boardX + this.key.x * this.cell + this.cell / 2 + 5, this.boardY + this.key.y * this.cell + this.cell / 2, 4);
+    }
+
+    const exitColor = this.hasKey ? C.success : C.primary;
+    this.graphics.fillStyle(exitColor, 1);
+    this.graphics.fillRoundedRect(this.boardX + this.exit.x * this.cell + 4, this.boardY + this.exit.y * this.cell + 4, this.cell - 10, this.cell - 10, 5);
+
+    this.graphics.fillStyle(C.primary, 1);
+    this.graphics.fillCircle(this.boardX + this.player.x * this.cell + this.cell / 2, this.boardY + this.player.y * this.cell + this.cell / 2, 8);
+    this.graphics.fillStyle(C.white, 0.95);
+    this.graphics.fillCircle(this.boardX + this.player.x * this.cell + this.cell / 2 + 2, this.boardY + this.player.y * this.cell + this.cell / 2 - 2, 2);
+  }
+
+  finishGame() {
+    if (this.isOver) return;
+    this.isOver = true;
+    this.scene.start('ResultScene', {
+      score: Math.round(this.score),
+      maxCombo: this.maxCombo,
+      hits: this.escapes,
+      misses: this.bumps
+    });
+  }
+
+  update(time, delta) {
+    if (this.isOver) return;
+    if (Phaser.Input.Keyboard.JustDown(this.cursors.left)) this.tryMove(-1, 0);
+    if (Phaser.Input.Keyboard.JustDown(this.cursors.right)) this.tryMove(1, 0);
+    if (Phaser.Input.Keyboard.JustDown(this.cursors.up)) this.tryMove(0, -1);
+    if (Phaser.Input.Keyboard.JustDown(this.cursors.down)) this.tryMove(0, 1);
+    this.timeLeft = Math.max(0, this.timeLeft - delta / 1000);
+    this.timerText.setText('Time ' + Math.ceil(this.timeLeft));
+    if (this.timeLeft <= 0) this.finishGame();
+  }
+}
+
+class ResultScene extends Phaser.Scene {
+  constructor() {
+    super('ResultScene');
+  }
+
+  init(data) {
+    this.finalScore = data.score || 0;
+    this.maxCombo = data.maxCombo || 0;
+    this.hits = data.hits || 0;
+    this.misses = data.misses || 0;
+  }
+
+  create() {
+    this.cameras.main.setBackgroundColor(C.lightHex);
+    const rating = getRating(this.finalScore);
+    const modifier = getModifier(rating);
+    const modText = modifier > 0 ? '+' + modifier : String(modifier);
+    const ratingColor = { S: '#ffd700', A: C.primaryHex, B: '#9ca3af', C: '#fb7185', D: '#dc2626' }[rating];
+
+    this.add.rectangle(W / 2, 94, 350, 116, C.white, 1).setStrokeStyle(2.5, C.accent);
+    this.add.text(W / 2, 50, 'Settlement', {
+      fontFamily: 'Nunito',
+      fontSize: '32px',
+      fontStyle: '900',
+      color: C.accentHex
+    }).setOrigin(0.5);
+    this.add.text(W / 2, 86, 'Maze Escape', {
+      fontFamily: 'Patrick Hand',
+      fontSize: '21px',
+      color: C.neutralHex
+    }).setOrigin(0.5);
+
+    this.add.text(W / 2, 252, rating, {
+      fontFamily: 'Nunito',
+      fontSize: '108px',
+      fontStyle: '900',
+      color: ratingColor,
+      stroke: '#111827',
+      strokeThickness: 4
+    }).setOrigin(0.5);
+
+    this.add.text(W / 2, 336, 'Score ' + this.finalScore, {
+      fontFamily: 'Nunito',
+      fontSize: '28px',
+      fontStyle: '800',
+      color: C.accentHex
+    }).setOrigin(0.5);
+    this.add.text(W / 2, 372, ATTRIBUTE + ' ' + modText, {
+      fontFamily: 'Patrick Hand',
+      fontSize: '24px',
+      color: C.neutralHex
+    }).setOrigin(0.5);
+
+    this.add.rectangle(110, 448, 130, 78, C.white, 1).setStrokeStyle(2, C.accent);
+    this.add.text(110, 432, 'Max Combo', {
+      fontFamily: 'Nunito',
+      fontSize: '15px',
+      fontStyle: '700',
+      color: C.neutralHex
+    }).setOrigin(0.5);
+    this.add.text(110, 463, String(this.maxCombo), {
+      fontFamily: 'Nunito',
+      fontSize: '30px',
+      fontStyle: '900',
+      color: C.accentHex
+    }).setOrigin(0.5);
+
+    this.add.rectangle(282, 448, 130, 78, C.white, 1).setStrokeStyle(2, C.accent);
+    this.add.text(282, 432, 'Escapes / Bump', {
+      fontFamily: 'Nunito',
+      fontSize: '15px',
+      fontStyle: '700',
+      color: C.neutralHex
+    }).setOrigin(0.5);
+    this.add.text(282, 463, this.hits + ' / ' + this.misses, {
+      fontFamily: 'Nunito',
+      fontSize: '28px',
+      fontStyle: '900',
+      color: C.accentHex
+    }).setOrigin(0.5);
+
+    makeButton(this, {
+      x: W / 2,
+      y: H - 132,
+      w: 234,
+      h: 58,
+      label: 'Continue',
+      fontSize: 26,
+      onTap: () => {
+        notifyGameComplete({
+          rating: rating,
+          score: this.finalScore,
+          attribute: ATTRIBUTE,
+          modifier: modifier,
+          gameId: 'maze-escape',
+          maxCombo: this.maxCombo,
+          hits: this.hits,
+          misses: this.misses
+        });
+      }
+    });
+  }
+}
+
+const config = {
+  type: Phaser.AUTO,
+  width: W,
+  height: H,
+  scale: {
+    mode: Phaser.Scale.FIT,
+    autoCenter: Phaser.Scale.CENTER_BOTH
+  },
+  backgroundColor: C.lightHex,
+  scene: [GameScene, ResultScene]
+};
+
+window.__game = new Phaser.Game(config);
+</script>
+</body>
+</html>

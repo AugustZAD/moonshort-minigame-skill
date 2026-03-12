@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no,viewport-fit=cover">
+<title>Mini Golf Putt</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;900&family=Patrick+Hand&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100%; height: 100%; background: #172033; overflow: hidden; }
+  canvas { display: block; margin: 0 auto; }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
+</head>
+<body>
+<script>
+const params = new URLSearchParams(window.location.search);
+const ATTRIBUTE = params.get('attribute') || 'Focus';
+const PRIMARY_COLOR = params.get('primaryColor') || '#ff6b9d';
+
+const W = 393;
+const H = 736;
+const ROUND_SECONDS = 55;
+const RATING_THRESHOLDS = { S: 320, A: 245, B: 175, C: 100 };
+const MODIFIER_BY_RATING = { S: 2, A: 1, B: 0, C: -1, D: -2 };
+const HOLES = [
+  { tee: { x: 88, y: 454 }, hole: { x: 302, y: 242 }, obstacles: [{ x: 152, y: 314, w: 86, h: 18 }, { x: 244, y: 404, w: 18, h: 86 }] },
+  { tee: { x: 300, y: 458 }, hole: { x: 102, y: 260 }, obstacles: [{ x: 150, y: 260, w: 18, h: 92 }, { x: 210, y: 380, w: 86, h: 18 }] },
+  { tee: { x: 90, y: 270 }, hole: { x: 298, y: 442 }, obstacles: [{ x: 120, y: 350, w: 120, h: 18 }, { x: 250, y: 294, w: 18, h: 96 }] },
+  { tee: { x: 304, y: 282 }, hole: { x: 100, y: 438 }, obstacles: [{ x: 176, y: 244, w: 18, h: 92 }, { x: 186, y: 412, w: 108, h: 18 }] }
+];
+
+function getRating(score) {
+  if (score >= RATING_THRESHOLDS.S) return 'S';
+  if (score >= RATING_THRESHOLDS.A) return 'A';
+  if (score >= RATING_THRESHOLDS.B) return 'B';
+  if (score >= RATING_THRESHOLDS.C) return 'C';
+  return 'D';
+}
+
+function getModifier(rating) {
+  return MODIFIER_BY_RATING[rating];
+}
+
+function notifyGameComplete(result) {
+  const payload = JSON.stringify(result);
+  if (window.webkit?.messageHandlers?.jsBridge) {
+    window.webkit.messageHandlers.jsBridge.postMessage(payload);
+    return;
+  }
+  if (window.jsBridge?.postMessage) {
+    window.jsBridge.postMessage(payload);
+    return;
+  }
+  if (window.parent !== window) {
+    window.parent.postMessage(payload, '*');
+    return;
+  }
+  console.log('[GameComplete]', result);
+}
+
+function clamp(v, min, max) {
+  return Math.max(min, Math.min(max, v));
+}
+
+function hexToRgb(hex) {
+  const raw = hex.replace('#', '');
+  const full = raw.length === 3 ? raw.split('').map((c) => c + c).join('') : raw;
+  const value = parseInt(full, 16);
+  return {
+    r: (value >> 16) & 255,
+    g: (value >> 8) & 255,
+    b: value & 255
+  };
+}
+
+function rgbToHex(r, g, b) {
+  const toHex = (n) => clamp(Math.round(n), 0, 255).toString(16).padStart(2, '0');
+  return '#' + toHex(r) + toHex(g) + toHex(b);
+}
+
+function blendHex(a, b, t) {
+  const ca = hexToRgb(a);
+  const cb = hexToRgb(b);
+  return rgbToHex(
+    ca.r + (cb.r - ca.r) * t,
+    ca.g + (cb.g - ca.g) * t,
+    ca.b + (cb.b - ca.b) * t
+  );
+}
+
+function colorSet(primaryColor) {
+  const palette = {
+    primary: primaryColor,
+    light: blendHex(primaryColor, '#f8fafc', 0.88),
+    accent: blendHex(primaryColor, '#111827', 0.62),
+    neutral: blendHex(primaryColor, '#1f2937', 0.76)
+  };
+  return {
+    primaryHex: palette.primary,
+    lightHex: palette.light,
+    accentHex: palette.accent,
+    neutralHex: palette.neutral,
+    primary: Phaser.Display.Color.HexStringToColor(palette.primary).color,
+    light: Phaser.Display.Color.HexStringToColor(palette.light).color,
+    accent: Phaser.Display.Color.HexStringToColor(palette.accent).color,
+    neutral: Phaser.Display.Color.HexStringToColor(palette.neutral).color,
+    white: 0xffffff,
+    dark: 0x111827,
+    success: 0x22c55e,
+    danger: 0xef4444,
+    gold: 0xffd700
+  };
+}
+
+const C = colorSet(PRIMARY_COLOR);
+
+function makeButton(scene, cfg) {
+  const shadow = scene.add.rectangle(cfg.x + 3, cfg.y + 3, cfg.w, cfg.h, C.accent, 1).setDepth(20);
+  const body = scene.add.rectangle(cfg.x, cfg.y, cfg.w, cfg.h, cfg.fill || C.primary, 1)
+    .setStrokeStyle(2.5, C.accent)
+    .setInteractive({ useHandCursor: true })
+    .setDepth(21);
+  const label = scene.add.text(cfg.x, cfg.y, cfg.label, {
+    fontFamily: 'Nunito',
+    fontSize: (cfg.fontSize || 22) + 'px',
+    fontStyle: '900',
+    color: cfg.textColor || '#ffffff'
+  }).setOrigin(0.5).setDepth(22);
+
+  const release = (emitTap) => {
+    body.setPosition(cfg.x, cfg.y);
+    label.setPosition(cfg.x, cfg.y);
+    shadow.setVisible(true);
+    if (emitTap && cfg.onTap) cfg.onTap();
+  };
+
+  body.on('pointerdown', () => {
+    body.setPosition(cfg.x + 2, cfg.y + 2);
+    label.setPosition(cfg.x + 2, cfg.y + 2);
+    shadow.setVisible(false);
+  });
+  body.on('pointerup', () => release(true));
+  body.on('pointerout', () => release(false));
+}
+
+class GameScene extends Phaser.Scene {
+  constructor() {
+    super('GameScene');
+  }
+
+  init() {
+    this.score = 0;
+    this.timeLeft = ROUND_SECONDS;
+    this.isOver = false;
+    this.combo = 0;
+    this.maxCombo = 0;
+    this.holesCleared = 0;
+    this.totalStrokes = 0;
+    this.holeIndex = 0;
+    this.holeStrokes = 0;
+    this.ball = { x: 0, y: 0, vx: 0, vy: 0, r: 8 };
+    this.isAiming = false;
+  }
+
+  create() {
+    this.cameras.main.setBackgroundColor(C.lightHex);
+
+    const dots = this.add.graphics();
+    dots.fillStyle(C.primary, 0.08);
+    for (let x = 16; x < W; x += 26) {
+      for (let y = 12; y < H; y += 28) {
+        dots.fillCircle(x + ((y / 28) % 2 ? 4 : -2), y, 2);
+      }
+    }
+
+    this.add.rectangle(W / 2, 82, 350, 118, C.white, 1).setStrokeStyle(2.5, C.accent);
+    this.add.text(W / 2, 46, 'Mini Golf Putt', {
+      fontFamily: 'Nunito',
+      fontSize: '30px',
+      fontStyle: '900',
+      color: C.accentHex
+    }).setOrigin(0.5);
+    this.add.text(W / 2, 78, 'Pull back from the ball, then release into the cup.', {
+      fontFamily: 'Patrick Hand',
+      fontSize: '18px',
+      color: C.neutralHex
+    }).setOrigin(0.5);
+
+    this.add.rectangle(24, 112, 142, 34, C.light, 1).setOrigin(0, 0.5).setStrokeStyle(2, C.accent);
+    this.scoreText = this.add.text(36, 112, 'Score 0', {
+      fontFamily: 'Nunito',
+      fontSize: '16px',
+      fontStyle: '700',
+      color: C.accentHex
+    }).setOrigin(0, 0.5);
+
+    this.add.rectangle(W - 24, 112, 126, 34, C.light, 1).setOrigin(1, 0.5).setStrokeStyle(2, C.accent);
+    this.timerText = this.add.text(W - 36, 112, 'Time ' + this.timeLeft, {
+      fontFamily: 'Nunito',
+      fontSize: '16px',
+      fontStyle: '700',
+      color: C.accentHex
+    }).setOrigin(1, 0.5);
+
+    this.add.rectangle(W / 2, 388, 322, 398, C.white, 0.96).setStrokeStyle(2.5, C.accent);
+    this.graphics = this.add.graphics();
+    this.holeText = this.add.text(W / 2, 174, 'Hole 1', {
+      fontFamily: 'Nunito',
+      fontSize: '18px',
+      fontStyle: '700',
+      color: C.accentHex
+    }).setOrigin(0.5);
+
+    this.statusText = this.add.text(W / 2, 608, 'Ball must stop before the next putt.', {
+      fontFamily: 'Patrick Hand',
+      fontSize: '18px',
+      color: C.neutralHex,
+      align: 'center',
+      wordWrap: { width: 304 }
+    }).setOrigin(0.5);
+    this.comboText = this.add.text(W / 2, 642, 'Combo x0', {
+      fontFamily: 'Nunito',
+      fontSize: '20px',
+      fontStyle: '700',
+      color: C.accentHex
+    }).setOrigin(0.5);
+
+    this.input.on('pointerdown', (pointer) => this.handleAimStart(pointer));
+    this.input.on('pointermove', (pointer) => this.handleAimMove(pointer));
+    this.input.on('pointerup', (pointer) => this.handleAimEnd(pointer));
+    this.loadHole(0);
+  }
+
+  addScore(delta) {
+    this.score = Math.max(0, this.score + delta);
+    this.scoreText.setText('Score ' + Math.round(this.score));
+    this.tweens.add({
+      targets: this.scoreText,
+      scaleX: 1.12,
+      scaleY: 1.12,
+      yoyo: true,
+      duration: 110
+    });
+  }
+
+  setStatus(text, color) {
+    this.statusText.setText(text);
+    this.statusText.setColor(color || C.neutralHex);
+    this.comboText.setText('Combo x' + this.combo);
+  }
+
+  currentHole() {
+    return HOLES[this.holeIndex % HOLES.length];
+  }
+
+  loadHole(index) {
+    this.holeIndex = index % HOLES.length;
+    this.holeStrokes = 0;
+    const hole = this.currentHole();
+    this.ball.x = hole.tee.x;
+    this.ball.y = hole.tee.y;
+    this.ball.vx = 0;
+    this.ball.vy = 0;
+    this.holeText.setText('Hole ' + (this.holesCleared + 1));
+  }
+
+  handleAimStart(pointer) {
+    if (this.isOver) return;
+    const speed = Math.hypot(this.ball.vx, this.ball.vy);
+    if (speed > 20) return;
+    if (Phaser.Math.Distance.Between(pointer.x, pointer.y, this.ball.x, this.ball.y) > 26) return;
+    this.isAiming = true;
+    this.aimPointer = { x: pointer.x, y: pointer.y };
+  }
+
+  handleAimMove(pointer) {
+    if (!this.isAiming) return;
+    this.aimPointer = { x: pointer.x, y: pointer.y };
+  }
+
+  handleAimEnd(pointer) {
+    if (!this.isAiming) return;
+    this.isAiming = false;
+    const dx = this.ball.x - pointer.x;
+    const dy = this.ball.y - pointer.y;
+    const dist = Math.hypot(dx, dy);
+    if (dist < 16) return;
+    const strength = clamp(dist, 16, 86) * 2.4;
+    const angle = Math.atan2(dy, dx);
+    this.ball.vx = Math.cos(angle) * strength;
+    this.ball.vy = Math.sin(angle) * strength;
+    this.totalStrokes += 1;
+    this.holeStrokes += 1;
+    this.setStatus('Stroke ' + this.holeStrokes, '#b45309');
+  }
+
+  resolveObstacle(rect) {
+    const nearestX = clamp(this.ball.x, rect.x - rect.w / 2, rect.x + rect.w / 2);
+    const nearestY = clamp(this.ball.y, rect.y - rect.h / 2, rect.y + rect.h / 2);
+    const dx = this.ball.x - nearestX;
+    const dy = this.ball.y - nearestY;
+    if (dx * dx + dy * dy > this.ball.r * this.ball.r) return;
+    if (Math.abs(dx) > Math.abs(dy)) {
+      this.ball.vx *= -1;
+      this.ball.x = nearestX + Math.sign(dx || 1) * (this.ball.r + 1);
+    } else {
+      this.ball.vy *= -1;
+      this.ball.y = nearestY + Math.sign(dy || 1) * (this.ball.r + 1);
+    }
+  }
+
+  drawCourse() {
+    const hole = this.currentHole();
+    this.graphics.clear();
+    this.graphics.fillStyle(0xdef7df, 1);
+    this.graphics.fillRoundedRect(42, 192, 309, 360, 18);
+    this.graphics.lineStyle(3, C.accent, 0.14);
+    this.graphics.strokeRoundedRect(42, 192, 309, 360, 18);
+
+    this.graphics.fillStyle(C.gold, 1);
+    this.graphics.fillCircle(hole.hole.x, hole.hole.y, 10);
+    this.graphics.fillStyle(C.dark, 1);
+    this.graphics.fillCircle(hole.hole.x, hole.hole.y, 5);
+    this.graphics.lineStyle(3, C.accent, 0.2);
+    this.graphics.beginPath();
+    this.graphics.moveTo(hole.hole.x, hole.hole.y);
+    this.graphics.lineTo(hole.hole.x, hole.hole.y - 36);
+    this.graphics.strokePath();
+    this.graphics.fillStyle(C.primary, 1);
+    this.graphics.fillTriangle(hole.hole.x, hole.hole.y - 36, hole.hole.x + 24, hole.hole.y - 26, hole.hole.x, hole.hole.y - 18);
+
+    for (const obstacle of hole.obstacles) {
+      this.graphics.fillStyle(C.accent, 1);
+      this.graphics.fillRoundedRect(obstacle.x - obstacle.w / 2, obstacle.y - obstacle.h / 2, obstacle.w, obstacle.h, 8);
+    }
+
+    this.graphics.fillStyle(C.white, 1);
+    this.graphics.fillCircle(this.ball.x, this.ball.y, this.ball.r);
+    this.graphics.fillStyle(0xd1d5db, 1);
+    this.graphics.fillCircle(this.ball.x + 2, this.ball.y - 2, 2);
+
+    if (this.isAiming && this.aimPointer) {
+      this.graphics.lineStyle(4, C.primary, 0.5);
+      this.graphics.beginPath();
+      this.graphics.moveTo(this.ball.x, this.ball.y);
+      this.graphics.lineTo(this.aimPointer.x, this.aimPointer.y);
+      this.graphics.strokePath();
+    }
+  }
+
+  nextHole() {
+    const clean = this.holeStrokes <= 2;
+    if (clean) {
+      this.combo += 1;
+      this.maxCombo = Math.max(this.maxCombo, this.combo);
+    } else {
+      this.combo = 0;
+    }
+    const gain = 26 + Math.max(0, 16 - this.holeStrokes * 4) + (clean ? Math.min(this.combo, 4) * 2 : 0);
+    this.holesCleared += 1;
+    this.addScore(gain);
+    this.setStatus('Hole clear +' + gain, '#059669');
+    this.loadHole(this.holeIndex + 1);
+  }
+
+  finishGame() {
+    if (this.isOver) return;
+    this.isOver = true;
+    this.scene.start('ResultScene', {
+      score: Math.round(this.score),
+      maxCombo: this.maxCombo,
+      hits: this.holesCleared,
+      misses: this.totalStrokes
+    });
+  }
+
+  update(time, delta) {
+    if (this.isOver) return;
+    this.timeLeft = Math.max(0, this.timeLeft - delta / 1000);
+    this.timerText.setText('Time ' + Math.ceil(this.timeLeft));
+
+    const dt = delta / 1000;
+    this.ball.x += this.ball.vx * dt;
+    this.ball.y += this.ball.vy * dt;
+    this.ball.vx *= 0.987;
+    this.ball.vy *= 0.987;
+    if (Math.abs(this.ball.vx) < 4) this.ball.vx = 0;
+    if (Math.abs(this.ball.vy) < 4) this.ball.vy = 0;
+
+    if (this.ball.x < 50 + this.ball.r || this.ball.x > 343 - this.ball.r) this.ball.vx *= -1;
+    if (this.ball.y < 200 + this.ball.r || this.ball.y > 544 - this.ball.r) this.ball.vy *= -1;
+    this.ball.x = clamp(this.ball.x, 50 + this.ball.r, 343 - this.ball.r);
+    this.ball.y = clamp(this.ball.y, 200 + this.ball.r, 544 - this.ball.r);
+
+    for (const obstacle of this.currentHole().obstacles) this.resolveObstacle(obstacle);
+
+    const hole = this.currentHole();
+    if (Phaser.Math.Distance.Between(this.ball.x, this.ball.y, hole.hole.x, hole.hole.y) < 11 && Math.hypot(this.ball.vx, this.ball.vy) < 42) {
+      this.nextHole();
+    }
+
+    this.drawCourse();
+    if (this.timeLeft <= 0) this.finishGame();
+  }
+}
+
+class ResultScene extends Phaser.Scene {
+  constructor() {
+    super('ResultScene');
+  }
+
+  init(data) {
+    this.finalScore = data.score || 0;
+    this.maxCombo = data.maxCombo || 0;
+    this.hits = data.hits || 0;
+    this.misses = data.misses || 0;
+  }
+
+  create() {
+    this.cameras.main.setBackgroundColor(C.lightHex);
+    const rating = getRating(this.finalScore);
+    const modifier = getModifier(rating);
+    const modText = modifier > 0 ? '+' + modifier : String(modifier);
+    const ratingColor = { S: '#ffd700', A: C.primaryHex, B: '#9ca3af', C: '#fb7185', D: '#dc2626' }[rating];
+
+    this.add.rectangle(W / 2, 94, 350, 116, C.white, 1).setStrokeStyle(2.5, C.accent);
+    this.add.text(W / 2, 50, 'Settlement', {
+      fontFamily: 'Nunito',
+      fontSize: '32px',
+      fontStyle: '900',
+      color: C.accentHex
+    }).setOrigin(0.5);
+    this.add.text(W / 2, 86, 'Mini Golf Putt', {
+      fontFamily: 'Patrick Hand',
+      fontSize: '21px',
+      color: C.neutralHex
+    }).setOrigin(0.5);
+
+    this.add.text(W / 2, 252, rating, {
+      fontFamily: 'Nunito',
+      fontSize: '108px',
+      fontStyle: '900',
+      color: ratingColor,
+      stroke: '#111827',
+      strokeThickness: 4
+    }).setOrigin(0.5);
+
+    this.add.text(W / 2, 336, 'Score ' + this.finalScore, {
+      fontFamily: 'Nunito',
+      fontSize: '28px',
+      fontStyle: '800',
+      color: C.accentHex
+    }).setOrigin(0.5);
+    this.add.text(W / 2, 372, ATTRIBUTE + ' ' + modText, {
+      fontFamily: 'Patrick Hand',
+      fontSize: '24px',
+      color: C.neutralHex
+    }).setOrigin(0.5);
+
+    this.add.rectangle(110, 448, 130, 78, C.white, 1).setStrokeStyle(2, C.accent);
+    this.add.text(110, 432, 'Max Combo', {
+      fontFamily: 'Nunito',
+      fontSize: '15px',
+      fontStyle: '700',
+      color: C.neutralHex
+    }).setOrigin(0.5);
+    this.add.text(110, 463, String(this.maxCombo), {
+      fontFamily: 'Nunito',
+      fontSize: '30px',
+      fontStyle: '900',
+      color: C.accentHex
+    }).setOrigin(0.5);
+
+    this.add.rectangle(282, 448, 130, 78, C.white, 1).setStrokeStyle(2, C.accent);
+    this.add.text(282, 432, 'Holes / Shot', {
+      fontFamily: 'Nunito',
+      fontSize: '15px',
+      fontStyle: '700',
+      color: C.neutralHex
+    }).setOrigin(0.5);
+    this.add.text(282, 463, this.hits + ' / ' + this.misses, {
+      fontFamily: 'Nunito',
+      fontSize: '28px',
+      fontStyle: '900',
+      color: C.accentHex
+    }).setOrigin(0.5);
+
+    makeButton(this, {
+      x: W / 2,
+      y: H - 132,
+      w: 234,
+      h: 58,
+      label: 'Continue',
+      fontSize: 26,
+      onTap: () => {
+        notifyGameComplete({
+          rating: rating,
+          score: this.finalScore,
+          attribute: ATTRIBUTE,
+          modifier: modifier,
+          gameId: 'mini-golf-putt',
+          maxCombo: this.maxCombo,
+          hits: this.hits,
+          misses: this.misses
+        });
+      }
+    });
+  }
+}
+
+const config = {
+  type: Phaser.AUTO,
+  width: W,
+  height: H,
+  scale: {
+    mode: Phaser.Scale.FIT,
+    autoCenter: Phaser.Scale.CENTER_BOTH
+  },
+  backgroundColor: C.lightHex,
+  scene: [GameScene, ResultScene]
+};
+
+window.__game = new Phaser.Game(config);
+</script>
+</body>
+</html>

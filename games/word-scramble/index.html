@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no,viewport-fit=cover">
+<title>Word Scramble</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;900&family=Patrick+Hand&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100%; height: 100%; background: #172033; overflow: hidden; }
+  canvas { display: block; margin: 0 auto; }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
+</head>
+<body>
+<script>
+const params = new URLSearchParams(window.location.search);
+const ATTRIBUTE = params.get('attribute') || 'Wisdom';
+const PRIMARY_COLOR = params.get('primaryColor') || '#ff6b9d';
+
+const W = 393;
+const H = 736;
+const ROUND_SECONDS = 55;
+const RATING_THRESHOLDS = { S: 420, A: 320, B: 225, C: 130 };
+const MODIFIER_BY_RATING = { S: 2, A: 1, B: 0, C: -1, D: -2 };
+const WORDS = [
+  { clue: 'Shines in the sky', answer: 'STAR' },
+  { clue: 'Flows to the sea', answer: 'RIVER' },
+  { clue: 'Helps you hear', answer: 'EAR' },
+  { clue: 'A frozen crystal', answer: 'SNOW' },
+  { clue: 'Keeps books', answer: 'SHELF' },
+  { clue: 'It blooms in spring', answer: 'FLOWER' },
+  { clue: 'Bright electric flash', answer: 'SPARK' },
+  { clue: 'You sleep in it', answer: 'BED' },
+  { clue: 'Bird that hoots', answer: 'OWL' },
+  { clue: 'Warm morning drink', answer: 'COFFEE' }
+];
+
+function getRating(score) {
+  if (score >= RATING_THRESHOLDS.S) return 'S';
+  if (score >= RATING_THRESHOLDS.A) return 'A';
+  if (score >= RATING_THRESHOLDS.B) return 'B';
+  if (score >= RATING_THRESHOLDS.C) return 'C';
+  return 'D';
+}
+
+function getModifier(rating) {
+  return MODIFIER_BY_RATING[rating];
+}
+
+function notifyGameComplete(result) {
+  const payload = JSON.stringify(result);
+  if (window.webkit?.messageHandlers?.jsBridge) {
+    window.webkit.messageHandlers.jsBridge.postMessage(payload);
+    return;
+  }
+  if (window.jsBridge?.postMessage) {
+    window.jsBridge.postMessage(payload);
+    return;
+  }
+  if (window.parent !== window) {
+    window.parent.postMessage(payload, '*');
+    return;
+  }
+  console.log('[GameComplete]', result);
+}
+
+function clamp(v, min, max) {
+  return Math.max(min, Math.min(max, v));
+}
+
+function hexToRgb(hex) {
+  const raw = hex.replace('#', '');
+  const full = raw.length === 3 ? raw.split('').map((c) => c + c).join('') : raw;
+  const value = parseInt(full, 16);
+  return {
+    r: (value >> 16) & 255,
+    g: (value >> 8) & 255,
+    b: value & 255
+  };
+}
+
+function rgbToHex(r, g, b) {
+  const toHex = (n) => clamp(Math.round(n), 0, 255).toString(16).padStart(2, '0');
+  return '#' + toHex(r) + toHex(g) + toHex(b);
+}
+
+function blendHex(a, b, t) {
+  const ca = hexToRgb(a);
+  const cb = hexToRgb(b);
+  return rgbToHex(
+    ca.r + (cb.r - ca.r) * t,
+    ca.g + (cb.g - ca.g) * t,
+    ca.b + (cb.b - ca.b) * t
+  );
+}
+
+function colorSet(primaryColor) {
+  const palette = {
+    primary: primaryColor,
+    light: blendHex(primaryColor, '#f8fafc', 0.88),
+    accent: blendHex(primaryColor, '#111827', 0.62),
+    neutral: blendHex(primaryColor, '#1f2937', 0.76)
+  };
+  return {
+    primaryHex: palette.primary,
+    lightHex: palette.light,
+    accentHex: palette.accent,
+    neutralHex: palette.neutral,
+    primary: Phaser.Display.Color.HexStringToColor(palette.primary).color,
+    light: Phaser.Display.Color.HexStringToColor(palette.light).color,
+    accent: Phaser.Display.Color.HexStringToColor(palette.accent).color,
+    neutral: Phaser.Display.Color.HexStringToColor(palette.neutral).color,
+    white: 0xffffff,
+    dark: 0x111827,
+    success: 0x22c55e,
+    danger: 0xef4444,
+    gold: 0xffd700
+  };
+}
+
+const C = colorSet(PRIMARY_COLOR);
+
+function makeButton(scene, cfg) {
+  const shadow = scene.add.rectangle(cfg.x + 3, cfg.y + 3, cfg.w, cfg.h, C.accent, 1).setDepth(20);
+  const body = scene.add.rectangle(cfg.x, cfg.y, cfg.w, cfg.h, cfg.fill || C.primary, 1)
+    .setStrokeStyle(2.5, C.accent)
+    .setInteractive({ useHandCursor: true })
+    .setDepth(21);
+  const label = scene.add.text(cfg.x, cfg.y, cfg.label, {
+    fontFamily: 'Nunito',
+    fontSize: (cfg.fontSize || 22) + 'px',
+    fontStyle: '900',
+    color: cfg.textColor || '#ffffff'
+  }).setOrigin(0.5).setDepth(22);
+
+  const release = (emitTap) => {
+    body.setPosition(cfg.x, cfg.y);
+    label.setPosition(cfg.x, cfg.y);
+    shadow.setVisible(true);
+    if (emitTap && cfg.onTap) cfg.onTap();
+  };
+
+  body.on('pointerdown', () => {
+    body.setPosition(cfg.x + 2, cfg.y + 2);
+    label.setPosition(cfg.x + 2, cfg.y + 2);
+    shadow.setVisible(false);
+  });
+  body.on('pointerup', () => release(true));
+  body.on('pointerout', () => release(false));
+  return { shadow, body, label };
+}
+
+class GameScene extends Phaser.Scene {
+  constructor() {
+    super('GameScene');
+  }
+
+  init() {
+    this.score = 0;
+    this.timeLeft = ROUND_SECONDS;
+    this.isOver = false;
+    this.combo = 0;
+    this.maxCombo = 0;
+    this.solved = 0;
+    this.wrong = 0;
+    this.roundIndex = 0;
+    this.pool = Phaser.Utils.Array.Shuffle(WORDS.slice());
+    this.letterButtons = [];
+    this.currentLetters = [];
+    this.answer = [];
+  }
+
+  create() {
+    this.cameras.main.setBackgroundColor(C.lightHex);
+
+    const dots = this.add.graphics();
+    dots.fillStyle(C.primary, 0.08);
+    for (let x = 16; x < W; x += 26) {
+      for (let y = 12; y < H; y += 28) {
+        dots.fillCircle(x + ((y / 28) % 2 ? 4 : -2), y, 2);
+      }
+    }
+
+    this.add.rectangle(W / 2, 82, 350, 118, C.white, 1).setStrokeStyle(2.5, C.accent);
+    this.add.text(W / 2, 46, 'Word Scramble', {
+      fontFamily: 'Nunito',
+      fontSize: '30px',
+      fontStyle: '900',
+      color: C.accentHex
+    }).setOrigin(0.5);
+    this.add.text(W / 2, 78, 'Unscramble fast from the clue and shuffled letters.', {
+      fontFamily: 'Patrick Hand',
+      fontSize: '19px',
+      color: C.neutralHex
+    }).setOrigin(0.5);
+
+    this.add.rectangle(24, 112, 142, 34, C.light, 1).setOrigin(0, 0.5).setStrokeStyle(2, C.accent);
+    this.scoreText = this.add.text(36, 112, 'Score 0', {
+      fontFamily: 'Nunito',
+      fontSize: '16px',
+      fontStyle: '700',
+      color: C.accentHex
+    }).setOrigin(0, 0.5);
+
+    this.add.rectangle(W - 24, 112, 126, 34, C.light, 1).setOrigin(1, 0.5).setStrokeStyle(2, C.accent);
+    this.timerText = this.add.text(W - 36, 112, 'Time ' + this.timeLeft, {
+      fontFamily: 'Nunito',
+      fontSize: '16px',
+      fontStyle: '700',
+      color: C.accentHex
+    }).setOrigin(1, 0.5);
+
+    this.add.rectangle(W / 2, 384, 322, 392, C.white, 0.96).setStrokeStyle(2.5, C.accent);
+    this.roundText = this.add.text(W / 2, 172, 'Word 1', {
+      fontFamily: 'Nunito',
+      fontSize: '18px',
+      fontStyle: '700',
+      color: C.accentHex
+    }).setOrigin(0.5);
+    this.clueText = this.add.text(W / 2, 212, '', {
+      fontFamily: 'Patrick Hand',
+      fontSize: '26px',
+      color: C.neutralHex,
+      align: 'center',
+      wordWrap: { width: 270 }
+    }).setOrigin(0.5);
+
+    this.answerSlots = [];
+    for (let i = 0; i < 7; i += 1) {
+      const slot = this.add.rectangle(78 + i * 40, 290, 34, 42, C.light, 1).setStrokeStyle(2, C.accent).setVisible(false);
+      const text = this.add.text(slot.x, slot.y, '', {
+        fontFamily: 'Nunito',
+        fontSize: '22px',
+        fontStyle: '900',
+        color: C.accentHex
+      }).setOrigin(0.5).setVisible(false);
+      this.answerSlots.push({ slot, text });
+    }
+
+    this.statusText = this.add.text(W / 2, 536, 'Build the word, then submit it', {
+      fontFamily: 'Patrick Hand',
+      fontSize: '20px',
+      color: C.neutralHex
+    }).setOrigin(0.5);
+    this.comboText = this.add.text(W / 2, 566, 'Combo x0', {
+      fontFamily: 'Nunito',
+      fontSize: '20px',
+      fontStyle: '700',
+      color: C.accentHex
+    }).setOrigin(0.5);
+
+    makeButton(this, { x: 120, y: 626, w: 110, h: 50, label: 'Clear', fontSize: 22, fill: C.light, textColor: C.accentHex, onTap: () => this.clearAnswer() });
+    makeButton(this, { x: 273, y: 626, w: 110, h: 50, label: 'Submit', fontSize: 22, onTap: () => this.submitAnswer() });
+
+    this.startRound();
+  }
+
+  setStatus(text, color) {
+    this.statusText.setText(text);
+    this.statusText.setColor(color || C.neutralHex);
+    this.comboText.setText('Combo x' + this.combo);
+  }
+
+  addScore(delta) {
+    this.score = Math.max(0, this.score + delta);
+    this.scoreText.setText('Score ' + Math.round(this.score));
+    this.tweens.add({
+      targets: this.scoreText,
+      scaleX: 1.12,
+      scaleY: 1.12,
+      yoyo: true,
+      duration: 110
+    });
+  }
+
+  refreshAnswer() {
+    const len = this.current.answer.length;
+    for (let i = 0; i < this.answerSlots.length; i += 1) {
+      const visible = i < len;
+      this.answerSlots[i].slot.setVisible(visible);
+      this.answerSlots[i].text.setVisible(visible);
+      if (visible) {
+        this.answerSlots[i].text.setText(this.answer[i]?.char || '');
+      }
+    }
+  }
+
+  startRound() {
+    if (this.roundIndex >= this.pool.length) {
+      this.pool = Phaser.Utils.Array.Shuffle(WORDS.slice());
+      this.roundIndex = 0;
+    }
+    this.current = this.pool[this.roundIndex];
+    this.roundIndex += 1;
+    this.answer = [];
+    this.roundText.setText('Word ' + (this.solved + this.wrong + 1));
+    this.clueText.setText(this.current.clue);
+    const shuffled = Phaser.Utils.Array.Shuffle(this.current.answer.split('').map((char, index) => ({ id: index, char, used: false })));
+    this.currentLetters = shuffled;
+    this.renderLetters();
+    this.refreshAnswer();
+  }
+
+  renderLetters() {
+    for (const node of this.letterButtons) {
+      node.shadow.destroy();
+      node.body.destroy();
+      node.label.destroy();
+    }
+    this.letterButtons = [];
+
+    const len = this.currentLetters.length;
+    const cols = len <= 4 ? len : Math.ceil(len / 2);
+    const rows = len <= 4 ? 1 : 2;
+    const startX = W / 2 - ((cols - 1) * 56) / 2;
+    let index = 0;
+    for (let row = 0; row < rows; row += 1) {
+      const itemsThisRow = row === 0 && rows === 2 ? Math.ceil(len / 2) : len - Math.ceil(len / 2);
+      const rowStartX = W / 2 - ((itemsThisRow - 1) * 56) / 2;
+      for (let col = 0; col < itemsThisRow; col += 1) {
+        const item = this.currentLetters[index];
+        const x = rows === 1 ? startX + col * 56 : rowStartX + col * 56;
+        const y = rows === 1 ? 382 : 364 + row * 74;
+        const btn = makeButton(this, {
+          x,
+          y,
+          w: 46,
+          h: 50,
+          label: item.char,
+          fontSize: 24,
+          fill: item.used ? C.light : C.primary,
+          textColor: item.used ? C.neutralHex : '#ffffff',
+          onTap: () => this.pickLetter(item.id)
+        });
+        this.letterButtons.push(btn);
+        index += 1;
+      }
+    }
+  }
+
+  pickLetter(id) {
+    const item = this.currentLetters.find((letter) => letter.id === id);
+    if (!item || item.used) return;
+    item.used = true;
+    this.answer.push(item);
+    this.renderLetters();
+    this.refreshAnswer();
+  }
+
+  clearAnswer() {
+    for (const item of this.currentLetters) item.used = false;
+    this.answer = [];
+    this.renderLetters();
+    this.refreshAnswer();
+    this.setStatus('Cleared selection', C.neutralHex);
+  }
+
+  submitAnswer() {
+    if (!this.answer.length) return;
+    const guess = this.answer.map((item) => item.char).join('');
+    if (guess === this.current.answer) {
+      const speedBonus = Math.max(0, Math.ceil(this.timeLeft));
+      const gain = 28 + speedBonus + Math.min(this.combo, 4) * 3;
+      this.combo += 1;
+      this.maxCombo = Math.max(this.maxCombo, this.combo);
+      this.solved += 1;
+      this.addScore(gain);
+      this.setStatus('Solved +' + gain, '#059669');
+      this.startRound();
+      return;
+    }
+
+    this.wrong += 1;
+    this.combo = 0;
+    this.addScore(-8);
+    this.setStatus('Wrong word -8', '#dc2626');
+    this.clearAnswer();
+  }
+
+  finishGame() {
+    if (this.isOver) return;
+    this.isOver = true;
+    this.scene.start('ResultScene', {
+      score: Math.round(this.score),
+      maxCombo: this.maxCombo,
+      hits: this.solved,
+      misses: this.wrong
+    });
+  }
+
+  update(time, delta) {
+    if (this.isOver) return;
+    this.timeLeft = Math.max(0, this.timeLeft - delta / 1000);
+    this.timerText.setText('Time ' + Math.ceil(this.timeLeft));
+    if (this.timeLeft <= 0) this.finishGame();
+  }
+}
+
+class ResultScene extends Phaser.Scene {
+  constructor() {
+    super('ResultScene');
+  }
+
+  init(data) {
+    this.finalScore = data.score || 0;
+    this.maxCombo = data.maxCombo || 0;
+    this.hits = data.hits || 0;
+    this.misses = data.misses || 0;
+  }
+
+  create() {
+    this.cameras.main.setBackgroundColor(C.lightHex);
+    const rating = getRating(this.finalScore);
+    const modifier = getModifier(rating);
+    const modText = modifier > 0 ? '+' + modifier : String(modifier);
+    const ratingColor = { S: '#ffd700', A: C.primaryHex, B: '#9ca3af', C: '#fb7185', D: '#dc2626' }[rating];
+
+    this.add.rectangle(W / 2, 94, 350, 116, C.white, 1).setStrokeStyle(2.5, C.accent);
+    this.add.text(W / 2, 50, 'Settlement', {
+      fontFamily: 'Nunito',
+      fontSize: '32px',
+      fontStyle: '900',
+      color: C.accentHex
+    }).setOrigin(0.5);
+    this.add.text(W / 2, 86, 'Word Scramble', {
+      fontFamily: 'Patrick Hand',
+      fontSize: '21px',
+      color: C.neutralHex
+    }).setOrigin(0.5);
+
+    this.add.text(W / 2, 252, rating, {
+      fontFamily: 'Nunito',
+      fontSize: '108px',
+      fontStyle: '900',
+      color: ratingColor,
+      stroke: '#111827',
+      strokeThickness: 4
+    }).setOrigin(0.5);
+
+    this.add.text(W / 2, 336, 'Score ' + this.finalScore, {
+      fontFamily: 'Nunito',
+      fontSize: '28px',
+      fontStyle: '800',
+      color: C.accentHex
+    }).setOrigin(0.5);
+    this.add.text(W / 2, 372, ATTRIBUTE + ' ' + modText, {
+      fontFamily: 'Patrick Hand',
+      fontSize: '24px',
+      color: C.neutralHex
+    }).setOrigin(0.5);
+
+    this.add.rectangle(110, 448, 130, 78, C.white, 1).setStrokeStyle(2, C.accent);
+    this.add.text(110, 432, 'Max Combo', {
+      fontFamily: 'Nunito',
+      fontSize: '15px',
+      fontStyle: '700',
+      color: C.neutralHex
+    }).setOrigin(0.5);
+    this.add.text(110, 463, String(this.maxCombo), {
+      fontFamily: 'Nunito',
+      fontSize: '30px',
+      fontStyle: '900',
+      color: C.accentHex
+    }).setOrigin(0.5);
+
+    this.add.rectangle(282, 448, 130, 78, C.white, 1).setStrokeStyle(2, C.accent);
+    this.add.text(282, 432, 'Solved / Miss', {
+      fontFamily: 'Nunito',
+      fontSize: '15px',
+      fontStyle: '700',
+      color: C.neutralHex
+    }).setOrigin(0.5);
+    this.add.text(282, 463, this.hits + ' / ' + this.misses, {
+      fontFamily: 'Nunito',
+      fontSize: '28px',
+      fontStyle: '900',
+      color: C.accentHex
+    }).setOrigin(0.5);
+
+    makeButton(this, {
+      x: W / 2,
+      y: H - 132,
+      w: 234,
+      h: 58,
+      label: 'Continue',
+      fontSize: 26,
+      onTap: () => {
+        notifyGameComplete({
+          rating: rating,
+          score: this.finalScore,
+          attribute: ATTRIBUTE,
+          modifier: modifier,
+          gameId: 'word-scramble',
+          maxCombo: this.maxCombo,
+          hits: this.hits,
+          misses: this.misses
+        });
+      }
+    });
+  }
+}
+
+const config = {
+  type: Phaser.AUTO,
+  width: W,
+  height: H,
+  scale: {
+    mode: Phaser.Scale.FIT,
+    autoCenter: Phaser.Scale.CENTER_BOTH
+  },
+  backgroundColor: C.lightHex,
+  scene: [GameScene, ResultScene]
+};
+
+window.__game = new Phaser.Game(config);
+</script>
+</body>
+</html>

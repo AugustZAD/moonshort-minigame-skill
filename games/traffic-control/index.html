@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no,viewport-fit=cover">
+<title>Traffic Control</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;900&family=Patrick+Hand&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100%; height: 100%; background: #172033; overflow: hidden; }
+  canvas { display: block; margin: 0 auto; }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
+</head>
+<body>
+<script>
+const params = new URLSearchParams(window.location.search);
+const ATTRIBUTE = params.get('attribute') || 'Wisdom';
+const PRIMARY_COLOR = params.get('primaryColor') || '#ff6b9d';
+
+const W = 393;
+const H = 736;
+const ROUND_SECONDS = 50;
+const RATING_THRESHOLDS = { S: 320, A: 245, B: 175, C: 100 };
+const MODIFIER_BY_RATING = { S: 2, A: 1, B: 0, C: -1, D: -2 };
+
+function getRating(score) {
+  if (score >= RATING_THRESHOLDS.S) return 'S';
+  if (score >= RATING_THRESHOLDS.A) return 'A';
+  if (score >= RATING_THRESHOLDS.B) return 'B';
+  if (score >= RATING_THRESHOLDS.C) return 'C';
+  return 'D';
+}
+
+function getModifier(rating) {
+  return MODIFIER_BY_RATING[rating];
+}
+
+function notifyGameComplete(result) {
+  const payload = JSON.stringify(result);
+  if (window.webkit?.messageHandlers?.jsBridge) {
+    window.webkit.messageHandlers.jsBridge.postMessage(payload);
+    return;
+  }
+  if (window.jsBridge?.postMessage) {
+    window.jsBridge.postMessage(payload);
+    return;
+  }
+  if (window.parent !== window) {
+    window.parent.postMessage(payload, '*');
+    return;
+  }
+  console.log('[GameComplete]', result);
+}
+
+function clamp(v, min, max) {
+  return Math.max(min, Math.min(max, v));
+}
+
+function hexToRgb(hex) {
+  const raw = hex.replace('#', '');
+  const full = raw.length === 3 ? raw.split('').map((c) => c + c).join('') : raw;
+  const value = parseInt(full, 16);
+  return {
+    r: (value >> 16) & 255,
+    g: (value >> 8) & 255,
+    b: value & 255
+  };
+}
+
+function rgbToHex(r, g, b) {
+  const toHex = (n) => clamp(Math.round(n), 0, 255).toString(16).padStart(2, '0');
+  return '#' + toHex(r) + toHex(g) + toHex(b);
+}
+
+function blendHex(a, b, t) {
+  const ca = hexToRgb(a);
+  const cb = hexToRgb(b);
+  return rgbToHex(
+    ca.r + (cb.r - ca.r) * t,
+    ca.g + (cb.g - ca.g) * t,
+    ca.b + (cb.b - ca.b) * t
+  );
+}
+
+function colorSet(primaryColor) {
+  const palette = {
+    primary: primaryColor,
+    light: blendHex(primaryColor, '#f8fafc', 0.88),
+    accent: blendHex(primaryColor, '#111827', 0.62),
+    neutral: blendHex(primaryColor, '#1f2937', 0.76)
+  };
+  return {
+    primaryHex: palette.primary,
+    lightHex: palette.light,
+    accentHex: palette.accent,
+    neutralHex: palette.neutral,
+    primary: Phaser.Display.Color.HexStringToColor(palette.primary).color,
+    light: Phaser.Display.Color.HexStringToColor(palette.light).color,
+    accent: Phaser.Display.Color.HexStringToColor(palette.accent).color,
+    neutral: Phaser.Display.Color.HexStringToColor(palette.neutral).color,
+    white: 0xffffff,
+    dark: 0x111827,
+    success: 0x22c55e,
+    danger: 0xef4444,
+    gold: 0xffd700,
+    blue: 0x38bdf8
+  };
+}
+
+const C = colorSet(PRIMARY_COLOR);
+
+function makeButton(scene, cfg) {
+  const shadow = scene.add.rectangle(cfg.x + 3, cfg.y + 3, cfg.w, cfg.h, C.accent, 1).setDepth(20);
+  const body = scene.add.rectangle(cfg.x, cfg.y, cfg.w, cfg.h, cfg.fill || C.primary, 1)
+    .setStrokeStyle(2.5, C.accent)
+    .setInteractive({ useHandCursor: true })
+    .setDepth(21);
+  const label = scene.add.text(cfg.x, cfg.y, cfg.label, {
+    fontFamily: 'Nunito',
+    fontSize: (cfg.fontSize || 22) + 'px',
+    fontStyle: '900',
+    color: cfg.textColor || '#ffffff'
+  }).setOrigin(0.5).setDepth(22);
+
+  const release = (emitTap) => {
+    body.setPosition(cfg.x, cfg.y);
+    label.setPosition(cfg.x, cfg.y);
+    shadow.setVisible(true);
+    if (emitTap && cfg.onTap) cfg.onTap();
+  };
+
+  body.on('pointerdown', () => {
+    body.setPosition(cfg.x + 2, cfg.y + 2);
+    label.setPosition(cfg.x + 2, cfg.y + 2);
+    shadow.setVisible(false);
+  });
+  body.on('pointerup', () => release(true));
+  body.on('pointerout', () => release(false));
+}
+
+class GameScene extends Phaser.Scene {
+  constructor() {
+    super('GameScene');
+  }
+
+  init() {
+    this.score = 0;
+    this.timeLeft = ROUND_SECONDS;
+    this.isOver = false;
+    this.combo = 0;
+    this.maxCombo = 0;
+    this.passed = 0;
+    this.crashes = 0;
+    this.verticalGreen = true;
+    this.spawnMs = 0;
+    this.cars = [];
+  }
+
+  create() {
+    this.cameras.main.setBackgroundColor(C.lightHex);
+
+    const dots = this.add.graphics();
+    dots.fillStyle(C.primary, 0.08);
+    for (let x = 16; x < W; x += 26) {
+      for (let y = 12; y < H; y += 28) {
+        dots.fillCircle(x + ((y / 28) % 2 ? 4 : -2), y, 2);
+      }
+    }
+
+    this.add.rectangle(W / 2, 82, 350, 118, C.white, 1).setStrokeStyle(2.5, C.accent);
+    this.add.text(W / 2, 46, 'Traffic Control', {
+      fontFamily: 'Nunito',
+      fontSize: '30px',
+      fontStyle: '900',
+      color: C.accentHex
+    }).setOrigin(0.5);
+    this.add.text(W / 2, 78, 'Switch the light and clear the crossing without wrecks.', {
+      fontFamily: 'Patrick Hand',
+      fontSize: '18px',
+      color: C.neutralHex
+    }).setOrigin(0.5);
+
+    this.add.rectangle(24, 112, 142, 34, C.light, 1).setOrigin(0, 0.5).setStrokeStyle(2, C.accent);
+    this.scoreText = this.add.text(36, 112, 'Score 0', {
+      fontFamily: 'Nunito',
+      fontSize: '16px',
+      fontStyle: '700',
+      color: C.accentHex
+    }).setOrigin(0, 0.5);
+
+    this.add.rectangle(W - 24, 112, 126, 34, C.light, 1).setOrigin(1, 0.5).setStrokeStyle(2, C.accent);
+    this.timerText = this.add.text(W - 36, 112, 'Time ' + this.timeLeft, {
+      fontFamily: 'Nunito',
+      fontSize: '16px',
+      fontStyle: '700',
+      color: C.accentHex
+    }).setOrigin(1, 0.5);
+
+    this.add.rectangle(W / 2, 388, 322, 398, C.white, 0.96).setStrokeStyle(2.5, C.accent);
+    this.graphics = this.add.graphics();
+    this.intersection = { x: 196, y: 370, size: 76 };
+
+    this.statusText = this.add.text(W / 2, 598, 'Vertical starts green, tap to switch when lanes are clear', {
+      fontFamily: 'Patrick Hand',
+      fontSize: '20px',
+      color: C.neutralHex,
+      align: 'center',
+      wordWrap: { width: 304 }
+    }).setOrigin(0.5);
+    this.comboText = this.add.text(W / 2, 632, 'Combo x0', {
+      fontFamily: 'Nunito',
+      fontSize: '20px',
+      fontStyle: '700',
+      color: C.accentHex
+    }).setOrigin(0.5);
+
+    makeButton(this, { x: W / 2, y: H - 58, w: 182, h: 52, label: 'Switch Light', fontSize: 22, onTap: () => this.toggleLight() });
+    this.input.on('pointerdown', (pointer) => {
+      if (pointer.y < 610) this.toggleLight();
+    });
+    this.cursors = this.input.keyboard.createCursorKeys();
+  }
+
+  addScore(delta) {
+    this.score = Math.max(0, this.score + delta);
+    this.scoreText.setText('Score ' + Math.round(this.score));
+    this.tweens.add({
+      targets: this.scoreText,
+      scaleX: 1.12,
+      scaleY: 1.12,
+      yoyo: true,
+      duration: 110
+    });
+  }
+
+  setStatus(text, color) {
+    this.statusText.setText(text);
+    this.statusText.setColor(color || C.neutralHex);
+    this.comboText.setText('Combo x' + this.combo);
+  }
+
+  toggleLight() {
+    if (this.isOver) return;
+    this.verticalGreen = !this.verticalGreen;
+  }
+
+  spawnCar() {
+    const defs = [
+      { dir: 'down', axis: 'v', x: 176, y: 174, vx: 0, vy: 112, color: C.primary },
+      { dir: 'up', axis: 'v', x: 216, y: 560, vx: 0, vy: -112, color: C.blue },
+      { dir: 'right', axis: 'h', x: 24, y: 392, vx: 112, vy: 0, color: C.gold },
+      { dir: 'left', axis: 'h', x: 368, y: 352, vx: -112, vy: 0, color: C.accent }
+    ];
+    this.cars.push({ ...Phaser.Utils.Array.GetRandom(defs), w: 24, h: 38, stopped: false });
+  }
+
+  carInIntersection(car) {
+    const half = this.intersection.size / 2;
+    return car.x > this.intersection.x - half && car.x < this.intersection.x + half && car.y > this.intersection.y - half && car.y < this.intersection.y + half;
+  }
+
+  drawRoad() {
+    this.graphics.clear();
+    this.graphics.fillStyle(0xd1d5db, 1);
+    this.graphics.fillRect(58, 196, 278, 348);
+    this.graphics.fillStyle(0x374151, 1);
+    this.graphics.fillRect(152, 196, 88, 348);
+    this.graphics.fillRect(58, 326, 278, 88);
+
+    this.graphics.lineStyle(3, 0xf8fafc, 0.28);
+    this.graphics.beginPath();
+    this.graphics.moveTo(196, 196);
+    this.graphics.lineTo(196, 544);
+    this.graphics.moveTo(58, 370);
+    this.graphics.lineTo(336, 370);
+    this.graphics.strokePath();
+
+    this.graphics.fillStyle(this.verticalGreen ? C.success : C.danger, 1);
+    this.graphics.fillCircle(144, 314, 8);
+    this.graphics.fillCircle(248, 426, 8);
+    this.graphics.fillStyle(this.verticalGreen ? C.danger : C.success, 1);
+    this.graphics.fillCircle(144, 426, 8);
+    this.graphics.fillCircle(248, 314, 8);
+
+    for (const car of this.cars) {
+      this.graphics.fillStyle(car.color, 1);
+      this.graphics.fillRoundedRect(car.x - car.w / 2, car.y - car.h / 2, car.w, car.h, 6);
+      this.graphics.fillStyle(C.white, 0.9);
+      this.graphics.fillCircle(car.x, car.y - 8, 2);
+    }
+  }
+
+  handleStops(car) {
+    car.stopped = false;
+    if (car.axis === 'v' && !this.verticalGreen) {
+      if (car.dir === 'down' && car.y + car.h / 2 >= 306 && car.y < 370) {
+        car.y = 306 - car.h / 2;
+        car.stopped = true;
+      }
+      if (car.dir === 'up' && car.y - car.h / 2 <= 434 && car.y > 370) {
+        car.y = 434 + car.h / 2;
+        car.stopped = true;
+      }
+    }
+    if (car.axis === 'h' && this.verticalGreen) {
+      if (car.dir === 'right' && car.x + car.w / 2 >= 142 && car.x < 196) {
+        car.x = 142 - car.w / 2;
+        car.stopped = true;
+      }
+      if (car.dir === 'left' && car.x - car.w / 2 <= 250 && car.x > 196) {
+        car.x = 250 + car.w / 2;
+        car.stopped = true;
+      }
+    }
+  }
+
+  resolveCrash() {
+    this.crashes += 1;
+    this.combo = 0;
+    this.addScore(-12);
+    this.setStatus('Crash cleared -12', '#dc2626');
+    this.cars = [];
+  }
+
+  finishGame() {
+    if (this.isOver) return;
+    this.isOver = true;
+    this.scene.start('ResultScene', {
+      score: Math.round(this.score),
+      maxCombo: this.maxCombo,
+      hits: this.passed,
+      misses: this.crashes
+    });
+  }
+
+  update(time, delta) {
+    if (this.isOver) return;
+    if (Phaser.Input.Keyboard.JustDown(this.cursors.space)) this.toggleLight();
+
+    this.timeLeft = Math.max(0, this.timeLeft - delta / 1000);
+    this.timerText.setText('Time ' + Math.ceil(this.timeLeft));
+
+    this.spawnMs -= delta;
+    if (this.spawnMs <= 0 && this.cars.length < 10) {
+      this.spawnMs = Phaser.Math.Between(600, 900);
+      this.spawnCar();
+    }
+
+    const dt = delta / 1000;
+    for (let i = this.cars.length - 1; i >= 0; i -= 1) {
+      const car = this.cars[i];
+      if (!car.stopped) {
+        car.x += car.vx * dt;
+        car.y += car.vy * dt;
+      }
+      this.handleStops(car);
+
+      if (
+        car.x < -40 || car.x > W + 40 ||
+        car.y < 156 || car.y > H - 120
+      ) {
+        this.cars.splice(i, 1);
+        this.passed += 1;
+        this.combo += 1;
+        this.maxCombo = Math.max(this.maxCombo, this.combo);
+        const gain = 6 + Math.min(this.combo, 4);
+        this.addScore(gain);
+        this.setStatus('Lane cleared +' + gain, '#059669');
+      }
+    }
+
+    let hasV = false;
+    let hasH = false;
+    for (const car of this.cars) {
+      if (this.carInIntersection(car)) {
+        if (car.axis === 'v') hasV = true;
+        if (car.axis === 'h') hasH = true;
+      }
+    }
+    if (hasV && hasH) this.resolveCrash();
+
+    this.drawRoad();
+    if (this.timeLeft <= 0) this.finishGame();
+  }
+}
+
+class ResultScene extends Phaser.Scene {
+  constructor() {
+    super('ResultScene');
+  }
+
+  init(data) {
+    this.finalScore = data.score || 0;
+    this.maxCombo = data.maxCombo || 0;
+    this.hits = data.hits || 0;
+    this.misses = data.misses || 0;
+  }
+
+  create() {
+    this.cameras.main.setBackgroundColor(C.lightHex);
+    const rating = getRating(this.finalScore);
+    const modifier = getModifier(rating);
+    const modText = modifier > 0 ? '+' + modifier : String(modifier);
+    const ratingColor = { S: '#ffd700', A: C.primaryHex, B: '#9ca3af', C: '#fb7185', D: '#dc2626' }[rating];
+
+    this.add.rectangle(W / 2, 94, 350, 116, C.white, 1).setStrokeStyle(2.5, C.accent);
+    this.add.text(W / 2, 50, 'Settlement', {
+      fontFamily: 'Nunito',
+      fontSize: '32px',
+      fontStyle: '900',
+      color: C.accentHex
+    }).setOrigin(0.5);
+    this.add.text(W / 2, 86, 'Traffic Control', {
+      fontFamily: 'Patrick Hand',
+      fontSize: '21px',
+      color: C.neutralHex
+    }).setOrigin(0.5);
+
+    this.add.text(W / 2, 252, rating, {
+      fontFamily: 'Nunito',
+      fontSize: '108px',
+      fontStyle: '900',
+      color: ratingColor,
+      stroke: '#111827',
+      strokeThickness: 4
+    }).setOrigin(0.5);
+
+    this.add.text(W / 2, 336, 'Score ' + this.finalScore, {
+      fontFamily: 'Nunito',
+      fontSize: '28px',
+      fontStyle: '800',
+      color: C.accentHex
+    }).setOrigin(0.5);
+    this.add.text(W / 2, 372, ATTRIBUTE + ' ' + modText, {
+      fontFamily: 'Patrick Hand',
+      fontSize: '24px',
+      color: C.neutralHex
+    }).setOrigin(0.5);
+
+    this.add.rectangle(110, 448, 130, 78, C.white, 1).setStrokeStyle(2, C.accent);
+    this.add.text(110, 432, 'Max Combo', {
+      fontFamily: 'Nunito',
+      fontSize: '15px',
+      fontStyle: '700',
+      color: C.neutralHex
+    }).setOrigin(0.5);
+    this.add.text(110, 463, String(this.maxCombo), {
+      fontFamily: 'Nunito',
+      fontSize: '30px',
+      fontStyle: '900',
+      color: C.accentHex
+    }).setOrigin(0.5);
+
+    this.add.rectangle(282, 448, 130, 78, C.white, 1).setStrokeStyle(2, C.accent);
+    this.add.text(282, 432, 'Clear / Crash', {
+      fontFamily: 'Nunito',
+      fontSize: '15px',
+      fontStyle: '700',
+      color: C.neutralHex
+    }).setOrigin(0.5);
+    this.add.text(282, 463, this.hits + ' / ' + this.misses, {
+      fontFamily: 'Nunito',
+      fontSize: '28px',
+      fontStyle: '900',
+      color: C.accentHex
+    }).setOrigin(0.5);
+
+    makeButton(this, {
+      x: W / 2,
+      y: H - 132,
+      w: 234,
+      h: 58,
+      label: 'Continue',
+      fontSize: 26,
+      onTap: () => {
+        notifyGameComplete({
+          rating: rating,
+          score: this.finalScore,
+          attribute: ATTRIBUTE,
+          modifier: modifier,
+          gameId: 'traffic-control',
+          maxCombo: this.maxCombo,
+          hits: this.hits,
+          misses: this.misses
+        });
+      }
+    });
+  }
+}
+
+const config = {
+  type: Phaser.AUTO,
+  width: W,
+  height: H,
+  scale: {
+    mode: Phaser.Scale.FIT,
+    autoCenter: Phaser.Scale.CENTER_BOTH
+  },
+  backgroundColor: C.lightHex,
+  scene: [GameScene, ResultScene]
+};
+
+window.__game = new Phaser.Game(config);
+</script>
+</body>
+</html>
