@@ -10,7 +10,7 @@ Extract a reusable H5 mini-game framework from existing examples, then support A
 - [x] M3: Provide reusable Phaser H5 template with bridge integration
 - [x] M4: Publish agent generation rules and directory conventions
 - [x] M5: Add current two games as example implementations
-- [x] M6: Expand settlement to five tiers (`S/A/B/C/D`)
+- [x] M6: Expand settlement tiers (initially five, later reduced to four `S/A/B/C`)
 - [x] M7: Add first generated game under `games/`
 - [x] M8: Add host-side integration reference for Cocos WebView
 - [x] M9: Add automated payload validation check
@@ -38,9 +38,9 @@ Extract a reusable H5 mini-game framework from existing examples, then support A
   - `examples/platform-runner/index.html`
   - `examples/merge-2048/index.html`
 - Switched framework contract from four tiers to five tiers:
-  - `S / A / B / C / D`
+  - `S / A / B / C / D` (later reduced to four tiers in 2026-03-19)
 - Locked modifier mapping to:
-  - `+2 / +1 / 0 / -1 / -2`
+  - `+2 / +1 / 0 / -1 / -2` (later changed to `+3 / +1 / 0 / -1` in 2026-03-19)
 - Promoted the former `minigame/` workspace to repository root.
 - Switched `origin` to:
   - `https://github.com/cdotlock/moonshort-minigame-skill`
@@ -111,7 +111,7 @@ Extract a reusable H5 mini-game framework from existing examples, then support A
   - settlement scene reachability
   - final Continue trigger
   - payload core fields (`rating`, `score`, `attribute`, `modifier`)
-  - fixed modifier mapping (`S/A/B/C/D -> +2/+1/0/-1/-2`)
+  - fixed modifier mapping (`S/A/B/C/D -> +2/+1/0/-1/-2`, later updated to `S/A/B/C -> +3/+1/0/-1`)
 
 ## Next Expansion (2026-03-12)
 
@@ -248,7 +248,7 @@ Extract a reusable H5 mini-game framework from existing examples, then support A
   - 49 games validated through the generic `ResultScene` CTA flow
   - `merge-2048` validated separately through its `RatingScene` CTA flow
   - all payloads matched `rating / score / attribute / modifier`
-  - all modifier values matched `S / A / B / C / D -> +2 / +1 / 0 / -1 / -2`
+  - all modifier values matched `S / A / B / C / D -> +2 / +1 / 0 / -1 / -2` (later updated to 4-tier `S/A/B/C -> +3/+1/0/-1`)
 - Delivery and validation are tracked live in this section.
 
 ## Skill Stability Pass (2026-03-13)
@@ -282,3 +282,28 @@ Extract a reusable H5 mini-game framework from existing examples, then support A
 - Synced the repository to GitHub:
   - pushed `main` to `origin`
   - current sync commit: `a598d5a`
+
+## Rating System Migration (2026-03-19)
+
+### Target
+- Change settlement rating from five tiers (`S/A/B/C/D`) to four tiers (`S/A/B/C`).
+- Update modifier mapping from `+2/+1/0/-1/-2` to `+3/+1/0/-1`.
+- Apply changes across the entire codebase: all 50 games, 2 examples, template, contracts, host code, validation script, and all documentation.
+
+### Checklist
+- [x] Update all 50 games under `games/`: `MODIFIER_BY_RATING`, `getRating`, `getModifier`, `ratingColor`
+- [x] Update 2 examples under `examples/`: same + remove D-rank shake effects
+- [x] Update template `templates/phaser-h5-template.html`
+- [x] Update contracts: `settlement.contract.md`, `settlement.schema.json`
+- [x] Update host code: `cocos-settlement-handler.ts`, `cocos-webview-integration.md`
+- [x] Update validation script: `scripts/validate-settlement.js`
+- [x] Update standards and docs: `SKILL.md`, `design-guide.md`, `framework-constraints.md`, `compatibility-checklist.md`, `README.md`, `narrative-layer.md`
+- [x] Update `roadmap.md` historical references
+- [x] Full grep verification passed — no stale D-tier or old modifier references remain in active code/specs
+
+### 2026-03-19 (Progress)
+- Completed full migration from 5-tier to 4-tier rating system.
+- Removed D rating entirely; lowest tier is now C.
+- S modifier changed from +2 to +3; A/B/C unchanged (+1/0/-1).
+- Updated 60+ files across games, examples, template, contracts, host integration, validation, and documentation.
+- Verified via grep: zero remaining references to old 5-tier mapping in active code or specs.

@@ -9,8 +9,8 @@ Use this checklist before treating a generated mini-game as production-ready.
 - [ ] Final settlement screen has one primary confirmation CTA
 - [ ] Settlement is sent only from that final CTA
 - [ ] Payload includes `rating`, `score`, `attribute`, `modifier`
-- [ ] Rating enum is exactly `S / A / B / C / D`
-- [ ] Modifier mapping is exactly `+2 / +1 / 0 / -1 / -2`
+- [ ] Rating enum is exactly `S / A / B / C`
+- [ ] Modifier mapping is exactly `+3 / +1 / 0 / -1`
 - [ ] Host validates `modifier === mapping[rating]`
 - [ ] Host can discard malformed bridge payloads safely
 - [ ] `notifyGameComplete` uses iOS -> Android -> iframe -> console fallback order

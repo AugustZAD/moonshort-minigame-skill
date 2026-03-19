@@ -29,15 +29,14 @@ Every game must send JSON with these required fields:
 ```
 
 Field rules:
-- `rating`: one of `S`, `A`, `B`, `C`, `D`
+- `rating`: one of `S`, `A`, `B`, `C`
 - `score`: numeric score for this mini-game run
 - `attribute`: echoed attribute context used by host scenario
 - `modifier`: mapped by rating
-  - `S => 2`
+  - `S => 3`
   - `A => 1`
   - `B => 0`
   - `C => -1`
-  - `D => -2`
 
 `modifier` is the machine-friendly gameplay effect value for the host. The host can apply it directly to the relevant attribute check instead of re-deriving effect strength from the letter grade.
 
@@ -50,7 +49,7 @@ Games may include additional fields for analytics and replay:
   "rating": "S",
   "score": 13200,
   "attribute": "Wisdom",
-  "modifier": 2,
+  "modifier": 3,
   "gameId": "tap-rhythm",
   "durationMs": 30125,
   "moves": 48,
@@ -86,4 +85,4 @@ function notifyGameComplete(result) {
 
 - Settlement must be sent when user confirms completion in final settlement screen.
 - Do not auto-send before user acknowledgment.
-- Use `S/A/B/C/D` only. No custom labels such as `SS`, `F`, `Perfect`, `Fail`.
+- Use `S/A/B/C` only. No custom labels such as `SS`, `F`, `Perfect`, `Fail`.

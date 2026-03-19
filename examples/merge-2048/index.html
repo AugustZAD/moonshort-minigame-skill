@@ -111,9 +111,9 @@ function getRating(score, maxTile) {
   if (score >= RATING_THRESHOLDS.A) return 'A';
   if (score >= RATING_THRESHOLDS.B) return 'B';
   if (score >= RATING_THRESHOLDS.C) return 'C';
-  return 'D';
+  return 'C';
 }
-function getModifier(r) { return { S: 2, A: 1, B: 0, C: -1, D: -2 }[r]; }
+function getModifier(r) { return { S: 3, A: 1, B: 0, C: -1 }[r]; }
 
 // ============ 2048 Logic ============
 function emptyGrid() {
@@ -427,7 +427,7 @@ class RatingScene extends Phaser.Scene {
 
     const rating = getRating(this.finalScore, this.maxTile);
     const modifier = getModifier(rating);
-    const ratingColors = { S: '#FFD700', A: COLORS.primaryHex, B: '#9CA3AF', C: '#FB7185', D: '#DC2626' };
+    const ratingColors = { S: '#FFD700', A: COLORS.primaryHex, B: '#9CA3AF', C: '#FB7185' };
     const ratingColor = ratingColors[rating];
     const modText = modifier > 0 ? `+${modifier} Bonus` : modifier < 0 ? `${modifier} Penalty` : 'No Change';
 
@@ -488,14 +488,14 @@ class RatingScene extends Phaser.Scene {
     }
 
     // C/D rank shake
-    if (rating === 'C' || rating === 'D') {
+    if (rating === 'C') {
       this.time.delayedCall(1200, () => {
         this.tweens.add({
           targets: [card, shadow],
           x: '+=4',
           duration: 50,
           yoyo: true,
-          repeat: rating === 'D' ? 9 : 5
+          repeat: 5
         });
       });
     }

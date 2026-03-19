@@ -43,12 +43,11 @@ function getRating(score) {
   if (score >= RATING_THRESHOLDS.S) return 'S';
   if (score >= RATING_THRESHOLDS.A) return 'A';
   if (score >= RATING_THRESHOLDS.B) return 'B';
-  if (score >= RATING_THRESHOLDS.C) return 'C';
-  return 'D';
+  return 'C';
 }
 
 function getModifier(rating) {
-  return { S: 2, A: 1, B: 0, C: -1, D: -2 }[rating];
+  return { S: 3, A: 1, B: 0, C: -1 }[rating];
 }
 
 function notifyGameComplete(result) {
@@ -202,8 +201,7 @@ class ResultScene extends Phaser.Scene {
       S: COLORS.gold,
       A: COLORS.primaryHex,
       B: '#9ca3af',
-      C: '#fb7185',
-      D: '#dc2626'
+      C: '#fb7185'
     }[rating];
 
     this.add.text(W / 2, 110, 'Settlement', {

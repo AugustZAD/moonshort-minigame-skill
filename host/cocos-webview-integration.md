@@ -15,11 +15,10 @@ Fixed mapping:
 
 | Rating | Modifier | Meaning |
 | --- | --- | --- |
-| `S` | `+2` | strong success bonus |
+| `S` | `+3` | strong success bonus |
 | `A` | `+1` | normal success bonus |
 | `B` | `0` | neutral result |
-| `C` | `-1` | light penalty |
-| `D` | `-2` | strong penalty |
+| `C` | `-1` | penalty |
 
 In practice, the host should apply `modifier` to the relevant attribute check for the next round or the configured duration.
 
@@ -37,7 +36,7 @@ Required fields:
 ```
 
 The host should reject payloads if:
-- the rating is not `S/A/B/C/D`
+- the rating is not `S/A/B/C`
 - `modifier` does not match the rating
 - required fields are missing or malformed
 

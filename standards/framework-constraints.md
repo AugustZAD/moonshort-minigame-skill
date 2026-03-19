@@ -30,8 +30,8 @@ This is the compact compatibility layer. Use it together with `standards/design-
 - Always show a final confirmation CTA (for example `Continue`).
 - Send settlement only after that CTA is pressed.
 - Include the required fields from `contracts/settlement.contract.md`.
-- Settlement grades are fixed to `S / A / B / C / D`.
-- Modifier mapping is fixed to `+2 / +1 / 0 / -1 / -2`.
+- Settlement grades are fixed to `S / A / B / C`.
+- Modifier mapping is fixed to `+3 / +1 / 0 / -1`.
 
 ## Content Generation Safety
 - No external runtime dependency except Phaser CDN and optional font CDN.

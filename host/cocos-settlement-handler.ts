@@ -1,23 +1,22 @@
-export type MiniGameRating = 'S' | 'A' | 'B' | 'C' | 'D';
+export type MiniGameRating = 'S' | 'A' | 'B' | 'C';
 
 export interface MiniGameSettlement {
   rating: MiniGameRating;
   score: number;
   attribute: string;
-  modifier: 2 | 1 | 0 | -1 | -2;
+  modifier: 3 | 1 | 0 | -1;
   [key: string]: unknown;
 }
 
 export const MODIFIER_BY_RATING: Record<MiniGameRating, MiniGameSettlement['modifier']> = {
-  S: 2,
+  S: 3,
   A: 1,
   B: 0,
   C: -1,
-  D: -2,
 };
 
 export function isMiniGameRating(value: unknown): value is MiniGameRating {
-  return value === 'S' || value === 'A' || value === 'B' || value === 'C' || value === 'D';
+  return value === 'S' || value === 'A' || value === 'B' || value === 'C';
 }
 
 export function isMiniGameSettlement(value: unknown): value is MiniGameSettlement {

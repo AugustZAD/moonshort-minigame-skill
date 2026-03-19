@@ -453,8 +453,7 @@ const RESULT_FLAVOR = {
   S: `Your ${ATTRIBUTE} is exceptional. This moment belongs to you.`,
   A: `Strong ${ATTRIBUTE}. You made a real impression.`,
   B: `${ATTRIBUTE} holds steady — a solid foundation to build on.`,
-  C: `${ATTRIBUTE} wavered this time. The next round is yours to reclaim.`,
-  D: `${ATTRIBUTE} took a serious hit. Regroup — you know what to do.`
+  C: `${ATTRIBUTE} wavered this time. The next round is yours to reclaim.`
 };
 
 // In ResultScene.create(), after the score text:

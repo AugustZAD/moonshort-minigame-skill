@@ -69,8 +69,8 @@ These never change. Any violation is a release blocker.
 - Output path: `games/<game_id>/index.html` with lowercase kebab-case id.
 - Read `attribute` and `primaryColor` from URL query params at boot.
 - Settlement payload required fields: `rating`, `score`, `attribute`, `modifier`.
-- Rating enum: exactly `S / A / B / C / D`.
-- Modifier mapping: `S→+2, A→+1, B→0, C→-1, D→-2`.
+- Rating enum: exactly `S / A / B / C`.
+- Modifier mapping: `S→+3, A→+1, B→0, C→-1`.
 - Always derive modifier from a lookup, never from ad hoc math.
 - Settlement fires only when the user taps the final confirmation CTA.
 - Bridge order: iOS WebKit → Android jsBridge → iframe postMessage → console fallback.
@@ -140,7 +140,7 @@ Read these only when needed:
   - settlement scene is reachable
   - final CTA emits payload
   - payload contains `rating / score / attribute / modifier`
-  - modifier matches the fixed `S / A / B / C / D` lookup
+  - modifier matches the fixed `S / A / B / C` lookup
 - For large packs, use a generic CTA verification flow for standard `ResultScene` games and a special-case flow for any game with a different result scene structure.
 - After UI moves, re-check the exact pages that were touched with a real browser view.
 
@@ -181,7 +181,7 @@ Texture sourcing, Kenney-style asset strategy, and font guidance live in:
 - [ ] Game lives under `games/<game_id>/index.html` when a game is created.
 - [ ] Runs standalone in browser with no build step.
 - [ ] Reads `attribute` and `primaryColor` from URL.
-- [ ] Sends settlement payload with required four fields and five-tier rating compatibility.
+- [ ] Sends settlement payload with required four fields and four-tier rating compatibility.
 - [ ] Settlement is sent only from the final confirmation CTA.
 - [ ] `list.md` inventory updated when game inventory changed.
 - [ ] `qa/compatibility-checklist.md` reviewed.

@@ -4,11 +4,10 @@ const fs = require('fs');
 const path = require('path');
 
 const MODIFIER_BY_RATING = {
-  S: 2,
+  S: 3,
   A: 1,
   B: 0,
   C: -1,
-  D: -2,
 };
 
 function fail(message) {
@@ -56,7 +55,7 @@ function validate(payload) {
   }
 
   if (!Object.prototype.hasOwnProperty.call(MODIFIER_BY_RATING, payload.rating)) {
-    fail('`rating` must be one of S/A/B/C/D');
+    fail('`rating` must be one of S/A/B/C');
   }
   if (typeof payload.score !== 'number' || !Number.isFinite(payload.score)) {
     fail('`score` must be a finite number');

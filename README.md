@@ -15,7 +15,7 @@ Standalone framework and skill repository for building Moonshort-compatible H5 m
 - H5 only
 - Phaser 3 single-file output
 - Stable host payload fields: `rating`, `score`, `attribute`, `modifier`
-- Five-tier settlement: `S / A / B / C / D`
+- Four-tier settlement: `S / A / B / C`
 - Final settlement is sent only from the confirmation CTA
 
 ## Repository workflow

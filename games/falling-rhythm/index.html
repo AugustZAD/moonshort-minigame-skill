@@ -24,14 +24,14 @@ const W = 393;
 const H = 736;
 const ROUND_SECONDS = 40;
 const RATING_THRESHOLDS = { S: 360, A: 270, B: 190, C: 115 };
-const MODIFIER_BY_RATING = { S: 2, A: 1, B: 0, C: -1, D: -2 };
+const MODIFIER_BY_RATING = { S: 3, A: 1, B: 0, C: -1 };
 
 function getRating(score) {
   if (score >= RATING_THRESHOLDS.S) return 'S';
   if (score >= RATING_THRESHOLDS.A) return 'A';
   if (score >= RATING_THRESHOLDS.B) return 'B';
   if (score >= RATING_THRESHOLDS.C) return 'C';
-  return 'D';
+  return 'C';
 }
 
 function getModifier(rating) {
@@ -435,7 +435,7 @@ class ResultScene extends Phaser.Scene {
 
     const rating = getRating(this.finalScore);
     const modifier = getModifier(rating);
-    const ratingColor = { S: '#ffd700', A: C.primaryHex, B: '#9ca3af', C: '#fb7185', D: '#dc2626' }[rating];
+    const ratingColor = { S: '#ffd700', A: C.primaryHex, B: '#9ca3af', C: '#fb7185' }[rating];
     const modText = modifier > 0 ? '+' + modifier : String(modifier);
 
     this.add.rectangle(W / 2, 94, 350, 116, C.white, 1).setStrokeStyle(2.5, C.accent);

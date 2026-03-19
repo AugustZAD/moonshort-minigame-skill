@@ -24,7 +24,7 @@ const W = 393;
 const H = 736;
 const ROUND_SECONDS = 55;
 const RATING_THRESHOLDS = { S: 360, A: 275, B: 190, C: 110 };
-const MODIFIER_BY_RATING = { S: 2, A: 1, B: 0, C: -1, D: -2 };
+const MODIFIER_BY_RATING = { S: 3, A: 1, B: 0, C: -1 };
 const WIRE_COLORS = [
   { key: 'red', label: 'RED', fill: 0xf87171 },
   { key: 'blue', label: 'BLUE', fill: 0x38bdf8 },
@@ -37,7 +37,7 @@ function getRating(score) {
   if (score >= RATING_THRESHOLDS.A) return 'A';
   if (score >= RATING_THRESHOLDS.B) return 'B';
   if (score >= RATING_THRESHOLDS.C) return 'C';
-  return 'D';
+  return 'C';
 }
 
 function getModifier(rating) {
@@ -391,7 +391,7 @@ class ResultScene extends Phaser.Scene {
     const rating = getRating(this.finalScore);
     const modifier = getModifier(rating);
     const modText = modifier > 0 ? '+' + modifier : String(modifier);
-    const ratingColor = { S: '#ffd700', A: C.primaryHex, B: '#9ca3af', C: '#fb7185', D: '#dc2626' }[rating];
+    const ratingColor = { S: '#ffd700', A: C.primaryHex, B: '#9ca3af', C: '#fb7185' }[rating];
 
     this.add.rectangle(W / 2, 94, 350, 116, C.white, 1).setStrokeStyle(2.5, C.accent);
     this.add.text(W / 2, 50, 'Settlement', {
