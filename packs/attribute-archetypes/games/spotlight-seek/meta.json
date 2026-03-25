@@ -1,0 +1,19 @@
+{
+  "id": "spotlight-seek",
+  "title": "Spotlight Seek",
+  "description": "Move a spotlight to reveal and tap hidden objects in the dark. Atmospheric discovery.",
+  "sceneTypes": [
+    "mystery",
+    "romantic"
+  ],
+  "mechanic": "navigation",
+  "mood": [
+    "secretive",
+    "curious",
+    "intimate"
+  ],
+  "difficulty": [
+    "easy",
+    "moderate"
+  ]
+}

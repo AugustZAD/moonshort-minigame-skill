@@ -1,0 +1,18 @@
+{
+  "id": "parking-rush",
+  "title": "Parking Rush",
+  "description": "Slide cars to clear a path for the target vehicle. A spatial puzzle race.",
+  "sceneTypes": [
+    "mystery",
+    "action"
+  ],
+  "mechanic": "puzzle",
+  "mood": [
+    "methodical",
+    "clever",
+    "satisfying"
+  ],
+  "difficulty": [
+    "moderate"
+  ]
+}

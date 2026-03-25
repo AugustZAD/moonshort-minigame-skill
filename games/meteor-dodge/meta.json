@@ -1,0 +1,18 @@
+{
+  "id": "meteor-dodge",
+  "title": "Meteor Dodge",
+  "description": "Dodge a rain of meteors with quick reflexes. Escalating intensity and chaos.",
+  "sceneTypes": [
+    "tension",
+    "action"
+  ],
+  "mechanic": "dodge",
+  "mood": [
+    "chaotic",
+    "desperate",
+    "survival"
+  ],
+  "difficulty": [
+    "hard"
+  ]
+}

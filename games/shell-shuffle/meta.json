@@ -1,0 +1,19 @@
+{
+  "id": "shell-shuffle",
+  "title": "Shell Shuffle",
+  "description": "Track a hidden object under shuffling cups. Tests visual focus and memory.",
+  "sceneTypes": [
+    "mystery",
+    "competitive"
+  ],
+  "mechanic": "memory",
+  "mood": [
+    "suspicious",
+    "playful",
+    "cunning"
+  ],
+  "difficulty": [
+    "moderate",
+    "hard"
+  ]
+}

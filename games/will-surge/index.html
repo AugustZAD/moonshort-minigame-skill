@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no,viewport-fit=cover">
+<title>Will Surge</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;900&family=Patrick+Hand&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100%; height: 100%; background: #0f0a1e; overflow: hidden; }
+  canvas { display: block; margin: 0 auto; }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
+</head>
+<body>
+<script>
+// ── Host context ──────────────────────────────────────────────────────────────
+const CTX = window.__EPISODE_CTX__ || {};
+const params = new URLSearchParams(window.location.search);
+const ATTRIBUTE = CTX.attribute || params.get('attribute') || '意志';
+const PRIMARY_COLOR = CTX.primaryColor || params.get('primaryColor') || '#8B2FC9';
+const DISPLAY_ATTRIBUTE = (CTX.character && CTX.character.name
+  ? CTX.character.name + '\u7684' : '') + ATTRIBUTE;
+
+// ── Localized copy (from CTX.copy, falls back to defaults) ────────────────────
+const COPY = Object.assign({
+  gameTitle:     'Will Surge',
+  hint:          'Tap to resist \u2014 hold on until help arrives.',
+  buttonLabel:   'RESIST',
+  threatLabel:   'P R E S S U R E',
+  willLabel:     'W I L L  P O W E R',
+  rescueLabel:   '\u2191  Help is on the way  \u2191',
+  statusHolding: 'HOLDING STRONG',
+  statusNeutral: 'HOLD THE LINE',
+  statusLosing:  'LOSING GROUND...',
+  surgeWarning:  '\u26a1 SURGE INCOMING \u26a1',
+  surgeDefeated: 'SURGE REPELLED',
+}, CTX.copy || {});
+
+// ── Layout ────────────────────────────────────────────────────────────────────
+const W = 393;
+const H = 736;
+const ROUND_SECONDS = 20;
+
+// ── Rating ────────────────────────────────────────────────────────────────────
+// Score is accumulated as (willPower - threatPower) * dt * k over 20s
+// Full dominance ≈ 180 pts | balanced ≈ 90 | struggling ≈ 40
+const RATING_THRESHOLDS = { S: 150, A: 95, B: 50 };
+
+function getRating(score) {
+  if (score >= RATING_THRESHOLDS.S) return 'S';
+  if (score >= RATING_THRESHOLDS.A) return 'A';
+  if (score >= RATING_THRESHOLDS.B) return 'B';
+  return 'C';
+}
+
+function getModifier(rating) {
+  return { S: 3, A: 1, B: 0, C: -1 }[rating];
+}
+
+// ── Bridge ────────────────────────────────────────────────────────────────────
+function notifyGameComplete(result) {
+  const payload = JSON.stringify(result);
+  if (window.webkit?.messageHandlers?.jsBridge) {
+    window.webkit.messageHandlers.jsBridge.postMessage(payload); return;
+  }
+  if (window.jsBridge?.postMessage) {
+    window.jsBridge.postMessage(payload); return;
+  }
+  if (window.parent !== window) {
+    window.parent.postMessage(payload, '*'); return;
+  }
+  console.log('[GameComplete]', result);
+}
+
+// ── Color helpers ─────────────────────────────────────────────────────────────
+function hexToNum(hex) { return parseInt(hex.replace('#', ''), 16); }
+const PC = hexToNum(PRIMARY_COLOR);
+
+// ── GameScene ─────────────────────────────────────────────────────────────────
+class GameScene extends Phaser.Scene {
+  constructor() { super('GameScene'); }
+
+  init() {
+    this.score        = 0;
+    this.timeLeft     = ROUND_SECONDS;
+    this.isOver       = false;
+
+    // Core meter: 0 = fully overwhelmed, 1 = fully in control, starts at 0.5
+    this.meter        = 0.5;
+
+    // Threat pressure auto-grows each frame; surges spike it
+    this.threat       = 0.3;
+
+    // Surge state
+    this.nextSurgeAt  = 6;   // seconds elapsed until next surge
+    this.elapsed      = 0;
+    this.surgeActive  = false;
+    this.surgeTimer   = 0;
+    this.surgeDur     = 2.2;
+    this.surgesDefeated = 0;
+    this.surgeWarned  = false;
+
+    // Tap cooldown (prevent pure button-hold exploit)
+    this.tapCooldown  = 0;
+  }
+
+  create() {
+    // ── Background ──────────────────────────────────────────────────────────
+    this.cameras.main.setBackgroundColor('#0f0a1e');
+    const bg = this.add.graphics();
+    bg.fillGradientStyle(0x1a0535, 0x1a0535, 0x080e2e, 0x080e2e, 1);
+    bg.fillRect(0, 0, W, H);
+
+    // Ambient floating particles
+    this.particles = [];
+    for (let i = 0; i < 24; i++) {
+      const c = this.add.circle(
+        Phaser.Math.Between(10, W - 10),
+        Phaser.Math.Between(140, H - 220),
+        Phaser.Math.Between(2, 4), PC, 0.12
+      );
+      this.particles.push({
+        obj: c,
+        baseAlpha: 0.04 + Math.random() * 0.10,
+        phase: Math.random() * Math.PI * 2,
+        speed: 0.8 + Math.random() * 1.2
+      });
+    }
+
+    // ── Header ──────────────────────────────────────────────────────────────
+    this.add.text(W / 2, 42, COPY.gameTitle, {
+      fontFamily: 'Nunito', fontSize: '30px', fontStyle: '900', color: '#e9d5ff'
+    }).setOrigin(0.5);
+    this.add.text(W / 2, 70, COPY.hint, {
+      fontFamily: 'Patrick Hand', fontSize: '16px', color: '#9e7bc4'
+    }).setOrigin(0.5);
+
+    // Score pill
+    this.add.rectangle(50, 100, 92, 28, 0x2a1050, 1).setStrokeStyle(1.5, PC);
+    this.scoreText = this.add.text(50, 100, 'Score 0', {
+      fontFamily: 'Nunito', fontSize: '14px', fontStyle: '700', color: '#e9d5ff'
+    }).setOrigin(0.5);
+
+    // Timer pill
+    this.timerPill = this.add.rectangle(W - 50, 100, 88, 28, 0x2a1050, 1).setStrokeStyle(1.5, 0xf87171);
+    this.timerText = this.add.text(W - 50, 100, 'Time 20', {
+      fontFamily: 'Nunito', fontSize: '14px', fontStyle: '700', color: '#fca5a5'
+    }).setOrigin(0.5);
+
+    // ── Arena frame ─────────────────────────────────────────────────────────
+    this.add.rectangle(W / 2, 332, 355, 390, 0x160830, 1).setStrokeStyle(2, PC, 0.5);
+
+    // ── THREAT side (top) ────────────────────────────────────────────────────
+    this.add.text(W / 2, 152, COPY.threatLabel, {
+      fontFamily: 'Nunito', fontSize: '12px', fontStyle: '900',
+      color: '#f87171', letterSpacing: 4
+    }).setOrigin(0.5);
+
+    // Threat bar track
+    this.add.rectangle(W / 2, 174, 310, 22, 0x1f0a0a, 1).setStrokeStyle(1.5, 0x7f1d1d);
+    // Fills right→left (presses toward center divider)
+    this.threatBar = this.add.rectangle(W - 41, 174, 0, 16, 0xef4444, 1).setOrigin(1, 0.5);
+
+    // Threat avatar — pulsing triangle cluster
+    this.threatGfx = this.add.graphics();
+    this.drawThreatShape(0.3, 1.0);
+
+    // ── Central status ───────────────────────────────────────────────────────
+    this.dividerLine = this.add.graphics();
+    this.dividerLine.lineStyle(1.5, PC, 0.35);
+    this.dividerLine.lineBetween(36, 330, W - 36, 330);
+
+    this.statusLabel = this.add.text(W / 2, 313, COPY.statusNeutral, {
+      fontFamily: 'Nunito', fontSize: '17px', fontStyle: '900', color: '#c084fc'
+    }).setOrigin(0.5);
+
+    this.surgeLabel = this.add.text(W / 2, 348, '', {
+      fontFamily: 'Nunito', fontSize: '20px', fontStyle: '900', color: '#fbbf24'
+    }).setOrigin(0.5).setVisible(false);
+
+    // ── WILL side (bottom) ───────────────────────────────────────────────────
+    this.add.text(W / 2, 366, COPY.willLabel, {
+      fontFamily: 'Nunito', fontSize: '12px', fontStyle: '900',
+      color: '#c084fc', letterSpacing: 3
+    }).setOrigin(0.5);
+
+    // Will bar track
+    this.add.rectangle(W / 2, 388, 310, 22, 0x0d0521, 1).setStrokeStyle(1.5, 0x6b21a8);
+    // Fills left→right
+    this.willBar = this.add.rectangle(41, 388, 0, 16, PC, 1).setOrigin(0, 0.5);
+
+    // Avery's will core — layered glowing circle
+    const coreY = 450;
+    this.willGlowOuter = this.add.circle(W / 2, coreY, 46, PC, 0.08);
+    this.willGlowInner = this.add.circle(W / 2, coreY, 30, PC, 0.20);
+    this.willCore      = this.add.circle(W / 2, coreY, 20, PC, 0.95)
+      .setStrokeStyle(2, 0xffffff, 0.5);
+    // Ripple ring (animated on tap)
+    this.ripple = this.add.circle(W / 2, coreY, 20, 0xffffff, 0)
+      .setStrokeStyle(2, PC, 0.9);
+
+    // ── Rescue countdown bar ─────────────────────────────────────────────────
+    this.add.text(W / 2, 497, COPY.rescueLabel, {
+      fontFamily: 'Patrick Hand', fontSize: '14px', color: '#818cf8'
+    }).setOrigin(0.5);
+    this.add.rectangle(W / 2, 515, 282, 11, 0x1e1b4b, 1).setStrokeStyle(1.5, 0x4338ca);
+    this.rescueBar = this.add.rectangle(W / 2 - 140, 515, 0, 7, 0x818cf8, 1).setOrigin(0, 0.5);
+
+    // ── RESIST button ────────────────────────────────────────────────────────
+    const bx = W / 2;
+    const by = H - 122;
+    this.btnShadow = this.add.rectangle(bx + 4, by + 4, 244, 66, 0x2d0c59, 1);
+    this.btn = this.add.rectangle(bx, by, 244, 66, PC, 1)
+      .setStrokeStyle(2, 0xffffff, 0.25)
+      .setInteractive({ useHandCursor: true });
+    this.btnLabel = this.add.text(bx, by, COPY.buttonLabel, {
+      fontFamily: 'Nunito', fontSize: '26px', fontStyle: '900', color: '#ffffff'
+    }).setOrigin(0.5);
+
+    const resetBtn = () => {
+      this.btn.setPosition(bx, by);
+      this.btnLabel.setPosition(bx, by);
+      this.btnShadow.setVisible(true);
+    };
+
+    this.btn.on('pointerdown', () => {
+      if (this.isOver) return;
+      this.btn.setPosition(bx + 2, by + 2);
+      this.btnLabel.setPosition(bx + 2, by + 2);
+      this.btnShadow.setVisible(false);
+      this.onTap();
+    });
+    this.btn.on('pointerup', resetBtn);
+    this.btn.on('pointerout', resetBtn);
+
+    // ── Timer countdown ──────────────────────────────────────────────────────
+    this.time.addEvent({
+      delay: 1000,
+      repeat: ROUND_SECONDS - 1,
+      callback: () => {
+        if (this.isOver) return;
+        this.timeLeft -= 1;
+        this.timerText.setText('Time ' + this.timeLeft);
+        if (this.timeLeft <= 5) {
+          this.timerText.setColor('#f87171');
+          this.tweens.add({
+            targets: this.timerPill, alpha: 0.4,
+            yoyo: true, duration: 200, ease: 'Sine.easeInOut'
+          });
+        }
+        if (this.timeLeft <= 0) this.finishGame();
+      }
+    });
+  }
+
+  // ── Threat shape ────────────────────────────────────────────────────────────
+  drawThreatShape(intensity, alpha) {
+    this.threatGfx.clear();
+    const cx = W / 2;
+    const cy = 242;
+    const s  = 0.85 + intensity * 0.3;
+    this.threatGfx.fillStyle(0xef4444, alpha * 0.55);
+    this.threatGfx.fillTriangle(cx - 22 * s, cy - 14 * s, cx + 22 * s, cy - 14 * s, cx, cy + 20 * s);
+    this.threatGfx.fillStyle(0xef4444, alpha * 0.25);
+    this.threatGfx.fillCircle(cx, cy - 6 * s, 20 * s);
+    this.threatGfx.fillStyle(0xdc2626, alpha * 0.18);
+    this.threatGfx.fillCircle(cx - 30 * s, cy, 10 * s);
+    this.threatGfx.fillCircle(cx + 30 * s, cy, 10 * s);
+  }
+
+  // ── Tap handler ─────────────────────────────────────────────────────────────
+  onTap() {
+    if (this.tapCooldown > 0) return;
+    const boost = this.surgeActive ? 0.10 : 0.075;
+    this.meter = Math.min(1, this.meter + boost);
+    this.tapCooldown = 0.08;
+
+    // Core pulse
+    this.tweens.add({
+      targets: this.willCore,
+      scaleX: 1.45, scaleY: 1.45,
+      yoyo: true, duration: 90, ease: 'Quad.easeOut'
+    });
+    // Ripple burst
+    this.ripple.setScale(1).setAlpha(1);
+    this.tweens.add({
+      targets: this.ripple,
+      scaleX: 2.6, scaleY: 2.6, alpha: 0,
+      duration: 350, ease: 'Cubic.easeOut'
+    });
+    // Button color flash
+    this.tweens.add({
+      targets: this.btn,
+      alpha: 0.75, yoyo: true, duration: 60
+    });
+  }
+
+  // ── Score helper ─────────────────────────────────────────────────────────────
+  addScore(delta) {
+    this.score = Math.max(0, this.score + delta);
+    this.scoreText.setText('Score ' + Math.round(this.score));
+  }
+
+  // ── Status label ─────────────────────────────────────────────────────────────
+  updateStatus() {
+    const diff = this.meter - this.threat;
+    if (this.surgeActive) {
+      this.statusLabel.setText(COPY.surgeWarning);
+      this.statusLabel.setColor('#fbbf24');
+    } else if (diff > 0.2) {
+      this.statusLabel.setText(COPY.statusHolding);
+      this.statusLabel.setColor('#86efac');
+    } else if (diff > -0.05) {
+      this.statusLabel.setText(COPY.statusNeutral);
+      this.statusLabel.setColor('#c084fc');
+    } else {
+      this.statusLabel.setText(COPY.statusLosing);
+      this.statusLabel.setColor('#f87171');
+    }
+  }
+
+  // ── Finish ───────────────────────────────────────────────────────────────────
+  finishGame() {
+    if (this.isOver) return;
+    this.isOver = true;
+    this.scene.start('ResultScene', {
+      score: Math.round(this.score),
+      surgesDefeated: this.surgesDefeated,
+      willFinal: Math.round(this.meter * 100)
+    });
+  }
+
+  // ── Update loop ──────────────────────────────────────────────────────────────
+  update(time, delta) {
+    if (this.isOver) return;
+    const dt      = delta / 1000;
+    const elapsed = (ROUND_SECONDS - this.timeLeft); // seconds passed
+
+    // Tap cooldown
+    if (this.tapCooldown > 0) this.tapCooldown -= dt;
+
+    // Animate particles
+    const t = time / 1000;
+    for (const p of this.particles) {
+      p.obj.setAlpha(p.baseAlpha + Math.sin(t * p.speed + p.phase) * 0.05);
+    }
+
+    // ── Surge scheduling ─────────────────────────────────────────────────────
+    this.nextSurgeAt -= dt;
+
+    // Warning window: 1.5s before surge
+    if (!this.surgeActive && !this.surgeWarned && this.nextSurgeAt <= 1.5 && this.nextSurgeAt > 0) {
+      this.surgeWarned = true;
+      this.surgeLabel.setText(COPY.surgeWarning).setVisible(true);
+      this.tweens.add({
+        targets: this.surgeLabel,
+        alpha: 0.2, yoyo: true, repeat: 5, duration: 220
+      });
+    }
+
+    // Surge start
+    if (!this.surgeActive && this.nextSurgeAt <= 0) {
+      this.surgeActive = true;
+      this.surgeTimer  = this.surgeDur;
+      this.surgeWarned = false;
+      this.surgeLabel.setVisible(false).setAlpha(1);
+      this.nextSurgeAt = Phaser.Math.FloatBetween(5.5, 8.0);
+      this.cameras.main.flash(180, 180, 30, 30, false);
+    }
+
+    // ── Threat pressure ──────────────────────────────────────────────────────
+    if (this.surgeActive) {
+      this.surgeTimer -= dt;
+      this.threat += 0.50 * dt;   // surges spike threat fast
+      if (this.surgeTimer <= 0) {
+        this.surgeActive = false;
+        // Did player hold their ground during the surge?
+        if (this.meter >= this.threat - 0.10) {
+          this.surgesDefeated++;
+          this.addScore(22);
+          this.statusLabel.setText(COPY.surgeDefeated + '  +22').setColor('#86efac');
+          this.time.delayedCall(900, () => this.updateStatus());
+          this.cameras.main.flash(140, 80, 40, 200, false);
+        }
+      }
+    } else {
+      // Baseline threat creep — accelerates as time runs out
+      const creep = 0.045 + (elapsed / ROUND_SECONDS) * 0.06;
+      this.threat += creep * dt;
+    }
+
+    // Will naturally decays (resistance fades)
+    const decay = 0.065 + (this.surgeActive ? 0.04 : 0);
+    this.meter -= decay * dt;
+
+    // Clamp both
+    this.meter  = Phaser.Math.Clamp(this.meter, 0, 1);
+    this.threat = Phaser.Math.Clamp(this.threat, 0, 1);
+
+    // ── Scoring ──────────────────────────────────────────────────────────────
+    const diff = this.meter - this.threat;
+    if (diff > 0) {
+      this.addScore(diff * 14 * dt);    // leading → earn points
+    } else {
+      this.addScore(diff * 7 * dt);     // trailing → lose points
+    }
+
+    // ── Visuals ──────────────────────────────────────────────────────────────
+    // Bars
+    this.willBar.width   = 310 * this.meter;
+    this.threatBar.width = 310 * this.threat;
+
+    // Will core glow intensity
+    const glow = 0.35 + this.meter * 0.5;
+    this.willGlowOuter.setAlpha(glow * 0.22);
+    this.willGlowInner.setAlpha(glow * 0.35);
+    this.willCore.setAlpha(0.7 + this.meter * 0.3);
+
+    // Threat avatar scale & alpha
+    const threatIntensity = this.threat + (this.surgeActive ? 0.2 : 0);
+    const pulsate = 0.95 + Math.sin(t * (2.5 + this.threat * 2)) * 0.07;
+    this.drawThreatShape(threatIntensity, pulsate);
+
+    // Rescue bar grows as time passes
+    this.rescueBar.width = 280 * (elapsed / ROUND_SECONDS);
+
+    // Status
+    this.updateStatus();
+  }
+}
+
+// ── ResultScene ───────────────────────────────────────────────────────────────
+class ResultScene extends Phaser.Scene {
+  constructor() { super('ResultScene'); }
+
+  init(data) {
+    this.finalScore     = data.score || 0;
+    this.surgesDefeated = data.surgesDefeated || 0;
+    this.willFinal      = data.willFinal || 0;
+  }
+
+  create() {
+    this.cameras.main.setBackgroundColor('#0f0a1e');
+
+    const rating   = getRating(this.finalScore);
+    const modifier = getModifier(rating);
+    const modText  = modifier > 0 ? '+' + modifier : String(modifier);
+    const ratingColor = { S: '#ffd700', A: '#c084fc', B: '#9ca3af', C: '#fb7185' }[rating];
+
+    const flavorText = {
+      S: 'Unbreakable. Every surge repelled.',
+      A: 'Strong resolve. Held through the pressure.',
+      B: 'Wavered but endured. Barely.',
+      C: 'The wall nearly crumbled...'
+    }[rating];
+
+    // Background glow
+    this.add.circle(W / 2, 255, 130, PC, 0.07);
+
+    // Header
+    this.add.rectangle(W / 2, 86, 354, 96, 0x1e0940, 1).setStrokeStyle(2, PC, 0.5);
+    this.add.text(W / 2, 58, 'Settlement', {
+      fontFamily: 'Nunito', fontSize: '32px', fontStyle: '900', color: '#e9d5ff'
+    }).setOrigin(0.5);
+    this.add.text(W / 2, 94, 'Will Surge', {
+      fontFamily: 'Patrick Hand', fontSize: '20px', color: '#9e7bc4'
+    }).setOrigin(0.5);
+
+    // Rating letter
+    this.add.text(W / 2, 240, rating, {
+      fontFamily: 'Nunito', fontSize: '108px', fontStyle: '900',
+      color: ratingColor, stroke: '#1f0535', strokeThickness: 5
+    }).setOrigin(0.5);
+
+    this.add.text(W / 2, 320, 'Score ' + this.finalScore, {
+      fontFamily: 'Nunito', fontSize: '26px', fontStyle: '800', color: '#e9d5ff'
+    }).setOrigin(0.5);
+
+    this.add.text(W / 2, 355, DISPLAY_ATTRIBUTE + '  ' + modText, {
+      fontFamily: 'Patrick Hand', fontSize: '23px', color: '#c084fc'
+    }).setOrigin(0.5);
+
+    // Stat cards
+    this.add.rectangle(110, 428, 132, 72, 0x1e0940, 1).setStrokeStyle(1.5, PC, 0.7);
+    this.add.text(110, 410, 'Surges', {
+      fontFamily: 'Nunito', fontSize: '13px', fontStyle: '700', color: '#a78bca'
+    }).setOrigin(0.5);
+    this.add.text(110, 438, String(this.surgesDefeated), {
+      fontFamily: 'Nunito', fontSize: '34px', fontStyle: '900', color: '#e9d5ff'
+    }).setOrigin(0.5);
+    this.add.text(110, 462, 'repelled', {
+      fontFamily: 'Patrick Hand', fontSize: '13px', color: '#9e7bc4'
+    }).setOrigin(0.5);
+
+    this.add.rectangle(W - 110, 428, 132, 72, 0x1e0940, 1).setStrokeStyle(1.5, PC, 0.7);
+    this.add.text(W - 110, 410, 'Final Will', {
+      fontFamily: 'Nunito', fontSize: '13px', fontStyle: '700', color: '#a78bca'
+    }).setOrigin(0.5);
+    this.add.text(W - 110, 438, this.willFinal + '%', {
+      fontFamily: 'Nunito', fontSize: '34px', fontStyle: '900', color: '#e9d5ff'
+    }).setOrigin(0.5);
+    this.add.text(W - 110, 462, 'remaining', {
+      fontFamily: 'Patrick Hand', fontSize: '13px', color: '#9e7bc4'
+    }).setOrigin(0.5);
+
+    // Flavor
+    this.add.text(W / 2, 500, flavorText, {
+      fontFamily: 'Patrick Hand', fontSize: '17px', color: '#818cf8'
+    }).setOrigin(0.5);
+
+    // Continue button
+    const bx = W / 2;
+    const by = H - 128;
+    const shadow = this.add.rectangle(bx + 3, by + 3, 236, 58, 0x2d0c59, 1);
+    const btn    = this.add.rectangle(bx, by, 236, 58, PC, 1)
+      .setStrokeStyle(2, 0xffffff, 0.22)
+      .setInteractive({ useHandCursor: true });
+    const label  = this.add.text(bx, by, 'Continue', {
+      fontFamily: 'Nunito', fontSize: '24px', fontStyle: '900', color: '#ffffff'
+    }).setOrigin(0.5);
+
+    const resetBtn = () => {
+      btn.setPosition(bx, by); label.setPosition(bx, by); shadow.setVisible(true);
+    };
+    btn.on('pointerdown', () => {
+      btn.setPosition(bx + 2, by + 2); label.setPosition(bx + 2, by + 2); shadow.setVisible(false);
+    });
+    btn.on('pointerout', resetBtn);
+    btn.on('pointerup', () => {
+      resetBtn();
+      notifyGameComplete({
+        rating, score: this.finalScore,
+        attribute: ATTRIBUTE, modifier,
+        gameId: 'will-surge',
+        surgesDefeated: this.surgesDefeated,
+        willFinal: this.willFinal
+      });
+    });
+  }
+}
+
+// ── Phaser config ─────────────────────────────────────────────────────────────
+new Phaser.Game({
+  type: Phaser.AUTO,
+  width: W,
+  height: H,
+  scene: [GameScene, ResultScene],
+  scale: {
+    mode: Phaser.Scale.FIT,
+    autoCenter: Phaser.Scale.CENTER_BOTH
+  }
+});
+</script>
+</body>
+</html>

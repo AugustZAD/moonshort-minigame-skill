@@ -1,0 +1,19 @@
+{
+  "id": "basket-catch",
+  "title": "Basket Catch",
+  "description": "Move a basket to catch falling items while dodging the bad ones.",
+  "sceneTypes": [
+    "action",
+    "competitive"
+  ],
+  "mechanic": "dodge",
+  "mood": [
+    "energetic",
+    "reflex",
+    "fun"
+  ],
+  "difficulty": [
+    "easy",
+    "moderate"
+  ]
+}

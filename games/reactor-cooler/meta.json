@@ -1,0 +1,18 @@
+{
+  "id": "reactor-cooler",
+  "title": "Reactor Cooler",
+  "description": "Balance multiple systems simultaneously to prevent overload. Demands divided attention.",
+  "sceneTypes": [
+    "tension",
+    "action"
+  ],
+  "mechanic": "balance",
+  "mood": [
+    "critical",
+    "high-pressure",
+    "technical"
+  ],
+  "difficulty": [
+    "hard"
+  ]
+}

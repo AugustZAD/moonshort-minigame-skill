@@ -1,0 +1,19 @@
+{
+  "id": "arithmetic-rush",
+  "title": "Arithmetic Rush",
+  "description": "Solve rapid-fire math problems under a ticking timer. Rewards quick thinking and focus.",
+  "sceneTypes": [
+    "mystery",
+    "tension"
+  ],
+  "mechanic": "reaction",
+  "mood": [
+    "cerebral",
+    "urgent",
+    "high-stakes"
+  ],
+  "difficulty": [
+    "moderate",
+    "hard"
+  ]
+}

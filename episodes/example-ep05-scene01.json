@@ -1,0 +1,53 @@
+{
+  "_note": "Auto-adapted from Dramatizer EP5 format via host/dramatizer-adapter.ts",
+  "_dramatizer_source": {
+    "episode_id": "EP 5",
+    "episode_title": "派对上的咸猪手",
+    "check": "WIL（意志）12"
+  },
+
+  "episodeId": "ep-5",
+  "sceneId": "scene01",
+
+  "attribute": "意志",
+  "primaryColor": "#8B2FC9",
+
+  "sceneType": "tension",
+  "difficulty": "hard",
+  "sceneContext": "『派对上的咸猪手』。主角：Avery。属性检定：意志（难度12）。选择类型：成长型。选项A：拉住Aiden的手臂，低声恳求他别把事情闹大。选项B：退后一步，看着Aiden，没有阻止。",
+
+  "character": {
+    "name": "Avery",
+    "portraitUrl": "https://assets.example.com/ep05/avery-terrified.png"
+  },
+  "background": {
+    "url": "https://assets.example.com/ep05/party-darkroom.jpg"
+  },
+
+  "characters": {
+    "Avery": "https://assets.example.com/ep05/avery-terrified.png",
+    "Jason": "https://assets.example.com/ep05/jason-drunk.png",
+    "Aiden": "https://assets.example.com/ep05/aiden-furious.png"
+  },
+
+  "narrative": [
+    {
+      "speaker": "Jason",
+      "text": "随便你叫。没人在乎。",
+      "portraitUrl": "https://assets.example.com/ep05/jason-sneer.png"
+    },
+    {
+      "speaker": "Avery",
+      "text": "不！滚开！谁来帮帮我！"
+    },
+    {
+      "speaker": "旁白",
+      "text": "就在Jason的嘴唇距离Avery只有几厘米的瞬间，一只青筋暴起的大手猛地抓住了他的后衣领。"
+    },
+    {
+      "speaker": "Aiden",
+      "text": "谁给你的胆子碰她？",
+      "portraitUrl": "https://assets.example.com/ep05/aiden-furious.png"
+    }
+  ]
+}

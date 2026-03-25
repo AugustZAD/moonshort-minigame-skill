@@ -1,0 +1,19 @@
+{
+  "id": "color-match",
+  "title": "Color Match",
+  "description": "Match colors quickly as patterns flash on screen. Simple but addictive.",
+  "sceneTypes": [
+    "casual",
+    "romantic"
+  ],
+  "mechanic": "matching",
+  "mood": [
+    "cheerful",
+    "quick",
+    "light"
+  ],
+  "difficulty": [
+    "easy",
+    "moderate"
+  ]
+}

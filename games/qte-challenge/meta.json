@@ -1,0 +1,19 @@
+{
+  "id": "qte-challenge",
+  "title": "QTE Challenge",
+  "description": "General quick-time events — hit the correct input at the right moment.",
+  "sceneTypes": [
+    "action",
+    "tension"
+  ],
+  "mechanic": "reaction",
+  "mood": [
+    "urgent",
+    "reactive",
+    "kinetic"
+  ],
+  "difficulty": [
+    "moderate",
+    "hard"
+  ]
+}

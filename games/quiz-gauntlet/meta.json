@@ -1,0 +1,19 @@
+{
+  "id": "quiz-gauntlet",
+  "title": "Quiz Gauntlet",
+  "description": "Answer a rapid series of trivia questions. Knowledge and speed win the day.",
+  "sceneTypes": [
+    "mystery",
+    "competitive"
+  ],
+  "mechanic": "reaction",
+  "mood": [
+    "intellectual",
+    "competitive",
+    "triumphant"
+  ],
+  "difficulty": [
+    "moderate",
+    "hard"
+  ]
+}

@@ -1,0 +1,62 @@
+{
+  "episodeId": "ep-7",
+  "sceneId": "scene01",
+
+  "attribute": "魅力",
+  "primaryColor": "#F472B6",
+
+  "sceneType": "tension",
+  "difficulty": "moderate",
+  "sceneContext": "『宿舍里的真相』。深夜宿舍，Aiden在黑暗中用目光捕捉到Avery手臂上的淤青伤痕，试图确认真相。属性检定：魅力（关注力/目光锁定）。",
+
+  "gameId": "spotlight-seek",
+
+  "character": {
+    "name": "Avery",
+    "portraitUrl": "../../data/ep7/character/avery.jpg"
+  },
+  "background": {
+    "url": "../../data/ep7/background/campus.jpg"
+  },
+
+  "characters": {
+    "Avery": "../../data/ep7/character/avery.jpg",
+    "Jason": "../../data/ep7/character/jason.jpg",
+    "Aiden": "../../data/ep7/character/aiden.jpg"
+  },
+
+  "narrative": [
+    {
+      "speaker": "Jason",
+      "text": "今天就睡这儿了，别废话。"
+    },
+    {
+      "speaker": "Avery",
+      "text": "嗯……Aiden，你还没睡啊？"
+    },
+    {
+      "speaker": "Aiden",
+      "text": "刚准备休息……你们回来了。"
+    },
+    {
+      "speaker": "旁白",
+      "text": "深夜，Jason已经沉沉睡去。Aiden起身倒水时，余光瞥见了Avery手臂上的淤青。"
+    },
+    {
+      "speaker": "Aiden",
+      "text": "Avery……你手臂上那些伤，是他弄的吗？"
+    },
+    {
+      "speaker": "Avery",
+      "text": "没有……我自己不小心摔的。"
+    },
+    {
+      "speaker": "Aiden",
+      "text": "别骗我了。这种伤不是摔出来的。"
+    },
+    {
+      "speaker": "旁白",
+      "text": "Avery感到心跳加速，情绪即将崩溃。她必须控制住自己……"
+    }
+  ]
+}

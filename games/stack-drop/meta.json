@@ -1,0 +1,18 @@
+{
+  "id": "stack-drop",
+  "title": "Stack Drop",
+  "description": "Drop blocks to build the tallest aligned stack. Each miss narrows the platform.",
+  "sceneTypes": [
+    "competitive",
+    "action"
+  ],
+  "mechanic": "rhythm",
+  "mood": [
+    "precise",
+    "building",
+    "pressured"
+  ],
+  "difficulty": [
+    "moderate"
+  ]
+}

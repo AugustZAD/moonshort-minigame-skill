@@ -1,0 +1,19 @@
+{
+  "id": "goalie-guard",
+  "title": "Goalie Guard",
+  "description": "Dive to block penalty shots as a goalkeeper. Reflex-driven and competitive.",
+  "sceneTypes": [
+    "competitive",
+    "action"
+  ],
+  "mechanic": "reaction",
+  "mood": [
+    "athletic",
+    "clutch",
+    "heroic"
+  ],
+  "difficulty": [
+    "moderate",
+    "hard"
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "id": "tile-trace",
+  "title": "Tile Trace",
+  "description": "Trace a highlighted path across tiles without error. Memory meets spatial execution.",
+  "sceneTypes": [
+    "mystery",
+    "tension"
+  ],
+  "mechanic": "memory",
+  "mood": [
+    "careful",
+    "deliberate",
+    "focused"
+  ],
+  "difficulty": [
+    "moderate",
+    "hard"
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "id": "pulse-keeper",
+  "title": "Pulse Keeper",
+  "description": "Hold a button to sync a moving marker with a rhythm band. Sustained concentration.",
+  "sceneTypes": [
+    "tension",
+    "romantic"
+  ],
+  "mechanic": "hold-release",
+  "mood": [
+    "intimate",
+    "steady",
+    "tense"
+  ],
+  "difficulty": [
+    "moderate",
+    "hard"
+  ]
+}

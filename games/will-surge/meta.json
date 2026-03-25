@@ -1,0 +1,31 @@
+{
+  "id": "will-surge",
+  "title": "Will Surge",
+  "description": "Player taps rapidly to maintain a willpower bar against rising threat pressure. Periodic surge events test burst resistance. A countdown represents rescue arriving. Best for scenes requiring the protagonist to resist, endure, or hold their ground.",
+  "sceneTypes": [
+    "tension"
+  ],
+  "mechanic": "tap-burst",
+  "mood": [
+    "defiant",
+    "desperate",
+    "enduring",
+    "survival"
+  ],
+  "difficulty": [
+    "hard"
+  ],
+  "copyFields": [
+    "gameTitle",
+    "hint",
+    "buttonLabel",
+    "statusHolding",
+    "statusNeutral",
+    "statusLosing",
+    "surgeWarning",
+    "surgeDefeated",
+    "rescueLabel",
+    "threatLabel",
+    "willLabel"
+  ]
+}

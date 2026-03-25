@@ -1,0 +1,18 @@
+{
+  "id": "jump-hurdle",
+  "title": "Jump Hurdle",
+  "description": "Time taps to jump over incoming hurdles. A runner with precise rhythm.",
+  "sceneTypes": [
+    "action",
+    "competitive"
+  ],
+  "mechanic": "rhythm",
+  "mood": [
+    "athletic",
+    "determined",
+    "racing"
+  ],
+  "difficulty": [
+    "moderate"
+  ]
+}

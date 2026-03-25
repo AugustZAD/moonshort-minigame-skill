@@ -1,0 +1,19 @@
+{
+  "id": "mini-golf-putt",
+  "title": "Mini Golf Putt",
+  "description": "Aim and time a putt to sink the ball in as few shots as possible.",
+  "sceneTypes": [
+    "romantic",
+    "casual"
+  ],
+  "mechanic": "aim",
+  "mood": [
+    "playful",
+    "relaxed",
+    "charming"
+  ],
+  "difficulty": [
+    "easy",
+    "moderate"
+  ]
+}

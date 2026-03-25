@@ -1,0 +1,19 @@
+{
+  "id": "flappy-bird",
+  "title": "Flappy Bird",
+  "description": "Tap to keep a character airborne through narrow gaps. Punishing but compelling.",
+  "sceneTypes": [
+    "action",
+    "tension"
+  ],
+  "mechanic": "tap-burst",
+  "mood": [
+    "persistent",
+    "frustrating",
+    "triumphant"
+  ],
+  "difficulty": [
+    "moderate",
+    "hard"
+  ]
+}

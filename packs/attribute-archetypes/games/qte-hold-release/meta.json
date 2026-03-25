@@ -1,0 +1,19 @@
+{
+  "id": "qte-hold-release",
+  "title": "QTE Hold & Release",
+  "description": "Hold a button until the perfect moment, then release. The tension of perfect timing.",
+  "sceneTypes": [
+    "tension",
+    "romantic"
+  ],
+  "mechanic": "hold-release",
+  "mood": [
+    "anticipation",
+    "restraint",
+    "release"
+  ],
+  "difficulty": [
+    "moderate",
+    "hard"
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "id": "bomb-defuse",
+  "title": "Bomb Defuse",
+  "description": "Cut the correct wire or complete precise steps before the timer hits zero. Maximum tension.",
+  "sceneTypes": [
+    "tension",
+    "action"
+  ],
+  "mechanic": "reaction",
+  "mood": [
+    "desperate",
+    "high-stakes",
+    "thriller"
+  ],
+  "difficulty": [
+    "hard"
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "id": "survive-30-seconds",
+  "title": "Survive 30 Seconds",
+  "description": "Dodge everything thrown at you for exactly 30 seconds. Pure survival instinct.",
+  "sceneTypes": [
+    "tension",
+    "action"
+  ],
+  "mechanic": "dodge",
+  "mood": [
+    "desperate",
+    "survival",
+    "relentless"
+  ],
+  "difficulty": [
+    "hard"
+  ]
+}

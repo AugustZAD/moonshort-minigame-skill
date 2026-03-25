@@ -1,0 +1,19 @@
+{
+  "id": "balance-beam",
+  "title": "Balance Beam",
+  "description": "Tilt and balance a beam to keep an object centered. Tests steady nerves and fine motor control.",
+  "sceneTypes": [
+    "tension",
+    "romantic"
+  ],
+  "mechanic": "balance",
+  "mood": [
+    "delicate",
+    "focused",
+    "tense"
+  ],
+  "difficulty": [
+    "moderate",
+    "hard"
+  ]
+}

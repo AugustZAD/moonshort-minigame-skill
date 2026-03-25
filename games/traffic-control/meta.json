@@ -1,0 +1,19 @@
+{
+  "id": "traffic-control",
+  "title": "Traffic Control",
+  "description": "Manage intersections to prevent collisions. Multi-tasking under growing pressure.",
+  "sceneTypes": [
+    "mystery",
+    "action"
+  ],
+  "mechanic": "sorting",
+  "mood": [
+    "hectic",
+    "orchestrating",
+    "stressful"
+  ],
+  "difficulty": [
+    "moderate",
+    "hard"
+  ]
+}

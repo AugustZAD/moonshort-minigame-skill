@@ -1,0 +1,865 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no,viewport-fit=cover">
+<title>以伤为盾 Brave Guard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;900&family=ZCOOL+QingKe+HuangYou&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100%; height: 100%; background: #1a1a2e; overflow: hidden; }
+  canvas { display: block; margin: 0 auto; }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
+</head>
+<body>
+<script>
+const CTX = window.__EPISODE_CTX__ || {};
+const params = new URLSearchParams(window.location.search);
+const ATTRIBUTE = CTX.attribute || params.get('attribute') || '勇气';
+const PRIMARY_COLOR = CTX.primaryColor || params.get('primaryColor') || '#e63946';
+const DISPLAY_ATTRIBUTE = (CTX.character && CTX.character.name ? CTX.character.name + '\u7684' : '') + ATTRIBUTE;
+
+const W = 393;
+const H = 736;
+const ROUND_SECONDS = 35;
+const RATING_THRESHOLDS = { S: 420, A: 300, B: 180, C: 80 };
+const MODIFIER_BY_RATING = { S: 3, A: 1, B: 0, C: -1 };
+
+function getRating(score) {
+  if (score >= RATING_THRESHOLDS.S) return 'S';
+  if (score >= RATING_THRESHOLDS.A) return 'A';
+  if (score >= RATING_THRESHOLDS.B) return 'B';
+  return 'C';
+}
+function getModifier(r) { return MODIFIER_BY_RATING[r]; }
+
+function notifyGameComplete(result) {
+  const payload = JSON.stringify(result);
+  if (window.webkit?.messageHandlers?.jsBridge) { window.webkit.messageHandlers.jsBridge.postMessage(payload); return; }
+  if (window.jsBridge?.postMessage) { window.jsBridge.postMessage(payload); return; }
+  if (window.parent !== window) { window.parent.postMessage(payload, '*'); return; }
+  console.log('[GameComplete]', result);
+}
+
+function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+
+function hexToRgb(hex) {
+  const r = hex.replace('#','');
+  const f = r.length===3 ? r.split('').map(c=>c+c).join('') : r;
+  const v = parseInt(f,16);
+  return { r:(v>>16)&255, g:(v>>8)&255, b:v&255 };
+}
+function rgbToHex(r,g,b) {
+  const h=n=>clamp(Math.round(n),0,255).toString(16).padStart(2,'0');
+  return '#'+h(r)+h(g)+h(b);
+}
+function blendHex(a,b,t) {
+  const ca=hexToRgb(a), cb=hexToRgb(b);
+  return rgbToHex(ca.r+(cb.r-ca.r)*t, ca.g+(cb.g-ca.g)*t, ca.b+(cb.b-ca.b)*t);
+}
+
+function fallbackPalette(pc) {
+  return { primary:pc, light:blendHex(pc,'#ffffff',0.84), accent:blendHex(pc,'#111827',0.56), neutral:blendHex(pc,'#1f2937',0.75) };
+}
+
+async function fetchScenePalette(pc) {
+  const body = { mode:'transformer', num_colors:4, temperature:'1.2', num_results:20,
+    adjacency:['0','65','45','35','65','0','35','65','45','35','0','35','35','65','35','0'],
+    palette:[pc,'-','-','-'] };
+  const res = await fetch('https://api.huemint.com/color',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+  const data = await res.json();
+  if(!data?.results?.length) throw new Error('No palette');
+  const best = data.results.slice().sort((a,b)=>a.score-b.score)[0];
+  return { primary:best.palette[0], light:best.palette[1], accent:best.palette[2], neutral:best.palette[3] };
+}
+
+function colorSet(p) {
+  return {
+    primaryHex:p.primary, lightHex:p.light, accentHex:p.accent, neutralHex:p.neutral,
+    primary:Phaser.Display.Color.HexStringToColor(p.primary).color,
+    light:Phaser.Display.Color.HexStringToColor(p.light).color,
+    accent:Phaser.Display.Color.HexStringToColor(p.accent).color,
+    neutral:Phaser.Display.Color.HexStringToColor(p.neutral).color,
+    white:0xffffff, dark:0x111827, success:0x34d399, danger:0xf87171, gold:0xffd700
+  };
+}
+
+/* ── MoonAudio synth ── */
+class MoonAudio {
+  constructor() { this.ctx = null; }
+  _ensure() {
+    if (!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+    if (this.ctx.state === 'suspended') this.ctx.resume();
+    return this.ctx;
+  }
+  _tone(freq, dur, type, vol) {
+    const c = this._ensure(), o = c.createOscillator(), g = c.createGain();
+    o.type = type || 'sine'; o.frequency.value = freq;
+    g.gain.setValueAtTime(vol||0.15, c.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, c.currentTime + dur);
+    o.connect(g); g.connect(c.destination);
+    o.start(); o.stop(c.currentTime + dur);
+  }
+  hit()     { this._tone(220,0.12,'square',0.18); this._tone(330,0.08,'sawtooth',0.1); }
+  block()   { this._tone(440,0.1,'triangle',0.2); this._tone(550,0.06,'sine',0.12); }
+  dodge()   { this._tone(600,0.15,'sine',0.15); this._tone(800,0.1,'sine',0.08); }
+  miss()    { this._tone(120,0.25,'sawtooth',0.2); }
+  success() { this._tone(523,0.15,'sine',0.2); this._tone(659,0.15,'sine',0.18); setTimeout(()=>this._tone(784,0.3,'sine',0.2),150); }
+  fail()    { this._tone(200,0.3,'sawtooth',0.2); this._tone(150,0.4,'sawtooth',0.15); }
+  tap()     { this._tone(880,0.05,'sine',0.1); }
+}
+const audio = new MoonAudio();
+
+/* ── Narrative data ── */
+const STORY = {
+  intro: [
+    { speaker: 'narrate', text: '放学后，校园小径旁——' },
+    { speaker: 'kai', text: '"小美女，今天可别急着走啊。"' },
+    { speaker: 'mia', text: '"你……你想干什么？"' },
+    { speaker: 'jake', text: '"她不想跟你说话，听懂了吗？"' },
+    { speaker: 'kai', text: '"哟？废物也敢出头？手都断了还逞英雄？"' },
+    { speaker: 'jake', text: '"一只手就够了。"' },
+    { speaker: 'narrate', text: 'Jake 挡在了 Mia 身前。' },
+  ],
+  endWin: [
+    { speaker: 'narrate', text: 'Kai 的气势被完全压制住了。' },
+    { speaker: 'kai', text: '"……哼，算你狠。"' },
+    { speaker: 'jake', text: '"下次别让我再看到你。"' },
+    { speaker: 'mia', text: '"Jake……你的手没事吧？"' },
+    { speaker: 'jake', text: '"没事，小意思。"' },
+  ],
+  endLose: [
+    { speaker: 'narrate', text: '其他同学赶来将 Kai 拉开了。' },
+    { speaker: 'mia', text: '"Jake！你还好吗？！"' },
+    { speaker: 'jake', text: '"咳……至少我没让他碰到你。"' },
+  ]
+};
+
+const SPEAKER_CONFIG = {
+  narrate: { name: '', color: '#e5e7eb', bgColor: 0x374151 },
+  kai:     { name: 'Kai', color: '#f87171', bgColor: 0x7f1d1d },
+  jake:    { name: 'Jake', color: '#60a5fa', bgColor: 0x1e3a5f },
+  mia:     { name: 'Mia', color: '#f9a8d4', bgColor: 0x831843 },
+};
+
+/* ── Encouragement lines from Mia ── */
+const MIA_CHEERS = [
+  '加油 Jake！', '小心！', '你可以的！', '太帅了！',
+  '别受伤！', '注意他的右手！', '我相信你！'
+];
+const MIA_WORRY = [
+  'Jake！', '小心啊……', '不要勉强……', '天哪……'
+];
+
+/* ── Button factory ── */
+function makeButton(scene, cfg) {
+  const {x,y,w,h} = cfg;
+  const shadow = scene.add.rectangle(x+3,y+3,w,h,scene.C.accent,1).setDepth(20);
+  const body = scene.add.rectangle(x,y,w,h,scene.C.primary,1)
+    .setStrokeStyle(2.5,scene.C.accent).setInteractive({useHandCursor:true}).setDepth(21);
+  const label = scene.add.text(x,y,cfg.label,{
+    fontFamily:'Nunito', fontSize:cfg.fontSize+'px', fontStyle:'900', color:'#ffffff'
+  }).setOrigin(0.5).setDepth(22);
+  const release = (emit) => { body.setPosition(x,y); label.setPosition(x,y); shadow.setVisible(true); if(emit&&cfg.onTap) cfg.onTap(); };
+  body.on('pointerdown',()=>{ body.setPosition(x+2,y+2); label.setPosition(x+2,y+2); shadow.setVisible(false); audio.tap(); });
+  body.on('pointerup',()=>release(true));
+  body.on('pointerout',()=>release(false));
+  return { shadow, body, label };
+}
+
+/* ── Draw character silhouettes ── */
+function drawKai(g, x, y, scale) {
+  const s = scale || 1;
+  // Body - dark bomber jacket
+  g.fillStyle(0x374151, 1);
+  g.fillRoundedRect(x-22*s, y-50*s, 44*s, 65*s, 6*s);
+  // Head
+  g.fillStyle(0xd4a373, 1);
+  g.fillCircle(x, y-62*s, 16*s);
+  // Hair - black slicked
+  g.fillStyle(0x1a1a1a, 1);
+  g.fillRoundedRect(x-17*s, y-80*s, 34*s, 20*s, 8*s);
+  // Tattoo marks on neck
+  g.lineStyle(1.5*s, 0x4a5568);
+  g.lineBetween(x-8*s, y-48*s, x-12*s, y-42*s);
+  g.lineBetween(x+6*s, y-47*s, x+10*s, y-40*s);
+  g.lineBetween(x-4*s, y-45*s, x-2*s, y-38*s);
+  // Legs - ripped black jeans
+  g.fillStyle(0x1f2937, 1);
+  g.fillRect(x-18*s, y+15*s, 14*s, 40*s);
+  g.fillRect(x+4*s, y+15*s, 14*s, 40*s);
+  // Sneakers
+  g.fillStyle(0x9ca3af, 1);
+  g.fillRoundedRect(x-20*s, y+55*s, 18*s, 8*s, 3*s);
+  g.fillRoundedRect(x+2*s, y+55*s, 18*s, 8*s, 3*s);
+  // Chain necklace hint
+  g.lineStyle(1*s, 0xd4d4d4);
+  g.lineBetween(x-6*s, y-46*s, x, y-40*s);
+  g.lineBetween(x, y-40*s, x+6*s, y-46*s);
+}
+
+function drawJake(g, x, y, scale) {
+  const s = scale || 1;
+  // Body - dark tee
+  g.fillStyle(0x334155, 1);
+  g.fillRoundedRect(x-24*s, y-50*s, 48*s, 60*s, 6*s);
+  // Muscular arms
+  g.fillStyle(0xd4a373, 1);
+  g.fillRoundedRect(x-34*s, y-45*s, 14*s, 35*s, 5*s);
+  g.fillRoundedRect(x+20*s, y-45*s, 14*s, 35*s, 5*s);
+  // Cast on right arm!
+  g.fillStyle(0xf5f5f4, 1);
+  g.fillRoundedRect(x+18*s, y-20*s, 18*s, 28*s, 4*s);
+  g.lineStyle(1*s, 0xa8a29e);
+  g.lineBetween(x+22*s, y-14*s, x+30*s, y-8*s);
+  g.lineBetween(x+24*s, y-4*s, x+32*s, y+2*s);
+  // Head
+  g.fillStyle(0xe0c9a6, 1);
+  g.fillCircle(x, y-62*s, 16*s);
+  // Blonde messy hair
+  g.fillStyle(0xfbbf24, 1);
+  g.fillRoundedRect(x-18*s, y-80*s, 36*s, 22*s, 10*s);
+  // Sunglasses
+  g.fillStyle(0x1a1a1a, 1);
+  g.fillRoundedRect(x-14*s, y-68*s, 12*s, 7*s, 3*s);
+  g.fillRoundedRect(x+2*s, y-68*s, 12*s, 7*s, 3*s);
+  g.lineStyle(1.5*s, 0x1a1a1a);
+  g.lineBetween(x-2*s, y-65*s, x+2*s, y-65*s);
+  // Legs - ripped jeans
+  g.fillStyle(0x3b82f6, 1);
+  g.fillRect(x-18*s, y+10*s, 15*s, 42*s);
+  g.fillRect(x+3*s, y+10*s, 15*s, 42*s);
+  // Sneakers
+  g.fillStyle(0x78716c, 1);
+  g.fillRoundedRect(x-20*s, y+52*s, 18*s, 8*s, 3*s);
+  g.fillRoundedRect(x+2*s, y+52*s, 18*s, 8*s, 3*s);
+}
+
+function drawMia(g, x, y, scale) {
+  const s = scale || 0.7;
+  // Skirt
+  g.fillStyle(0xffffff, 1);
+  g.fillTriangle(x-18*s, y+5*s, x+18*s, y+5*s, x, y+50*s);
+  // Top - floral crop
+  g.fillStyle(0xfce7f3, 1);
+  g.fillRoundedRect(x-16*s, y-40*s, 32*s, 45*s, 5*s);
+  g.fillStyle(0xf9a8d4, 0.5);
+  g.fillCircle(x-6*s, y-28*s, 4*s);
+  g.fillCircle(x+8*s, y-22*s, 3*s);
+  g.fillCircle(x+2*s, y-12*s, 4*s);
+  // Head
+  g.fillStyle(0xe0c9a6, 1);
+  g.fillCircle(x, y-52*s, 14*s);
+  // Brown wavy hair
+  g.fillStyle(0x8b5e3c, 1);
+  g.fillRoundedRect(x-16*s, y-68*s, 32*s, 22*s, 10*s);
+  g.fillRoundedRect(x-18*s, y-55*s, 10*s, 30*s, 5*s);
+  g.fillRoundedRect(x+8*s, y-55*s, 10*s, 30*s, 5*s);
+  // Green eyes
+  g.fillStyle(0x22c55e, 1);
+  g.fillCircle(x-5*s, y-54*s, 2*s);
+  g.fillCircle(x+5*s, y-54*s, 2*s);
+  // Shoes
+  g.fillStyle(0xfda4af, 1);
+  g.fillRoundedRect(x-12*s, y+48*s, 10*s, 6*s, 3*s);
+  g.fillRoundedRect(x+2*s, y+48*s, 10*s, 6*s, 3*s);
+}
+
+/* ══════════════════════════════════════════════ */
+/* BootScene                                      */
+/* ══════════════════════════════════════════════ */
+class BootScene extends Phaser.Scene {
+  constructor() { super('BootScene'); }
+  async create() {
+    this.cameras.main.setBackgroundColor('#1a1a2e');
+    this.add.text(W/2, H/2-20, '以伤为盾', {
+      fontFamily:'ZCOOL QingKe HuangYou', fontSize:'42px', color:'#ffffff'
+    }).setOrigin(0.5);
+    const st = this.add.text(W/2, H/2+24, '加载中...', {
+      fontFamily:'Nunito', fontSize:'18px', color:'#e5e7eb'
+    }).setOrigin(0.5);
+
+    try {
+      window.__PALETTE__ = await fetchScenePalette(PRIMARY_COLOR);
+      st.setText('准备就绪');
+    } catch(e) {
+      window.__PALETTE__ = fallbackPalette(PRIMARY_COLOR);
+      st.setText('使用默认配色');
+    }
+    this.time.delayedCall(300, () => this.scene.start('NarrativeScene', { lines: STORY.intro }));
+  }
+}
+
+/* ══════════════════════════════════════════════ */
+/* NarrativeScene                                  */
+/* ══════════════════════════════════════════════ */
+class NarrativeScene extends Phaser.Scene {
+  constructor() { super('NarrativeScene'); }
+
+  init(data) {
+    this.lines = data.lines || [];
+    this.lineIdx = 0;
+    this.nextScene = data.nextScene || 'GameScene';
+    this.nextData = data.nextData || {};
+    this.isEnd = data.isEnd || false;
+  }
+
+  create() {
+    this.C = colorSet(window.__PALETTE__ || fallbackPalette(PRIMARY_COLOR));
+    this.cameras.main.setBackgroundColor('#16213e');
+
+    // Scene background - dusky campus vibe
+    const bg = this.add.graphics();
+    // ground
+    bg.fillStyle(0x2d3748, 1);
+    bg.fillRect(0, H*0.65, W, H*0.35);
+    // sky gradient rectangles
+    for (let i = 0; i < 20; i++) {
+      const t = i / 20;
+      const r = Math.round(22 + t * 20);
+      const g = Math.round(33 + t * 15);
+      const b = Math.round(62 - t * 10);
+      bg.fillStyle(Phaser.Display.Color.GetColor(r, g, b), 1);
+      bg.fillRect(0, i * (H * 0.65 / 20), W, H * 0.65 / 20 + 1);
+    }
+
+    // Character positions
+    this.charGfx = this.add.graphics();
+    drawKai(this.charGfx, 90, H*0.52, 1.3);
+    drawJake(this.charGfx, W-90, H*0.52, 1.3);
+    drawMia(this.charGfx, W-50, H*0.58, 1.1);
+
+    // Dialogue box
+    this.dialogBg = this.add.rectangle(W/2, H-110, W-32, 140, 0x1e293b, 0.92)
+      .setStrokeStyle(2, 0x475569).setDepth(10);
+    this.speakerText = this.add.text(36, H-170, '', {
+      fontFamily:'ZCOOL QingKe HuangYou', fontSize:'20px', color:'#fbbf24'
+    }).setDepth(11);
+    this.dialogText = this.add.text(36, H-142, '', {
+      fontFamily:'ZCOOL QingKe HuangYou', fontSize:'22px', color:'#e5e7eb',
+      wordWrap:{width:W-72}, lineSpacing:6
+    }).setDepth(11);
+    this.tapHint = this.add.text(W-40, H-55, '▶', {
+      fontFamily:'Nunito', fontSize:'22px', fontStyle:'900', color:'#fbbf24'
+    }).setOrigin(0.5).setDepth(11);
+    this.tweens.add({ targets:this.tapHint, alpha:0.3, yoyo:true, repeat:-1, duration:600 });
+
+    this.showLine();
+    this.input.on('pointerdown', () => this.advance());
+  }
+
+  showLine() {
+    if (this.lineIdx >= this.lines.length) {
+      if (this.isEnd) return;
+      this.scene.start(this.nextScene, this.nextData);
+      return;
+    }
+    const line = this.lines[this.lineIdx];
+    const cfg = SPEAKER_CONFIG[line.speaker] || SPEAKER_CONFIG.narrate;
+    this.speakerText.setText(cfg.name);
+    this.speakerText.setColor(cfg.color);
+    this.dialogBg.setFillStyle(cfg.bgColor, 0.92);
+
+    // Typewriter
+    this.dialogText.setText('');
+    const fullText = line.text;
+    let charIdx = 0;
+    if (this._typeTimer) this._typeTimer.destroy();
+    this._typeTimer = this.time.addEvent({
+      delay: 40,
+      repeat: fullText.length - 1,
+      callback: () => {
+        charIdx++;
+        this.dialogText.setText(fullText.substring(0, charIdx));
+      }
+    });
+    this._fullText = fullText;
+  }
+
+  advance() {
+    audio.tap();
+    // If typewriter still running, complete it
+    if (this._typeTimer && this._typeTimer.getRepeatCount() > 0) {
+      this._typeTimer.destroy();
+      this.dialogText.setText(this._fullText);
+      return;
+    }
+    this.lineIdx++;
+    if (this.lineIdx >= this.lines.length) {
+      if (this.isEnd) {
+        // End screen — show continue button for settlement
+        this.tapHint.setVisible(false);
+        this.dialogText.setText('');
+        this.speakerText.setText('');
+
+        makeButton(this, {
+          x: W/2, y: H-110, w: 200, h: 54,
+          label: '继续', fontSize: 24,
+          onTap: () => this.scene.start(this.nextScene, this.nextData)
+        });
+        return;
+      }
+      this.scene.start(this.nextScene, this.nextData);
+      return;
+    }
+    this.showLine();
+  }
+}
+
+/* ══════════════════════════════════════════════ */
+/* GameScene                                       */
+/* ══════════════════════════════════════════════ */
+class GameScene extends Phaser.Scene {
+  constructor() { super('GameScene'); }
+
+  init() {
+    this.score = 0;
+    this.timeLeft = ROUND_SECONDS;
+    this.isOver = false;
+    this.attackActive = false;
+    this.currentAttack = null;
+    this.windupMs = 0;
+    this.nextAttackMs = 800;
+    this.jakeHp = 4;
+    this.jakeMaxHp = 4;
+    this.kaiMorale = 100;
+    this.combo = 0;
+    this.maxCombo = 0;
+    this.totalHits = 0;
+    this.totalMiss = 0;
+    this.roundNum = 0;
+    this.castLockout = false;
+
+    this.attacks = [
+      { key: 'calm',  label: '挑衅', symbol: '😤', counter: '冷静', color: '#f97316', desc: '言语挑衅' },
+      { key: 'block', label: '推搡', symbol: '🤚', counter: '格挡', color: '#3b82f6', desc: '用力推搡' },
+      { key: 'dodge', label: '出拳', symbol: '👊', counter: '闪避', color: '#a855f7', desc: '挥拳攻击' },
+    ];
+  }
+
+  create() {
+    this.C = colorSet(window.__PALETTE__ || fallbackPalette(PRIMARY_COLOR));
+    this.cameras.main.setBackgroundColor('#16213e');
+
+    // Background - campus twilight
+    const bg = this.add.graphics();
+    bg.fillStyle(0x2d3748, 1);
+    bg.fillRect(0, H*0.55, W, H*0.45);
+    for (let i = 0; i < 15; i++) {
+      const t = i / 15;
+      bg.fillStyle(Phaser.Display.Color.GetColor(22+t*18, 33+t*12, 62-t*8), 1);
+      bg.fillRect(0, i*(H*0.55/15), W, H*0.55/15+1);
+    }
+
+    // Characters
+    this.charGfx = this.add.graphics().setDepth(2);
+    drawKai(this.charGfx, 80, H*0.42, 1.2);
+    drawJake(this.charGfx, W-100, H*0.42, 1.2);
+    drawMia(this.charGfx, W-35, H*0.48, 0.85);
+
+    // VS indicator
+    this.add.text(W/2, H*0.36, 'VS', {
+      fontFamily:'Nunito', fontSize:'36px', fontStyle:'900', color:'#ef4444',
+      stroke:'#000000', strokeThickness:3
+    }).setOrigin(0.5).setDepth(3);
+
+    // ── HUD ──
+    // Jake HP bar
+    this.add.text(W-170, 28, 'Jake', {
+      fontFamily:'ZCOOL QingKe HuangYou', fontSize:'16px', color:'#60a5fa'
+    }).setDepth(5);
+    this.jakeHpBg = this.add.rectangle(W-90, 50, 140, 14, 0x374151, 1).setStrokeStyle(1.5, 0x60a5fa).setDepth(5);
+    this.jakeHpBar = this.add.rectangle(W-159, 50, 136, 10, 0x60a5fa, 1).setOrigin(0, 0.5).setDepth(6);
+
+    // Kai morale bar
+    this.add.text(30, 28, 'Kai', {
+      fontFamily:'ZCOOL QingKe HuangYou', fontSize:'16px', color:'#f87171'
+    }).setDepth(5);
+    this.kaiMoraleBg = this.add.rectangle(100, 50, 140, 14, 0x374151, 1).setStrokeStyle(1.5, 0xf87171).setDepth(5);
+    this.kaiMoraleBar = this.add.rectangle(31, 50, 136, 10, 0xf87171, 1).setOrigin(0, 0.5).setDepth(6);
+
+    // Timer
+    this.timerText = this.add.text(W/2, 22, Math.ceil(this.timeLeft) + 's', {
+      fontFamily:'Nunito', fontSize:'20px', fontStyle:'900', color:'#fbbf24'
+    }).setOrigin(0.5).setDepth(5);
+
+    // Score
+    this.scoreText = this.add.text(W/2, 46, '得分: 0', {
+      fontFamily:'Nunito', fontSize:'15px', fontStyle:'700', color:'#e5e7eb'
+    }).setOrigin(0.5).setDepth(5);
+
+    // ── Attack indicator area ──
+    this.cuePanel = this.add.rectangle(W/2, H*0.58, 280, 100, 0x1e293b, 0.9)
+      .setStrokeStyle(2, 0x475569).setDepth(4);
+    this.cueEmoji = this.add.text(W/2-80, H*0.56, '-', {
+      fontSize:'42px'
+    }).setOrigin(0.5).setDepth(5);
+    this.cueLabel = this.add.text(W/2+20, H*0.54, '等待中...', {
+      fontFamily:'ZCOOL QingKe HuangYou', fontSize:'24px', color:'#e5e7eb'
+    }).setOrigin(0, 0.5).setDepth(5);
+    this.cueHint = this.add.text(W/2+20, H*0.60, '', {
+      fontFamily:'ZCOOL QingKe HuangYou', fontSize:'16px', color:'#9ca3af'
+    }).setOrigin(0, 0.5).setDepth(5);
+
+    // Timing bar
+    this.timingBg = this.add.rectangle(W/2, H*0.65, 240, 12, 0x374151, 1).setStrokeStyle(1, 0x6b7280).setDepth(5);
+    this.timingBar = this.add.rectangle(W/2-118, H*0.65, 0, 8, 0xfbbf24, 1).setOrigin(0, 0.5).setDepth(6);
+
+    // ── Mia encouragement ──
+    this.miaText = this.add.text(W-60, H*0.38, '', {
+      fontFamily:'ZCOOL QingKe HuangYou', fontSize:'14px', color:'#f9a8d4',
+      backgroundColor:'#831843', padding:{x:6,y:3}
+    }).setOrigin(0.5).setDepth(10).setAlpha(0);
+
+    // ── Combo display ──
+    this.comboText = this.add.text(W/2, H*0.70, '', {
+      fontFamily:'Nunito', fontSize:'18px', fontStyle:'900', color:'#fbbf24'
+    }).setOrigin(0.5).setDepth(5);
+
+    // ── Cast lockout warning ──
+    this.castWarning = this.add.text(W/2, H*0.74, '', {
+      fontFamily:'ZCOOL QingKe HuangYou', fontSize:'15px', color:'#fca5a5'
+    }).setOrigin(0.5).setDepth(5).setAlpha(0);
+
+    // ── Action buttons ──
+    makeButton(this, {
+      x:66, y:H-100, w:110, h:56,
+      label:'冷静', fontSize:22,
+      onTap:()=>this.handleCounter('calm')
+    });
+    makeButton(this, {
+      x:W/2, y:H-100, w:110, h:56,
+      label:'格挡', fontSize:22,
+      onTap:()=>this.handleCounter('block')
+    });
+    makeButton(this, {
+      x:W-66, y:H-100, w:110, h:56,
+      label:'闪避', fontSize:22,
+      onTap:()=>this.handleCounter('dodge')
+    });
+
+    // Hint at bottom
+    this.add.text(W/2, H-40, '看清 Kai 的动作，选择正确应对！', {
+      fontFamily:'ZCOOL QingKe HuangYou', fontSize:'14px', color:'#6b7280'
+    }).setOrigin(0.5).setDepth(5);
+  }
+
+  showMiaLine(isGood) {
+    const pool = isGood ? MIA_CHEERS : MIA_WORRY;
+    const line = pool[Math.floor(Math.random() * pool.length)];
+    this.miaText.setText(line).setAlpha(1);
+    this.tweens.add({
+      targets: this.miaText,
+      alpha: 0, y: this.miaText.y - 20,
+      duration: 1200, ease: 'Quad.easeOut',
+      onComplete: () => { this.miaText.y += 20; }
+    });
+  }
+
+  addScore(delta) {
+    this.score = Math.max(0, this.score + delta);
+    this.scoreText.setText('得分: ' + Math.round(this.score));
+    this.tweens.add({
+      targets: this.scoreText, scaleX:1.15, scaleY:1.15,
+      yoyo:true, duration:100, ease:'Quad.easeOut'
+    });
+  }
+
+  spawnAttack() {
+    this.roundNum++;
+    const atk = this.attacks[Math.floor(Math.random() * this.attacks.length)];
+    this.currentAttack = atk;
+    this.attackActive = true;
+
+    // Difficulty curve: window gets tighter over time
+    const baseWindup = 1200 - Math.min(this.roundNum * 30, 400);
+    this.windupMs = baseWindup + Math.random() * 300;
+
+    this.cueEmoji.setText(atk.symbol);
+    this.cueLabel.setText('Kai：' + atk.label + '！');
+    this.cueLabel.setColor(atk.color);
+    this.cueHint.setText('应对→ ' + atk.counter);
+
+    // Flash the cue panel border
+    this.cuePanel.setStrokeStyle(3, Phaser.Display.Color.HexStringToColor(atk.color).color);
+
+    // Cast lockout mechanic: after round 5, blocking sometimes has a delay
+    // (Jake's injured arm needs a moment)
+    if (atk.key === 'block' && this.roundNum > 5 && Math.random() < 0.3) {
+      this.castLockout = true;
+      this.castWarning.setText('⚠ 石膏手臂僵硬！格挡延迟！').setAlpha(1);
+      this.tweens.add({ targets:this.castWarning, alpha:0, duration:1500, delay:300 });
+    } else {
+      this.castLockout = false;
+    }
+  }
+
+  clearAttack(nextMs) {
+    this.attackActive = false;
+    this.currentAttack = null;
+    this.windupMs = 0;
+    this.timingBar.width = 0;
+    this.nextAttackMs = nextMs;
+    this.cuePanel.setStrokeStyle(2, 0x475569);
+    this.cueEmoji.setText('-');
+    this.cueLabel.setText('等待中...').setColor('#e5e7eb');
+    this.cueHint.setText('');
+  }
+
+  handleCounter(counter) {
+    if (this.isOver) return;
+
+    // Cast lockout: if blocking is locked, delay 300ms before registering
+    if (counter === 'block' && this.castLockout) {
+      this.castLockout = false;
+      this.castWarning.setText('石膏手臂用力中...').setAlpha(1);
+      this.time.delayedCall(280, () => {
+        this.castWarning.setAlpha(0);
+        this._doCounter(counter);
+      });
+      return;
+    }
+
+    this._doCounter(counter);
+  }
+
+  _doCounter(counter) {
+    if (this.isOver) return;
+    if (!this.attackActive) {
+      this.combo = 0;
+      this.totalMiss++;
+      this.addScore(-3);
+      this.comboText.setText('空挡！-3');
+      this.comboText.setColor('#f87171');
+      audio.miss();
+      return;
+    }
+
+    if (counter === this.currentAttack.key) {
+      // Correct counter!
+      const gain = 18 + Math.min(this.combo, 5) * 4;
+      this.combo++;
+      this.maxCombo = Math.max(this.maxCombo, this.combo);
+      this.totalHits++;
+      this.addScore(gain);
+
+      // Reduce Kai's morale
+      const moraleDmg = 10 + Math.min(this.combo, 4) * 2;
+      this.kaiMorale = clamp(this.kaiMorale - moraleDmg, 0, 100);
+      this.kaiMoraleBar.width = 136 * (this.kaiMorale / 100);
+
+      this.comboText.setText('连击 x' + this.combo + ' +' + gain);
+      this.comboText.setColor('#34d399');
+
+      // Audio & visual feedback per type
+      if (counter === 'calm') audio.block();
+      else if (counter === 'block') audio.hit();
+      else audio.dodge();
+
+      // Shake Kai
+      this.tweens.add({
+        targets: this.charGfx, x:this.charGfx.x-6,
+        yoyo:true, duration:60, repeat:2,
+        onComplete: () => { this.charGfx.x = 0; }
+      });
+
+      // Mia cheers
+      if (this.combo >= 2) this.showMiaLine(true);
+
+      this.clearAttack(200 + Math.random() * 350);
+
+      // Win condition: Kai's morale breaks
+      if (this.kaiMorale <= 0) {
+        this.addScore(80 + Math.round(this.timeLeft * 2));
+        this.finishGame('win');
+      }
+      return;
+    }
+
+    // Wrong counter
+    this.combo = 0;
+    this.totalMiss++;
+    this.addScore(-8);
+    this.jakeHp = clamp(this.jakeHp - 1, 0, this.jakeMaxHp);
+    this.jakeHpBar.width = 136 * (this.jakeHp / this.jakeMaxHp);
+    this.comboText.setText('判断失误！-8');
+    this.comboText.setColor('#f87171');
+    audio.miss();
+    this.showMiaLine(false);
+    this.clearAttack(450 + Math.random() * 400);
+    if (this.jakeHp <= 0) this.finishGame('lose');
+  }
+
+  finishGame(reason) {
+    if (this.isOver) return;
+    this.isOver = true;
+
+    if (reason === 'win') audio.success();
+    else audio.fail();
+
+    // Determine which narrative ending to show
+    const isWin = reason === 'win' || (reason === 'time' && this.kaiMorale <= 30);
+    const endLines = isWin ? STORY.endWin : STORY.endLose;
+
+    this.time.delayedCall(600, () => {
+      this.scene.start('NarrativeScene', {
+        lines: endLines,
+        nextScene: 'ResultScene',
+        nextData: {
+          score: Math.round(this.score),
+          maxCombo: this.maxCombo,
+          hits: this.totalHits,
+          misses: this.totalMiss,
+          reason: reason,
+          kaiMorale: this.kaiMorale,
+          jakeHp: this.jakeHp
+        },
+        isEnd: true
+      });
+    });
+  }
+
+  update(time, delta) {
+    if (this.isOver) return;
+
+    this.timeLeft = Math.max(0, this.timeLeft - delta / 1000);
+    this.timerText.setText(Math.ceil(this.timeLeft) + 's');
+    if (this.timeLeft <= 5) this.timerText.setColor('#f87171');
+
+    if (!this.attackActive) {
+      this.nextAttackMs -= delta;
+      if (this.nextAttackMs <= 0) this.spawnAttack();
+    } else {
+      this.windupMs -= delta;
+      const maxWindup = 1200 - Math.min(this.roundNum * 30, 400) + 150;
+      const ratio = clamp(this.windupMs / maxWindup, 0, 1);
+      this.timingBar.width = 232 * ratio;
+
+      // Color the timing bar: green → yellow → red
+      if (ratio > 0.5) this.timingBar.setFillStyle(0x34d399, 1);
+      else if (ratio > 0.2) this.timingBar.setFillStyle(0xfbbf24, 1);
+      else this.timingBar.setFillStyle(0xf87171, 1);
+
+      if (this.windupMs <= 0) {
+        // Missed the window
+        this.totalMiss++;
+        this.combo = 0;
+        this.jakeHp = clamp(this.jakeHp - 1, 0, this.jakeMaxHp);
+        this.jakeHpBar.width = 136 * (this.jakeHp / this.jakeMaxHp);
+        this.addScore(-6);
+        this.comboText.setText('来不及了！-6');
+        this.comboText.setColor('#f87171');
+        audio.miss();
+        this.showMiaLine(false);
+        this.clearAttack(400 + Math.random() * 450);
+        if (this.jakeHp <= 0) this.finishGame('lose');
+      }
+    }
+
+    if (this.timeLeft <= 0) this.finishGame('time');
+  }
+}
+
+/* ══════════════════════════════════════════════ */
+/* ResultScene                                     */
+/* ══════════════════════════════════════════════ */
+class ResultScene extends Phaser.Scene {
+  constructor() { super('ResultScene'); }
+
+  init(data) {
+    this.finalScore = data.score || 0;
+    this.maxCombo = data.maxCombo || 0;
+    this.hits = data.hits || 0;
+    this.misses = data.misses || 0;
+    this.reason = data.reason || 'time';
+    this.kaiMorale = data.kaiMorale ?? 100;
+    this.jakeHp = data.jakeHp ?? 0;
+  }
+
+  create() {
+    const C = colorSet(window.__PALETTE__ || fallbackPalette(PRIMARY_COLOR));
+    this.C = C;
+    this.cameras.main.setBackgroundColor('#16213e');
+
+    const rating = getRating(this.finalScore);
+    const modifier = getModifier(rating);
+    const ratingColor = { S:'#ffd700', A:'#60a5fa', B:'#9ca3af', C:'#fb7185' }[rating];
+    const modText = modifier > 0 ? '+' + modifier : String(modifier);
+
+    // Title
+    this.add.rectangle(W/2, 80, 340, 100, 0x1e293b, 0.9).setStrokeStyle(2, 0x475569);
+    this.add.text(W/2, 50, '结算', {
+      fontFamily:'ZCOOL QingKe HuangYou', fontSize:'32px', color:'#e5e7eb'
+    }).setOrigin(0.5);
+    this.add.text(W/2, 86, '以伤为盾', {
+      fontFamily:'ZCOOL QingKe HuangYou', fontSize:'20px', color:'#9ca3af'
+    }).setOrigin(0.5);
+
+    // Big rating
+    this.add.text(W/2, 220, rating, {
+      fontFamily:'Nunito', fontSize:'108px', fontStyle:'900',
+      color:ratingColor, stroke:'#111827', strokeThickness:4
+    }).setOrigin(0.5);
+
+    // Score
+    this.add.text(W/2, 310, '得分 ' + this.finalScore, {
+      fontFamily:'Nunito', fontSize:'28px', fontStyle:'800', color:'#e5e7eb'
+    }).setOrigin(0.5);
+    this.add.text(W/2, 348, DISPLAY_ATTRIBUTE + ' ' + modText, {
+      fontFamily:'ZCOOL QingKe HuangYou', fontSize:'22px', color:'#9ca3af'
+    }).setOrigin(0.5);
+
+    // Outcome text
+    const outcomeTexts = {
+      S: 'Kai 被完全压制，落荒而逃。Jake 完美守护了 Mia！',
+      A: 'Jake 虽然受了些伤，但成功赶走了 Kai。',
+      B: '其他同学及时赶到帮忙，Kai 最终离开了。',
+      C: 'Jake 被打倒了，但他用身体挡住了 Mia。'
+    };
+    this.add.text(W/2, 400, outcomeTexts[rating], {
+      fontFamily:'ZCOOL QingKe HuangYou', fontSize:'18px', color:'#fbbf24',
+      wordWrap:{width:W-60}, align:'center'
+    }).setOrigin(0.5);
+
+    // Stats
+    this.add.rectangle(110, 490, 130, 78, 0x1e293b, 0.9).setStrokeStyle(1.5, 0x475569);
+    this.add.text(110, 470, '最高连击', { fontFamily:'ZCOOL QingKe HuangYou', fontSize:'14px', color:'#9ca3af' }).setOrigin(0.5);
+    this.add.text(110, 500, String(this.maxCombo), { fontFamily:'Nunito', fontSize:'30px', fontStyle:'900', color:'#fbbf24' }).setOrigin(0.5);
+
+    this.add.rectangle(282, 490, 130, 78, 0x1e293b, 0.9).setStrokeStyle(1.5, 0x475569);
+    this.add.text(282, 470, '成功 / 失误', { fontFamily:'ZCOOL QingKe HuangYou', fontSize:'14px', color:'#9ca3af' }).setOrigin(0.5);
+    this.add.text(282, 500, this.hits + ' / ' + this.misses, { fontFamily:'Nunito', fontSize:'28px', fontStyle:'900', color:'#e5e7eb' }).setOrigin(0.5);
+
+    // Continue button
+    makeButton(this, {
+      x:W/2, y:H-120, w:234, h:58,
+      label:'继续', fontSize:26,
+      onTap: () => {
+        notifyGameComplete({
+          rating, score:this.finalScore, attribute:ATTRIBUTE,
+          modifier, gameId:'brave-guard',
+          maxCombo:this.maxCombo, hits:this.hits, misses:this.misses
+        });
+      }
+    });
+  }
+}
+
+/* ══════════════════════════════════════════════ */
+/* Phaser config                                   */
+/* ══════════════════════════════════════════════ */
+const config = {
+  type: Phaser.AUTO,
+  width: W,
+  height: H,
+  scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
+  scene: [BootScene, NarrativeScene, GameScene, ResultScene]
+};
+
+window.__game = new Phaser.Game(config);
+</script>
+</body>
+</html>

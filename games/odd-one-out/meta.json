@@ -1,0 +1,19 @@
+{
+  "id": "odd-one-out",
+  "title": "Odd One Out",
+  "description": "Spot the item that doesn't belong in the group. Perception over speed.",
+  "sceneTypes": [
+    "mystery",
+    "casual"
+  ],
+  "mechanic": "matching",
+  "mood": [
+    "observant",
+    "curious",
+    "deductive"
+  ],
+  "difficulty": [
+    "easy",
+    "moderate"
+  ]
+}

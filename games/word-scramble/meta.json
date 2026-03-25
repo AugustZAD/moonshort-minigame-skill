@@ -1,0 +1,18 @@
+{
+  "id": "word-scramble",
+  "title": "Word Scramble",
+  "description": "Unscramble a shuffled word as fast as possible. Vocabulary and pattern recognition.",
+  "sceneTypes": [
+    "mystery",
+    "romantic"
+  ],
+  "mechanic": "puzzle",
+  "mood": [
+    "witty",
+    "playful",
+    "cerebral"
+  ],
+  "difficulty": [
+    "moderate"
+  ]
+}

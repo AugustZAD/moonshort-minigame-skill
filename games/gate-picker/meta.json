@@ -1,0 +1,19 @@
+{
+  "id": "gate-picker",
+  "title": "Gate Picker",
+  "description": "Choose the correct gate as they scroll past. Split-second decisions under pressure.",
+  "sceneTypes": [
+    "mystery",
+    "action"
+  ],
+  "mechanic": "reaction",
+  "mood": [
+    "decisive",
+    "instinctive",
+    "risky"
+  ],
+  "difficulty": [
+    "easy",
+    "moderate"
+  ]
+}

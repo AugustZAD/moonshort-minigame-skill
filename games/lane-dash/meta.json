@@ -1,0 +1,19 @@
+{
+  "id": "lane-dash",
+  "title": "Lane Dash",
+  "description": "Switch lanes to dodge obstacles in an endless runner. Speed increases over time.",
+  "sceneTypes": [
+    "action",
+    "competitive"
+  ],
+  "mechanic": "dodge",
+  "mood": [
+    "racing",
+    "adrenaline",
+    "urgent"
+  ],
+  "difficulty": [
+    "moderate",
+    "hard"
+  ]
+}

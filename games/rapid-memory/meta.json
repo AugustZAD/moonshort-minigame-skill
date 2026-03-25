@@ -1,0 +1,18 @@
+{
+  "id": "rapid-memory",
+  "title": "Rapid Memory",
+  "description": "Flash cards appear briefly — memorize and recall their positions. Speed memory test.",
+  "sceneTypes": [
+    "mystery",
+    "action"
+  ],
+  "mechanic": "memory",
+  "mood": [
+    "alert",
+    "sharp",
+    "intense"
+  ],
+  "difficulty": [
+    "hard"
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "id": "code-breaker",
+  "title": "Code Breaker",
+  "description": "Deduce a hidden code through logic and elimination — a cerebral puzzle under time pressure.",
+  "sceneTypes": [
+    "mystery"
+  ],
+  "mechanic": "puzzle",
+  "mood": [
+    "analytical",
+    "investigative",
+    "clever"
+  ],
+  "difficulty": [
+    "hard"
+  ]
+}

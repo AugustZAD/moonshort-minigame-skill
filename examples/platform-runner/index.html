@@ -17,9 +17,11 @@
 <body>
 <script>
 // ============ URL Params ============
+const CTX = window.__EPISODE_CTX__ || {};
 const params = new URLSearchParams(window.location.search);
-const ATTRIBUTE = params.get('attribute') || 'Agility';
-const PRIMARY_COLOR = params.get('primaryColor') || '#E84545';
+const ATTRIBUTE = CTX.attribute || params.get('attribute') || 'Agility';
+const PRIMARY_COLOR = CTX.primaryColor || params.get('primaryColor') || '#E84545';
+const DISPLAY_ATTRIBUTE = (CTX.character && CTX.character.name ? CTX.character.name + '\u7684' : '') + ATTRIBUTE;
 
 // ============ Theme Colors ============
 const COLORS = {
@@ -563,7 +565,7 @@ class RatingScene extends Phaser.Scene {
     }).setOrigin(0.5).setDepth(302).setAlpha(0);
     this.tweens.add({ targets: scoreTxt, alpha: 1, duration: 300, delay: 1400 });
 
-    const attrTxt = this.add.text(cardX, cardY + 72, `${ATTRIBUTE}  ${modText} · Lasts 1 Round`, {
+    const attrTxt = this.add.text(cardX, cardY + 72, `${DISPLAY_ATTRIBUTE}  ${modText} · Lasts 1 Round`, {
       fontFamily: 'Patrick Hand', fontSize: '15px',
       color: COLORS.neutralHex,
     }).setOrigin(0.5).setDepth(302).setAlpha(0);

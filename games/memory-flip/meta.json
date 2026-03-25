@@ -1,0 +1,18 @@
+{
+  "id": "memory-flip",
+  "title": "Memory Flip",
+  "description": "Flip cards to find matching pairs. Classic memory test with escalating complexity.",
+  "sceneTypes": [
+    "mystery",
+    "romantic"
+  ],
+  "mechanic": "memory",
+  "mood": [
+    "nostalgic",
+    "patient",
+    "thoughtful"
+  ],
+  "difficulty": [
+    "moderate"
+  ]
+}

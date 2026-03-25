@@ -1,0 +1,19 @@
+{
+  "id": "orbit-avoid",
+  "title": "Orbit Avoid",
+  "description": "Orbit a center point while dodging obstacles rotating at different speeds.",
+  "sceneTypes": [
+    "action",
+    "tension"
+  ],
+  "mechanic": "dodge",
+  "mood": [
+    "hypnotic",
+    "precise",
+    "tense"
+  ],
+  "difficulty": [
+    "moderate",
+    "hard"
+  ]
+}

@@ -1,3 +1,15 @@
 .DS_Store
 Thumbs.db
 *.log
+.env
+dist/
+node_modules/
+.claude/
+.stitch-mcp/
+.vite/
+screenshots/
+*.pdf
+*.png
+!data/**/*.png
+!data/**/*.jpg
+!games/**/*.png

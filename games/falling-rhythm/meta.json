@@ -1,0 +1,18 @@
+{
+  "id": "falling-rhythm",
+  "title": "Falling Rhythm",
+  "description": "Tap falling notes in sync with the beat. Rhythm game that rewards timing over speed.",
+  "sceneTypes": [
+    "romantic",
+    "action"
+  ],
+  "mechanic": "rhythm",
+  "mood": [
+    "musical",
+    "flowing",
+    "expressive"
+  ],
+  "difficulty": [
+    "moderate"
+  ]
+}

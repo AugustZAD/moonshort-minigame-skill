@@ -1,0 +1,1395 @@
+<!DOCTYPE html>
+<html lang="zh" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+  <title>暗中藏匿</title>
+  <link href="https://fonts.googleapis.com/css2?family=Epilogue:wght@400;700;800&family=Manrope:wght@400;500;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0e141c;
+      --surface: #1b2029;
+      --surface-high: #252a33;
+      --surface-highest: #30353e;
+      --surface-lowest: #090e17;
+      --primary: #aec6ff;
+      --primary-ctr: #508eff;
+      --secondary: #ffb4a4;
+      --secondary-ctr: #ff5633;
+      --tertiary: #e5c191;
+      --tertiary-ctr: #ab8b60;
+      --on-surface: #dee2ef;
+      --outline: #8c909f;
+      --outline-var: #424754;
+      --error: #ffb4ab;
+      --error-ctr: #93000a;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: var(--bg);
+      font-family: 'Manrope', sans-serif;
+      color: var(--on-surface);
+      overflow: hidden;
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    .material-symbols-outlined {
+      font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+    }
+
+    /* ── Game wrapper ── */
+    #game-wrap {
+      position: relative;
+      width: 393px; height: 736px;
+      overflow: hidden;
+    }
+    #game-wrap canvas { display: block; }
+
+    /* ── HUD Overlay ── */
+    #hud {
+      position: absolute; inset: 0;
+      pointer-events: none;
+      z-index: 20;
+      display: flex; flex-direction: column;
+      padding: 0 20px;
+    }
+    #hud * { pointer-events: none; }
+
+    /* Top bar */
+    .hud-top {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 14px 4px 8px;
+      background: linear-gradient(to bottom, rgba(14,20,28,0.9), transparent);
+    }
+    .hud-timer {
+      display: flex; align-items: center; gap: 6px;
+      font-family: 'Manrope', sans-serif; font-weight: 700;
+      color: var(--primary); font-size: 16px;
+    }
+    .hud-title {
+      font-family: 'Epilogue', sans-serif;
+      font-weight: 800; font-size: 18px;
+      text-transform: uppercase;
+      letter-spacing: -0.02em;
+      color: var(--on-surface);
+      text-shadow: 0 0 10px rgba(222,226,239,0.5);
+    }
+
+    /* Status & hint */
+    .hud-status {
+      text-align: center; margin-top: 4px;
+    }
+    .hud-status-label {
+      font-size: 10px; text-transform: uppercase;
+      letter-spacing: 0.15em; color: rgba(174,198,255,0.7);
+      margin-bottom: 2px;
+    }
+    .hud-status-text {
+      font-family: 'Epilogue', sans-serif;
+      font-weight: 700; font-size: 15px;
+      color: var(--on-surface);
+    }
+
+    /* Bars */
+    .hud-bars { margin-top: 10px; }
+    .bar-row { margin-bottom: 8px; }
+    .bar-label {
+      display: flex; justify-content: space-between;
+      font-size: 10px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: -0.02em;
+      margin-bottom: 3px;
+    }
+    .bar-label.escape { color: var(--primary); }
+    .bar-label.tension { color: var(--secondary-ctr); }
+    .bar-label.stamina { color: #66ddaa; }
+    .bar-fill.stamina {
+      background: linear-gradient(90deg, #44aa77, #66ddaa);
+      box-shadow: 0 0 10px rgba(102,221,170,0.4);
+      transition: width 0.08s ease-out;
+    }
+    .bar-track {
+      height: 6px; width: 100%;
+      background: var(--surface-lowest);
+      border-radius: 99px; overflow: hidden;
+      border: 1px solid rgba(66,71,84,0.1);
+    }
+    .bar-fill {
+      height: 100%; border-radius: 99px;
+      transition: width 0.12s ease-out;
+    }
+    .bar-fill.escape {
+      background: linear-gradient(90deg, var(--primary), var(--primary-ctr));
+      box-shadow: 0 0 10px rgba(174,198,255,0.4);
+    }
+    .bar-fill.tension {
+      background: var(--secondary-ctr);
+      box-shadow: 0 0 15px rgba(255,86,51,0.5);
+    }
+
+    /* Action button */
+    .hud-bottom {
+      margin-top: auto;
+      display: flex; flex-direction: column; align-items: center;
+      padding-bottom: 22px;
+      pointer-events: auto !important;
+    }
+    .btn-action {
+      position: relative;
+      width: 96px; height: 96px;
+      border-radius: 50%; border: 4px solid var(--primary);
+      background: var(--primary-ctr);
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      cursor: pointer;
+      box-shadow: 0 0 30px rgba(80,142,255,0.4);
+      transition: transform 0.08s ease;
+      -webkit-tap-highlight-color: transparent;
+      pointer-events: auto !important;
+    }
+    .btn-action:active { transform: scale(0.88); }
+    .btn-action.rhythm-hot {
+      box-shadow: 0 0 40px rgba(80,142,255,0.8), 0 0 80px rgba(80,142,255,0.3);
+      border-color: #aef;
+    }
+    .btn-action .material-symbols-outlined {
+      font-size: 36px; color: #00275e;
+      font-variation-settings: 'FILL' 1;
+    }
+    .btn-action-label {
+      font-family: 'Epilogue', sans-serif;
+      font-weight: 800; font-size: 13px;
+      color: #00275e; text-transform: uppercase;
+      letter-spacing: 0.1em;
+    }
+    .btn-action.hide-mode {
+      background: var(--error-ctr);
+      border-color: var(--secondary-ctr);
+      box-shadow: 0 0 30px rgba(255,86,51,0.4);
+    }
+    .btn-action.hide-mode .material-symbols-outlined,
+    .btn-action.hide-mode .btn-action-label { color: #ffdad6; }
+    .btn-ring {
+      position: absolute; inset: -12px;
+      border-radius: 50%;
+      border: 3px solid var(--primary);
+      opacity: 0.5;
+      animation: pulse-ring 1.2s ease-out infinite;
+    }
+    .btn-action.hide-mode .btn-ring {
+      border-color: var(--secondary-ctr);
+    }
+    @keyframes pulse-ring {
+      0% { transform: scale(1); opacity: 0.5; }
+      100% { transform: scale(1.4); opacity: 0; }
+    }
+
+    /* ── Romantic Moment Overlay ── */
+    #moment-overlay {
+      position: absolute; inset: 0; z-index: 30;
+      display: none;
+      align-items: center; justify-content: center;
+      padding: 0 28px;
+      background: rgba(14,20,28,0.4);
+    }
+    #moment-overlay.active { display: flex; }
+    .moment-panel {
+      background: rgba(37,42,51,0.85);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      padding: 28px 24px;
+      border-radius: 12px;
+      border-left: 4px solid var(--tertiary);
+      box-shadow: 0 0 30px rgba(229,193,145,0.15);
+      max-width: 340px; width: 100%;
+      opacity: 0;
+      transform: translateY(12px);
+      transition: opacity 0.4s ease, transform 0.4s ease;
+    }
+    #moment-overlay.active .moment-panel {
+      opacity: 1; transform: translateY(0);
+    }
+    .moment-meta {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 14px;
+    }
+    .moment-meta span {
+      font-size: 10px; text-transform: uppercase;
+      letter-spacing: 0.2em; color: var(--outline);
+    }
+    .moment-dots { display: flex; gap: 4px; }
+    .moment-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--secondary-ctr);
+    }
+    .moment-dot.dim { opacity: 0.3; }
+    .moment-text {
+      font-size: 18px; line-height: 1.6;
+      color: var(--tertiary); font-style: italic;
+      letter-spacing: 0.02em;
+    }
+
+    /* ── Result Overlay ── */
+    #result-overlay {
+      position: absolute; inset: 0; z-index: 40;
+      display: none;
+      flex-direction: column;
+      align-items: center; justify-content: center;
+      background: rgba(14,20,28,0.92);
+      text-align: center;
+    }
+    #result-overlay.active { display: flex; }
+    .result-bg-text {
+      position: absolute; top: 60px; right: -40px;
+      font-family: 'Epilogue', sans-serif;
+      font-weight: 900; font-size: 180px;
+      color: rgba(48,53,62,0.15);
+      letter-spacing: -0.04em;
+      pointer-events: none;
+    }
+    .result-rating {
+      position: relative;
+      font-family: 'Epilogue', sans-serif;
+      font-weight: 800; font-size: 160px;
+      line-height: 1;
+      margin-bottom: 8px;
+    }
+    .result-rating::before {
+      content: ''; position: absolute;
+      inset: -40px; border-radius: 50%;
+      filter: blur(60px);
+      z-index: -1;
+    }
+    .result-rating.S { color: var(--tertiary); text-shadow: 0 0 20px rgba(229,193,145,0.6); }
+    .result-rating.S::before { background: rgba(229,193,145,0.15); }
+    .result-rating.A { color: #66ff99; text-shadow: 0 0 20px rgba(102,255,153,0.5); }
+    .result-rating.A::before { background: rgba(102,255,153,0.12); }
+    .result-rating.B { color: var(--primary); text-shadow: 0 0 20px rgba(174,198,255,0.5); }
+    .result-rating.B::before { background: rgba(174,198,255,0.12); }
+    .result-rating.C { color: var(--secondary-ctr); text-shadow: 0 0 20px rgba(255,86,51,0.5); }
+    .result-rating.C::before { background: rgba(255,86,51,0.12); }
+    .result-score-label {
+      font-size: 10px; text-transform: uppercase;
+      letter-spacing: 0.2em; color: var(--outline);
+      margin-bottom: 4px;
+    }
+    .result-score {
+      font-family: 'Epilogue', sans-serif;
+      font-weight: 700; font-size: 42px;
+      color: var(--primary);
+      letter-spacing: -0.03em;
+    }
+    .result-attr {
+      margin-top: 16px;
+      background: rgba(37,42,51,0.4);
+      backdrop-filter: blur(8px);
+      padding: 8px 20px;
+      border-radius: 99px;
+      border-left: 4px solid var(--tertiary);
+      font-weight: 700; font-size: 17px;
+      color: var(--tertiary);
+      display: flex; align-items: center; gap: 10px;
+    }
+    .result-attr-ping {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: var(--tertiary);
+      animation: pulse-ring 1.2s ease-out infinite;
+    }
+    .result-flavor {
+      margin-top: 28px;
+      max-width: 260px;
+      font-style: italic; font-size: 14px;
+      color: var(--outline); line-height: 1.6;
+      letter-spacing: 0.02em;
+    }
+    .result-btn {
+      margin-top: 36px;
+      width: 240px; padding: 16px 0;
+      background: var(--primary-ctr);
+      color: #00275e;
+      border: none; border-radius: 8px;
+      font-family: 'Epilogue', sans-serif;
+      font-weight: 700; font-size: 16px;
+      text-transform: uppercase; letter-spacing: 0.15em;
+      cursor: pointer;
+      box-shadow: 0 10px 30px rgba(80,142,255,0.3);
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      transition: transform 0.15s ease;
+      pointer-events: auto;
+    }
+    .result-btn:active { transform: scale(0.95); }
+
+    /* Side decoration */
+    .deco-line {
+      position: absolute; bottom: 120px; left: 10px; z-index: 5;
+      opacity: 0.3; pointer-events: none;
+    }
+    .deco-line-bar {
+      width: 1px; height: 80px;
+      background: linear-gradient(to bottom, transparent, var(--outline), transparent);
+    }
+    .deco-line-text {
+      margin-top: 6px;
+      font-size: 9px; color: var(--outline);
+      text-transform: uppercase; letter-spacing: 0.15em;
+      writing-mode: vertical-rl;
+    }
+    /* ── Narrative Intro Overlay ── */
+    #narrative-overlay {
+      position: fixed; inset: 0; z-index: 9999;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: flex-end;
+      padding-bottom: 60px;
+      touch-action: manipulation;
+    }
+    #narrative-overlay.hidden { display: none; }
+    .narr-bg {
+      position: absolute; inset: 0;
+      background-size: cover; background-position: center;
+    }
+    .narr-dim { position: absolute; inset: 0; background: rgba(0,0,0,0.72); }
+    .narr-box {
+      position: relative; width: 340px;
+      background: rgba(12,14,28,0.93);
+      border: 1.5px solid rgba(255,255,255,0.14);
+      border-radius: 18px; padding: 18px 22px 14px;
+    }
+    .narr-header { display: flex; align-items: center; gap: 11px; margin-bottom: 11px; }
+    .narr-portrait {
+      width: 46px; height: 46px; border-radius: 50%;
+      border: 2px solid rgba(255,255,255,0.25);
+      object-fit: cover;
+    }
+    .narr-name {
+      color: #fff; font-family: 'Epilogue', sans-serif;
+      font-size: 15px; font-weight: 700;
+    }
+    .narr-text {
+      color: #e5e7eb; font-family: 'Manrope', sans-serif;
+      font-size: 17px; line-height: 1.65; min-height: 52px; margin: 0;
+    }
+    .narr-hint {
+      text-align: right; margin-top: 9px;
+      color: rgba(255,255,255,0.3); font-size: 12px;
+    }
+    .narr-dots { position: relative; display: flex; gap: 6px; margin-top: 13px; }
+    .narr-dot {
+      width: 7px; height: 7px; border-radius: 50%;
+      background: rgba(255,255,255,0.25); transition: background 0.25s;
+    }
+    .narr-dot.active { background: rgba(255,255,255,0.9); }
+  </style>
+</head>
+<body>
+
+<!-- Narrative Intro Overlay -->
+<div id="narrative-overlay">
+  <div class="narr-bg" id="narr-bg"></div>
+  <div class="narr-dim"></div>
+  <div class="narr-box">
+    <div class="narr-header">
+      <img class="narr-portrait" id="narr-port" src="" alt="" style="display:none">
+      <span class="narr-name" id="narr-name"></span>
+    </div>
+    <p class="narr-text" id="narr-text"></p>
+    <div class="narr-hint">点击继续 ▶</div>
+  </div>
+  <div class="narr-dots" id="narr-dots"></div>
+</div>
+
+<div id="game-wrap">
+  <!-- HUD Overlay -->
+  <div id="hud">
+    <div class="hud-top">
+      <div class="hud-timer">
+        <span class="material-symbols-outlined" style="font-size:20px">timer</span>
+        <span id="ui-timer">25</span>
+      </div>
+      <div class="hud-title">暗中藏匿</div>
+      <span class="material-symbols-outlined" style="font-size:20px;color:var(--outline)">visibility_off</span>
+    </div>
+    <div class="hud-status">
+      <div class="hud-status-label" id="ui-status-label">Status</div>
+      <div class="hud-status-text" id="ui-status">趁现在——快跑！</div>
+    </div>
+    <div class="hud-bars">
+      <div class="bar-row">
+        <div class="bar-label escape">
+          <span>逃脱进度</span>
+          <span id="ui-escape-pct">0%</span>
+        </div>
+        <div class="bar-track"><div class="bar-fill escape" id="ui-escape-bar" style="width:0%"></div></div>
+      </div>
+      <div class="bar-row">
+        <div class="bar-label tension">
+          <span>暴露风险</span>
+          <span id="ui-tension-level">Low</span>
+        </div>
+        <div class="bar-track"><div class="bar-fill tension" id="ui-tension-bar" style="width:0%"></div></div>
+      </div>
+      <div class="bar-row" id="stamina-row" style="display:none">
+        <div class="bar-label stamina">
+          <span>耐力</span>
+          <span id="ui-stamina-pct">100%</span>
+        </div>
+        <div class="bar-track"><div class="bar-fill stamina" id="ui-stamina-bar" style="width:100%"></div></div>
+      </div>
+    </div>
+    <div class="hud-bottom">
+      <div class="btn-action" id="ui-btn">
+        <div class="btn-ring"></div>
+        <span class="material-symbols-outlined" id="ui-btn-icon">directions_run</span>
+        <span class="btn-action-label" id="ui-btn-label">快跑</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Romantic Moment Overlay -->
+  <div id="moment-overlay">
+    <div class="moment-panel">
+      <div class="moment-meta">
+        <span>Moment of Impact</span>
+        <div class="moment-dots">
+          <div class="moment-dot" id="dot-1"></div>
+          <div class="moment-dot dim" id="dot-2"></div>
+          <div class="moment-dot dim" id="dot-3"></div>
+        </div>
+      </div>
+      <p class="moment-text" id="moment-text"></p>
+    </div>
+  </div>
+
+  <!-- Result Overlay -->
+  <div id="result-overlay">
+    <div class="result-bg-text">VOID</div>
+    <div class="result-rating" id="res-rating">S</div>
+    <div class="result-score-label">Total Score</div>
+    <div class="result-score" id="res-score">0 pts</div>
+    <div class="result-attr" id="res-attr">
+      <span id="res-attr-text">意志 +3</span>
+      <div class="result-attr-ping"></div>
+    </div>
+    <p class="result-flavor" id="res-flavor"></p>
+    <button class="result-btn" id="res-btn">
+      继续
+      <span class="material-symbols-outlined" style="font-size:20px">arrow_forward</span>
+    </button>
+  </div>
+
+  <!-- Side decoration -->
+  <div class="deco-line">
+    <div class="deco-line-bar"></div>
+    <div class="deco-line-text">Log #042</div>
+  </div>
+</div>
+
+<script>
+// ── Narrative Intro System ──
+(function() {
+  const CTX = window.__EPISODE_CTX__ || {};
+  const DEFAULT_NARRATIVE = [
+    { speaker: 'Aiden', text: '……停车场里有人在巡逻。我们得趁他们不注意的时候跑出去。' },
+    { speaker: 'Avery', text: '可是……万一被发现了怎么办？' },
+    { speaker: 'Aiden', text: '跟紧我。看到手电筒的时候，按住屏住呼吸——千万别乱动。' },
+    { speaker: 'Avery', text: '好……我相信你。' },
+  ];
+  const lines = CTX.narrative || DEFAULT_NARRATIVE;
+  const ol = document.getElementById('narrative-overlay');
+  if (!ol || lines.length === 0) { if (ol) ol.classList.add('hidden'); return; }
+
+  // Background
+  const bgEl = document.getElementById('narr-bg');
+  const IMG_BG = CTX.background?.url;
+  if (IMG_BG) bgEl.style.backgroundImage = 'url(' + JSON.stringify(IMG_BG) + ')';
+  else bgEl.style.background = 'linear-gradient(180deg, #0a0f1a 0%, #1a1020 100%)';
+
+  const portEl = document.getElementById('narr-port');
+  const nameEl = document.getElementById('narr-name');
+  const txtEl = document.getElementById('narr-text');
+  const dotsEl = document.getElementById('narr-dots');
+
+  lines.forEach(function(_, i) {
+    const d = document.createElement('div');
+    d.className = 'narr-dot' + (i === 0 ? ' active' : '');
+    dotsEl.appendChild(d);
+  });
+
+  let idx = 0;
+  function show(i) {
+    const item = lines[i];
+    if (item && typeof item === 'object') {
+      txtEl.textContent = item.text || '';
+      nameEl.textContent = item.speaker || '';
+      if (item.portraitUrl) { portEl.src = item.portraitUrl; portEl.style.display = 'block'; }
+      else portEl.style.display = 'none';
+    } else {
+      txtEl.textContent = String(item || '');
+    }
+    dotsEl.querySelectorAll('.narr-dot').forEach(function(d, j) {
+      d.classList.toggle('active', j === i);
+    });
+  }
+  show(0);
+
+  ol.addEventListener('click', function() {
+    idx++;
+    if (idx >= lines.length) {
+      ol.style.transition = 'opacity 0.35s';
+      ol.style.opacity = '0';
+      setTimeout(function() { ol.classList.add('hidden'); }, 380);
+    } else { show(idx); }
+  });
+})();
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
+<script>
+'use strict';
+
+// ── MoonAudio — Web Audio Synthesizer (zero-dependency) ──
+class MoonAudio {
+  constructor() { this._ctx = null; this._master = null; this._bgmNodes = []; this._ambientNodes = []; this._unlocked = false; }
+  _ensure() {
+    if (this._ctx) return this._ctx;
+    this._ctx = new (window.AudioContext || window.webkitAudioContext)();
+    this._master = this._ctx.createGain(); this._master.gain.value = 0.6;
+    this._master.connect(this._ctx.destination); return this._ctx;
+  }
+  unlock() {
+    if (this._unlocked) return; this._ensure();
+    if (this._ctx.state === 'suspended') this._ctx.resume(); this._unlocked = true;
+  }
+  tap() {
+    const ctx = this._ensure(), t = ctx.currentTime;
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    o.type = 'sine'; o.frequency.setValueAtTime(1200, t); o.frequency.exponentialRampToValueAtTime(800, t + 0.08);
+    g.gain.setValueAtTime(0.3, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.1);
+    o.connect(g).connect(this._master); o.start(t); o.stop(t + 0.1);
+  }
+  success() {
+    const ctx = this._ensure(), t = ctx.currentTime;
+    [523, 784].forEach((f, i) => {
+      const o = ctx.createOscillator(), g = ctx.createGain(); o.type = 'sine'; o.frequency.value = f;
+      g.gain.setValueAtTime(0, t + i * 0.12); g.gain.linearRampToValueAtTime(0.25, t + i * 0.12 + 0.03);
+      g.gain.exponentialRampToValueAtTime(0.001, t + i * 0.12 + 0.3);
+      o.connect(g).connect(this._master); o.start(t + i * 0.12); o.stop(t + i * 0.12 + 0.3);
+    });
+  }
+  fail() {
+    const ctx = this._ensure(), t = ctx.currentTime;
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    o.type = 'sawtooth'; o.frequency.setValueAtTime(150, t); o.frequency.linearRampToValueAtTime(80, t + 0.25);
+    g.gain.setValueAtTime(0.2, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
+    o.connect(g).connect(this._master); o.start(t); o.stop(t + 0.3);
+  }
+  alert() {
+    const ctx = this._ensure(), t = ctx.currentTime;
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    o.type = 'square'; o.frequency.setValueAtTime(880, t); o.frequency.exponentialRampToValueAtTime(220, t + 0.15);
+    g.gain.setValueAtTime(0.2, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.2);
+    o.connect(g).connect(this._master); o.start(t); o.stop(t + 0.2);
+  }
+  swoosh() {
+    const ctx = this._ensure(), t = ctx.currentTime;
+    const len = ctx.sampleRate * 0.15, buf = ctx.createBuffer(1, len, ctx.sampleRate), d = buf.getChannelData(0);
+    for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / len);
+    const s = ctx.createBufferSource(); s.buffer = buf;
+    const f = ctx.createBiquadFilter(); f.type = 'bandpass'; f.frequency.setValueAtTime(2000, t);
+    f.frequency.exponentialRampToValueAtTime(500, t + 0.15); f.Q.value = 2;
+    const g = ctx.createGain(); g.gain.setValueAtTime(0.3, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.15);
+    s.connect(f).connect(g).connect(this._master); s.start(t);
+  }
+  heartbeat() {
+    const ctx = this._ensure(), t = ctx.currentTime;
+    [0, 0.18].forEach(off => {
+      const o = ctx.createOscillator(), g = ctx.createGain(); o.type = 'sine';
+      o.frequency.setValueAtTime(60, t + off); o.frequency.exponentialRampToValueAtTime(30, t + off + 0.15);
+      g.gain.setValueAtTime(0.35, t + off); g.gain.exponentialRampToValueAtTime(0.001, t + off + 0.2);
+      o.connect(g).connect(this._master); o.start(t + off); o.stop(t + off + 0.2);
+    });
+  }
+  tick() {
+    const ctx = this._ensure(), t = ctx.currentTime;
+    const o = ctx.createOscillator(), g = ctx.createGain(); o.type = 'sine'; o.frequency.value = 1000;
+    g.gain.setValueAtTime(0.15, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.05);
+    o.connect(g).connect(this._master); o.start(t); o.stop(t + 0.06);
+  }
+  rain() {
+    const ctx = this._ensure(), len = ctx.sampleRate * 2, buf = ctx.createBuffer(1, len, ctx.sampleRate), d = buf.getChannelData(0);
+    for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+    const s = ctx.createBufferSource(); s.buffer = buf; s.loop = true;
+    const f = ctx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 800; f.Q.value = 0.5;
+    const g = ctx.createGain(); g.gain.value = 0.08;
+    s.connect(f).connect(g).connect(this._master); s.start();
+    this._ambientNodes.push({ src: s, gain: g }); return { src: s, gain: g };
+  }
+  bgm(style) {
+    this.stopBgm(); const ctx = this._ensure();
+    const P = {
+      tense:[[130.81,155.56,196],[123.47,146.83,185],[116.54,138.59,174.61],[123.47,146.83,185]],
+      romantic:[[261.63,329.63,392],[293.66,349.23,440],[246.94,311.13,369.99],[261.63,329.63,392]],
+      action:[[164.81,196,246.94],[174.61,220,261.63],[146.83,174.61,220],[155.56,196,246.94]],
+      mystery:[[146.83,174.61,220],[138.59,164.81,207.65],[130.81,155.56,196],[138.59,174.61,220]],
+    };
+    const chords = P[style] || P.tense, bd = style === 'action' ? 0.8 : 1.2, ll = chords.length * bd;
+    const mg = ctx.createGain(); mg.gain.value = 0; mg.gain.linearRampToValueAtTime(0.12, ctx.currentTime + 1);
+    mg.connect(this._master);
+    const sched = () => {
+      const now = ctx.currentTime;
+      chords.forEach((ch, ci) => {
+        const ct = now + ci * bd;
+        ch.forEach(freq => {
+          const o = ctx.createOscillator(), e = ctx.createGain();
+          o.type = style === 'romantic' ? 'sine' : style === 'action' ? 'sawtooth' : 'triangle';
+          o.frequency.value = freq;
+          e.gain.setValueAtTime(0, ct); e.gain.linearRampToValueAtTime(0.08, ct + 0.05);
+          e.gain.setValueAtTime(0.08, ct + bd * 0.7); e.gain.linearRampToValueAtTime(0, ct + bd);
+          o.connect(e).connect(mg); o.start(ct); o.stop(ct + bd);
+        });
+        const b = ctx.createOscillator(), be = ctx.createGain(); b.type = 'sine'; b.frequency.value = ch[0] / 2;
+        be.gain.setValueAtTime(0, ct); be.gain.linearRampToValueAtTime(0.12, ct + 0.03);
+        be.gain.setValueAtTime(0.12, ct + bd * 0.5); be.gain.linearRampToValueAtTime(0, ct + bd);
+        b.connect(be).connect(mg); b.start(ct); b.stop(ct + bd);
+      });
+    };
+    sched();
+    const iid = setInterval(() => { if (!this._ctx || this._ctx.state === 'closed') { clearInterval(iid); return; } sched(); }, ll * 1000);
+    this._bgmNodes.push({ masterGain: mg, intervalId: iid });
+  }
+  stopBgm(ms) {
+    const f = (ms || 500) / 1000, ctx = this._ctx; if (!ctx) return;
+    const t = ctx.currentTime;
+    for (const n of this._bgmNodes) { if (n.intervalId) clearInterval(n.intervalId); if (n.masterGain) n.masterGain.gain.linearRampToValueAtTime(0, t + f); }
+    this._bgmNodes = [];
+  }
+  stopAll() { this.stopBgm(200); for (const n of this._ambientNodes) { try { n.src.stop(); } catch(_) {} } this._ambientNodes = []; }
+  setVolume(v) { this._ensure(); this._master.gain.value = Math.max(0, Math.min(1, v)); }
+}
+
+const _synth = new MoonAudio();
+
+// ── FreesoundAudio — Real audio files with MoonAudio fallback ──
+class FreesoundAudio {
+  constructor(synthFallback) {
+    this._synth = synthFallback;
+    this._ctx = null;
+    this._master = null;
+    this._buffers = {};
+    this._bgmSource = null;
+    this._rainSource = null;
+    this._hbLoop = null;
+    this._loaded = false;
+    this._unlocked = false;
+  }
+  _ensure() {
+    if (this._ctx) return this._ctx;
+    this._ctx = new (window.AudioContext || window.webkitAudioContext)();
+    this._master = this._ctx.createGain(); this._master.gain.value = 0.7;
+    this._master.connect(this._ctx.destination); return this._ctx;
+  }
+  unlock() {
+    if (this._unlocked) return; this._ensure();
+    if (this._ctx.state === 'suspended') this._ctx.resume(); this._unlocked = true;
+  }
+  async loadAll() {
+    this._ensure();
+    // Freesound CDN preview URLs — no auth needed
+    const urls = {
+      heartbeat:    'https://cdn.freesound.org/previews/124/124095_321967-hq.mp3',
+      rain:         'https://cdn.freesound.org/previews/797/797659_16752880-hq.mp3',
+      alert:        'https://cdn.freesound.org/previews/742/742645_16119748-hq.mp3',
+      bgm_main:     'https://cdn.freesound.org/previews/277/277251_3685203-hq.mp3',
+      success:      'https://cdn.freesound.org/previews/810/810754_17437502-hq.mp3',
+      fail:         'https://cdn.freesound.org/previews/253/253886_3169537-hq.mp3',
+      tick:         'https://cdn.freesound.org/previews/174/174721_3034894-hq.mp3',
+      footstep:     'https://cdn.freesound.org/previews/504/504204_9961300-hq.mp3',
+    };
+    const promises = Object.entries(urls).map(async ([key, url]) => {
+      try {
+        const resp = await fetch(url);
+        if (!resp.ok) throw new Error(resp.status);
+        const buf = await resp.arrayBuffer();
+        this._buffers[key] = await this._ctx.decodeAudioData(buf);
+      } catch (e) { console.warn('FreesoundAudio: failed to load ' + key, e); }
+    });
+    await Promise.all(promises);
+    this._loaded = Object.keys(this._buffers).length > 0;
+    console.log('FreesoundAudio loaded:', Object.keys(this._buffers).join(', '));
+  }
+  _play(key, opts = {}) {
+    const buf = this._buffers[key];
+    if (!buf) return null;
+    const ctx = this._ensure();
+    const src = ctx.createBufferSource(); src.buffer = buf;
+    src.loop = !!opts.loop;
+    const g = ctx.createGain(); g.gain.value = opts.volume || 1;
+    src.connect(g).connect(this._master); src.start(0);
+    return { src, gain: g };
+  }
+  tap() { if (this._buffers.footstep) this._play('footstep', { volume: 0.25 }); else this._synth.tap(); }
+  success() { if (this._buffers.success) this._play('success', { volume: 0.8 }); else this._synth.success(); }
+  fail() { if (this._buffers.fail) this._play('fail', { volume: 0.8 }); else this._synth.fail(); }
+  alert() { if (this._buffers.alert) this._play('alert', { volume: 0.7 }); else this._synth.alert(); }
+  tick() { if (this._buffers.tick) this._play('tick', { volume: 0.4 }); else this._synth.tick(); }
+  heartbeat() {
+    if (this._buffers.heartbeat) {
+      // Play a short segment of the heartbeat sound
+      const ctx = this._ensure(); const buf = this._buffers.heartbeat;
+      const src = ctx.createBufferSource(); src.buffer = buf;
+      const g = ctx.createGain(); g.gain.value = 0.6;
+      src.connect(g).connect(this._master); src.start(0, 0, 1.5);
+    } else { this._synth.heartbeat(); }
+  }
+  rain() {
+    if (this._rainSource) return;
+    if (this._buffers.rain) {
+      this._rainSource = this._play('rain', { loop: true, volume: 0.25 });
+    } else { this._synth.rain(); }
+  }
+  bgm(style) {
+    // Single BGM track loops throughout the entire game
+    if (this._bgmSource) return; // already playing, don't restart
+    if (this._buffers.bgm_main) {
+      this._bgmSource = this._play('bgm_main', { loop: true, volume: 0.5 });
+    } else {
+      this._synth.bgm(style);
+    }
+  }
+  stopBgm(ms) {
+    const fade = (ms || 500) / 1000;
+    if (this._bgmSource) {
+      const g = this._bgmSource.gain; const ctx = this._ctx;
+      if (ctx && g) { g.gain.linearRampToValueAtTime(0, ctx.currentTime + fade); }
+      const s = this._bgmSource.src;
+      setTimeout(() => { try { s.stop(); } catch(_) {} }, (fade + 0.1) * 1000);
+      this._bgmSource = null;
+    }
+    this._synth.stopBgm(ms);
+  }
+  stopAll() {
+    this.stopBgm(200);
+    if (this._rainSource) {
+      try { this._rainSource.src.stop(); } catch(_) {}
+      this._rainSource = null;
+    }
+    this._synth.stopAll();
+  }
+  setVolume(v) { this._ensure(); this._master.gain.value = Math.max(0, Math.min(1, v)); }
+}
+
+const audio = new FreesoundAudio(_synth);
+
+const CTX = window.__EPISODE_CTX__ || {};
+
+const W = 393, H = 736;
+const BASE = (() => {
+  const s = window.location.pathname.replace(/\/[^/]*$/, '');
+  return window.location.origin + s.replace(/\/games\/[^/]+$/, '');
+})();
+
+const IMG = {
+  bg:    BASE + '/data/ep5/background/20260320-121814.jpg',
+  aiden: BASE + '/data/ep5/processed/aiden_tense2_transparent.png',
+  avery: BASE + '/data/ep5/processed/avery_tense3_transparent.png',
+};
+
+const COPY = Object.assign({
+  statusDash:   '趁现在——快跑！',
+  statusHide:   '⚠ 有人来了，别动！',
+  statusMoment: '……',
+  moments: [
+    '"跟紧我。" Aiden 的手握住了你的手腕。',
+    '他把你压在车门后，呼吸近得烫过耳廓。',
+    '"再坚持一下。" 他的声音低沉，只对你说。',
+  ],
+}, CTX.copy || {});
+
+// ── DOM refs ──
+const $timer      = document.getElementById('ui-timer');
+const $statusLabel= document.getElementById('ui-status-label');
+const $status     = document.getElementById('ui-status');
+const $escBar     = document.getElementById('ui-escape-bar');
+const $escPct     = document.getElementById('ui-escape-pct');
+const $tensBar    = document.getElementById('ui-tension-bar');
+const $tensLvl    = document.getElementById('ui-tension-level');
+const $btn        = document.getElementById('ui-btn');
+const $btnIcon    = document.getElementById('ui-btn-icon');
+const $btnLabel   = document.getElementById('ui-btn-label');
+const $moment     = document.getElementById('moment-overlay');
+const $momentText = document.getElementById('moment-text');
+const $result     = document.getElementById('result-overlay');
+
+// ── Scenes ──
+
+class BootScene extends Phaser.Scene {
+  constructor() { super('Boot'); }
+  preload() {
+    this.add.text(393/2, 736/2, 'Loading...', {
+      fontFamily: 'Manrope', fontSize: '18px', color: '#aec6ff'
+    }).setOrigin(0.5);
+    this.load.image('bg',    IMG.bg);
+    this.load.image('aiden', IMG.aiden);
+    this.load.image('avery', IMG.avery);
+  }
+  create() {
+    // Load audio then start game — use flag + update loop for reliable transition
+    this._ready = false;
+    audio.loadAll().then(() => { this._ready = true; }).catch(() => { this._ready = true; });
+  }
+  update() {
+    if (this._ready) this.scene.start('Game');
+  }
+}
+
+class GameScene extends Phaser.Scene {
+  constructor() { super('Game'); }
+
+  create() {
+    const cx = W / 2, cy = H / 2;
+
+    // ── Background (cover crop) ──
+    const bgImg = this.textures.get('bg').getSourceImage();
+    const bgAspect = bgImg.width / bgImg.height;
+    const canvasAspect = W / H;
+    let bgW, bgH;
+    if (bgAspect > canvasAspect) { bgH = H; bgW = H * bgAspect; }
+    else { bgW = W; bgH = W / bgAspect; }
+    this.bg = this.add.image(cx, cy, 'bg').setDisplaySize(bgW, bgH).setDepth(0);
+    // Night overlays
+    this.add.rectangle(cx, cy, W, H, 0x040810, 0.55).setDepth(1);
+    this.add.rectangle(cx, cy, W, H, 0x081028, 0.20).setDepth(1);
+
+    // ── Characters ──
+    // New tense images: 768×1344, aspect ratio 1:1.75
+    const CHAR_RATIO = 1344 / 768;
+    const carY = H - 60;
+    const carRoofY = carY - 20;
+
+    // Aiden — left, crouching protectively
+    const aidenW = 220, aidenH = Math.round(aidenW * CHAR_RATIO);
+    this.aidenBase = { x: 155, y: 650 };
+    this.aidenSpr = this.add.image(this.aidenBase.x, this.aidenBase.y, 'aiden')
+      .setDisplaySize(aidenW, aidenH).setOrigin(0.5, 1).setDepth(12);
+
+    // Avery — right, crouching nervously
+    const averyW = 195, averyH = Math.round(averyW * CHAR_RATIO);
+    this.averySpr = this.add.image(280, 645, 'avery')
+      .setDisplaySize(averyW, averyH).setOrigin(0.5, 1).setDepth(12);
+
+    // ── Car silhouette (subtle, low, minimal obstruction) ──
+    this.add.rectangle(cx, carY + 60, W + 20, 160, 0x04070e, 1).setDepth(13);
+    const carGfx = this.add.graphics().setDepth(13);
+    carGfx.fillStyle(0x080d1a, 1);
+    carGfx.fillRoundedRect(cx - 165, carRoofY + 10, 330, 25, { tl: 14, tr: 14, bl: 0, br: 0 });
+    carGfx.lineStyle(1.5, 0x3366aa, 0.25);
+    carGfx.strokeRoundedRect(cx - 136, carRoofY + 14, 108, 16, 4);
+    carGfx.strokeRoundedRect(cx + 8, carRoofY + 14, 108, 16, 4);
+    carGfx.lineStyle(1, 0x4488bb, 0.4);
+    carGfx.beginPath();
+    carGfx.moveTo(cx - 165, carRoofY + 10);
+    carGfx.lineTo(cx + 165, carRoofY + 10);
+    carGfx.strokePath();
+    // Subtle primary glow on roof
+    this.add.rectangle(cx, carY - 21, 330, 50, 0x508eff, 0.04).setDepth(13);
+
+    // ── Flashlight ──
+    this.flashGfx = this.add.graphics().setDepth(10);
+    this.flashX = -250;
+    this.flashDir = 1;
+    this.flashSpeed = 140;
+
+    // ── Danger glow ──
+    this.dangerGlow = this.add.rectangle(cx, cy, W, H, 0xff2200, 0)
+      .setDepth(11).setBlendMode(Phaser.BlendModes.ADD);
+
+    // ── Rain ──
+    this.rainGfx = this.add.graphics().setDepth(3);
+    this.drops = Array.from({ length: 40 }, () => ({
+      x: Phaser.Math.Between(0, W),
+      y: Phaser.Math.Between(0, H),
+      speed: Phaser.Math.FloatBetween(6, 11),
+      len: Phaser.Math.Between(10, 18),
+    }));
+
+    // ── Puddles ──
+    this.puddleGfx = this.add.graphics().setDepth(4);
+    this.drawPuddles();
+
+    // ── State ──
+    this.gameState = 'dash';
+    this.progress  = 0;
+    this.tension   = 0;
+    this.score     = 0;
+    this.timeLeft  = 25;
+    this.isDown    = false;
+    this.detections = 0;
+    this.patrolsDone = 0;
+    this.TOTAL_PATROLS = 3;
+    this.BAR_W = 240;
+    // Stamina (for hold-breath during hide)
+    this.stamina = 100;
+    this.STAMINA_MAX = 100;
+    // Rhythm pulse for dash (cycle 0→1→0 over ~1.4s)
+    this._rhythmPhase = 0;
+    this._rhythmSpeed = 4.5; // radians/sec → period ~1.4s
+    // Flashlight AI state
+    this._flashPaused = false;
+    this._flashPauseTimer = 0;
+    this._flashFakeout = false;
+
+    // ── Audio — start BGM as soon as user interacts with page ──
+    this._hbInterval = null;
+    this._audioStarted = false;
+    const startAudio = () => {
+      if (this._audioStarted) return;
+      this._audioStarted = true;
+      const ctx = audio._ctx || audio._ensure();
+      const play = () => { audio.bgm(); audio.rain(); };
+      if (ctx.state === 'suspended') {
+        ctx.resume().then(play);
+      } else {
+        play();
+      }
+    };
+    // Try immediately (works if context already running)
+    if (audio._ctx && audio._ctx.state === 'running') {
+      startAudio();
+    }
+    // Also listen for any user gesture on the whole page
+    const gestureHandler = () => {
+      startAudio();
+      document.removeEventListener('pointerdown', gestureHandler);
+      document.removeEventListener('keydown', gestureHandler);
+    };
+    document.addEventListener('pointerdown', gestureHandler, { once: false });
+    document.addEventListener('keydown', gestureHandler, { once: false });
+
+    // ── Input (DOM button + canvas) ──
+    const onDown = (e) => {
+      if (e) e.preventDefault();
+      audio.unlock(); // unlock AudioContext on first gesture
+      this.onDown();
+    };
+    const onUp = () => this.onUp();
+    $btn.addEventListener('pointerdown', onDown);
+    $btn.addEventListener('pointerup', onUp);
+    $btn.addEventListener('pointerleave', onUp);
+    this.input.on('pointerdown', () => { audio.unlock(); this.onDown(); });
+    this.input.on('pointerup',   () => this.onUp());
+
+    // ── Timer ──
+    this.clockEvent = this.time.addEvent({
+      delay: 1000, repeat: 24,
+      callback: () => {
+        if (this.gameState === 'done') return;
+        this.timeLeft = Math.max(0, this.timeLeft - 1);
+        $timer.textContent = String(this.timeLeft);
+        if (this.timeLeft <= 5) {
+          $timer.style.color = '#ff6644';
+          audio.tick();
+        }
+        if (this.timeLeft <= 0) this.endGame();
+      },
+    });
+
+
+
+    this.schedulePatrol(2800);
+    this.syncUI();
+  }
+
+  // ── UI sync ──
+  syncUI() {
+    const escPct = Math.round((this.progress / this.BAR_W) * 100);
+    $escBar.style.width = escPct + '%';
+    $escPct.textContent = escPct + '%';
+    const tensPct = Math.round((this.tension / this.BAR_W) * 100);
+    $tensBar.style.width = tensPct + '%';
+    if (tensPct > 70) $tensLvl.textContent = 'Critical';
+    else if (tensPct > 40) $tensLvl.textContent = 'High';
+    else if (tensPct > 15) $tensLvl.textContent = 'Medium';
+    else $tensLvl.textContent = 'Low';
+    // Stamina
+    const stPct = Math.round((this.stamina / this.STAMINA_MAX) * 100);
+    document.getElementById('ui-stamina-bar').style.width = stPct + '%';
+    document.getElementById('ui-stamina-pct').textContent = stPct + '%';
+  }
+
+  setDashMode() {
+    $statusLabel.textContent = 'Status: Safe';
+    $statusLabel.style.color = 'rgba(174,198,255,0.7)';
+    $status.textContent = COPY.statusDash;
+    $status.style.color = '';
+    $btn.classList.remove('hide-mode');
+    $btnIcon.textContent = 'directions_run';
+    $btnLabel.textContent = '快跑';
+
+  }
+
+  setHideMode() {
+    $statusLabel.textContent = 'Status: Danger';
+    $statusLabel.style.color = 'rgba(255,86,51,0.8)';
+    $status.textContent = COPY.statusHide;
+    $status.style.color = '#ff5633';
+    $btn.classList.add('hide-mode');
+    $btnIcon.textContent = 'favorite';
+    $btnLabel.textContent = '长按屏住';
+    this.stamina = Math.min(this.stamina, this.STAMINA_MAX);
+    this._hideTaps = 0;
+  }
+
+  // ── Input ──
+  onDown() {
+    if (this.gameState === 'done') return;
+    this.isDown = true;
+    // Audio started via page gesture listener in create()
+    if (this.gameState === 'dash') {
+      audio.tap();
+      // Rhythm pulse: tapping during the "hot" window gives full progress
+      const pulse = Math.sin(this._rhythmPhase);
+      const inHotZone = pulse > 0.6; // ~top 30% of the sine wave
+      const prog = inHotZone ? 12 : 5;
+      const pts  = inHotZone ? 4 : 1;
+      this.progress = Math.min(this.BAR_W, this.progress + prog);
+      this.score += pts;
+      if (!inHotZone) {
+        this.tension = Math.min(this.BAR_W, this.tension + 10);
+        this.cameras.main.shake(40, 0.003);
+      }
+      if (this.progress >= this.BAR_W) this.endGame();
+    } else if (this.gameState === 'hide') {
+      // Each TAP during hide = noise = massive tension spike!
+      // Holding is fine (handled in update), but repeated taps are punished
+      this._hideTaps = (this._hideTaps || 0) + 1;
+      const noisePenalty = 22 + this._hideTaps * 6; // escalates with repeated taps
+      this.tension = Math.min(this.BAR_W, this.tension + noisePenalty);
+      this.score = Math.max(0, this.score - 8);
+      this.cameras.main.shake(200, 0.015);
+      audio.alert();
+      // Flash warning
+      this.dangerGlow.setAlpha(0.6);
+      this.time.delayedCall(300, () => this.dangerGlow.setAlpha(0));
+      if (this.tension >= this.BAR_W) {
+        this.detections++;
+        this.tension = this.BAR_W * 0.2;
+        this.score = Math.max(0, this.score - 30);
+        this.cameras.main.shake(350, 0.02);
+        audio.fail();
+      }
+    }
+    this.syncUI();
+  }
+
+  onUp() { this.isDown = false; }
+
+  // ── Patrol ──
+  schedulePatrol(delay) {
+    if (this.patrolsDone >= this.TOTAL_PATROLS) return;
+    this.time.delayedCall(delay, () => {
+      if (this.gameState === 'done') return;
+      this.startPatrol();
+    });
+  }
+
+  startPatrol() {
+    this.gameState = 'hide';
+    this.patrolsDone++;
+    this.flashX = -260;
+    this.flashDir = 1;
+    this.flashSpeed = 140 + this.patrolsDone * 35;
+    this._flashFakeout = false;
+    this._flashPaused = false;
+    this.setHideMode();
+    audio.alert();
+    // Looping heartbeat during patrol
+    this._hbInterval = setInterval(() => { if (this.gameState === 'hide') audio.heartbeat(); }, 900);
+
+    const patrolDuration = 3500 + this.patrolsDone * 600;
+    this.time.delayedCall(patrolDuration, () => {
+      if (this.gameState !== 'hide') return;
+      this.endPatrol();
+    });
+  }
+
+  endPatrol() {
+    this.gameState = 'moment';
+    this.flashGfx.clear();
+    this.dangerGlow.setAlpha(0);
+    this.score += 25;
+    if (this._hbInterval) { clearInterval(this._hbInterval); this._hbInterval = null; }
+    audio.success();
+
+    this.showMoment(COPY.moments[Math.min(this.patrolsDone - 1, COPY.moments.length - 1)], () => {
+      if (this.patrolsDone < this.TOTAL_PATROLS) {
+        this.gameState = 'dash';
+        this.setDashMode();
+        this.schedulePatrol(3200 - this.patrolsDone * 200);
+      } else {
+        this.gameState = 'dash';
+
+        $status.textContent = '快了！最后冲刺！';
+        $status.style.color = '#ffd9a8';
+        $statusLabel.textContent = 'Status: Final Sprint';
+        $btn.classList.remove('hide-mode');
+        $btnIcon.textContent = 'directions_run';
+        $btnLabel.textContent = '快跑';
+      }
+    });
+  }
+
+  showMoment(text, onDone) {
+    $statusLabel.textContent = 'Status: Intimate';
+    $statusLabel.style.color = 'rgba(229,193,145,0.8)';
+    $status.textContent = COPY.statusMoment;
+
+    // Update progress dots
+    const dots = [document.getElementById('dot-1'), document.getElementById('dot-2'), document.getElementById('dot-3')];
+    dots.forEach((d, i) => d.classList.toggle('dim', i >= this.patrolsDone));
+
+    $momentText.textContent = text;
+    $moment.classList.add('active');
+
+    // Aiden leans in
+    this.tweens.add({
+      targets: this.aidenSpr, x: this.aidenBase.x + 22,
+      duration: 500, ease: 'Sine.easeInOut', yoyo: true, hold: 1600,
+    });
+
+    this.time.delayedCall(2400, () => {
+      $moment.classList.remove('active');
+      this.time.delayedCall(400, () => { if (onDone) onDone(); });
+    });
+  }
+
+  // ── End ──
+  endGame() {
+    if (this.gameState === 'done') return;
+    this.gameState = 'done';
+    this.clockEvent.remove();
+    this.flashGfx.clear();
+    this.dangerGlow.setAlpha(0);
+    if (this._hbInterval) { clearInterval(this._hbInterval); this._hbInterval = null; }
+    audio.stopAll();
+
+    const penalty = this.detections * 40;
+    const bonus   = this.timeLeft * 4;
+    const final   = Math.max(0, Math.round(this.score - penalty + bonus));
+
+    let rating, mod;
+    if (final >= 200)      { rating = 'S'; mod = 3; }
+    else if (final >= 130) { rating = 'A'; mod = 1; }
+    else if (final >= 70)  { rating = 'B'; mod = 0; }
+    else                   { rating = 'C'; mod = -1; }
+
+    // Result sound
+    if (rating === 'S' || rating === 'A') { audio.success(); }
+    else { audio.fail(); }
+
+    const attribute = CTX.attribute || '意志';
+    const FLAVOUR = {
+      S: '完美藏匿，连心跳都学会了撒谎。',
+      A: '险象环生，却始终没有暴露。',
+      B: '有点慌乱，但最终还是逃了出来。',
+      C: '被发现了……好在 Aiden 拉住了你。',
+    };
+
+    document.getElementById('res-rating').textContent = rating;
+    document.getElementById('res-rating').className = 'result-rating ' + rating;
+    document.getElementById('res-score').textContent = final + ' pts';
+    const modStr = mod > 0 ? `${attribute} +${mod}` : mod === 0 ? `${attribute} ±0` : `${attribute} ${mod}`;
+    document.getElementById('res-attr-text').textContent = modStr;
+    document.getElementById('res-flavor').textContent = `"${FLAVOUR[rating]}"`;
+    $result.classList.add('active');
+
+    document.getElementById('res-btn').onclick = () => {
+      const payload = { rating, score: final, attribute, modifier: mod, gameId: 'parking-chase' };
+      try { webkit.messageHandlers.jsBridge.postMessage(payload); } catch (_) {}
+      try { window.jsBridge.postMessage(JSON.stringify(payload)); } catch (_) {}
+      try { window.parent.postMessage({ type: 'gameComplete', ...payload }, '*'); } catch (_) {}
+    };
+  }
+
+  // ── Update ──
+  update(time, delta) {
+    const dt = delta / 1000;
+    this.updateRain(dt);
+
+    // ── Dash: rhythm pulse cycle ──
+    if (this.gameState === 'dash') {
+      this._rhythmPhase += this._rhythmSpeed * dt;
+      if (this._rhythmPhase > Math.PI * 2) this._rhythmPhase -= Math.PI * 2;
+      const pulse = Math.sin(this._rhythmPhase);
+      const hot = pulse > 0.6;
+      $btn.classList.toggle('rhythm-hot', hot);
+      // Stamina recovers during dash (moderate — it's a real resource)
+      this.stamina = Math.min(this.STAMINA_MAX, this.stamina + 12 * dt);
+    }
+
+    // ── Hide: flashlight AI + threat ──
+    if (this.gameState === 'hide') {
+      // Flashlight movement with AI pauses
+      if (this._flashPaused) {
+        this._flashPauseTimer -= dt;
+        if (this._flashPauseTimer <= 0) this._flashPaused = false;
+      } else {
+        this.flashX += this.flashDir * this.flashSpeed * dt;
+        // Random pause chance (1.5% per frame near character area)
+        const nearCenter = Math.abs(this.flashX - W / 2) < 120;
+        if (nearCenter && Math.random() < 0.015) {
+          this._flashPaused = true;
+          this._flashPauseTimer = 0.5 + Math.random() * 0.8;
+        }
+        // Fakeout on 3rd patrol: fast sweep out then reverse
+        if (this.patrolsDone >= 3 && !this._flashFakeout && this.flashX > W + 100) {
+          this._flashFakeout = true;
+          this.time.delayedCall(600, () => {
+            if (this.gameState === 'hide') {
+              this.flashDir = -1;
+              this.flashSpeed *= 1.3;
+            }
+          });
+        }
+      }
+      if (this.flashX > W + 260) this.flashDir = -1;
+      if (this.flashX < -260)    this.flashDir = 1;
+      this.drawFlashlight();
+
+      // Flashlight proximity → automatic tension (core threat)
+      const dist = Math.abs(this.flashX - W / 2);
+      const prox = Phaser.Math.Clamp(1 - dist / 140, 0, 1);
+      this.dangerGlow.setAlpha(prox * 0.25);
+
+      if (prox > 0) {
+        // Flashlight is hitting the character area — dt-based
+        const baseThreat = 120 * prox * dt; // up to 120/sec when directly on
+        const holdReduction = (this.isDown && this.stamina > 0) ? 0.25 : 1.0;
+        this.tension = Math.min(this.BAR_W, this.tension + baseThreat * holdReduction);
+      } else {
+        // Safe — tension decays slowly
+        this.tension = Math.max(0, this.tension - 30 * dt);
+      }
+
+      // Holding breath drains stamina fast — must time it carefully
+      if (this.isDown && this.stamina > 0) {
+        this.stamina = Math.max(0, this.stamina - 28 * dt);
+        this.score += dt * 1;
+      } else if (this.isDown && this.stamina <= 0) {
+        // Stamina depleted — holding does nothing, tension rises as if exposed
+        // (holdReduction was already 1.0 when stamina=0 in the prox check above)
+        this.score += dt * 0.5;
+      } else {
+        // Not holding: slow stamina recovery
+        this.stamina = Math.min(this.STAMINA_MAX, this.stamina + 5 * dt);
+        this.score += dt * 2;
+      }
+
+      // Tension overflow → detection
+      if (this.tension >= this.BAR_W) {
+        this.detections++;
+        this.tension = this.BAR_W * 0.2;
+        this.score = Math.max(0, this.score - 30);
+        this.cameras.main.shake(350, 0.02);
+        audio.fail();
+      }
+
+      // Character shake when tension high
+      if (this.tension > this.BAR_W * 0.6) {
+        const shake = (this.tension / this.BAR_W) * 2;
+        this.aidenSpr.x = this.aidenBase.x + (Math.random() - 0.5) * shake;
+        this.averySpr.x = 280 + (Math.random() - 0.5) * shake;
+      }
+    } else {
+      this.flashGfx.clear();
+      this.dangerGlow.setAlpha(0);
+      $btn.classList.remove('rhythm-hot');
+    }
+
+    // Tension decay outside hide
+    if (this.gameState !== 'hide') {
+      this.tension = Math.max(0, this.tension - 1.5);
+    }
+
+    // Show/hide stamina bar
+    document.getElementById('stamina-row').style.display =
+      this.gameState === 'hide' ? '' : 'none';
+
+    this.syncUI();
+  }
+
+  // ── Drawing ──
+  drawFlashlight() {
+    const g = this.flashGfx;
+    g.clear();
+    const x = this.flashX, y = H * 0.38;
+    const len = 340, ang = 0.32;
+
+    g.fillStyle(0xffffff, 0.04);
+    g.beginPath(); g.moveTo(x, y);
+    g.lineTo(x + Math.cos(-ang) * len, y + Math.sin(-ang) * len + 60);
+    g.lineTo(x + Math.cos(ang) * len, y + Math.sin(ang) * len + 60);
+    g.closePath(); g.fillPath();
+
+    g.fillStyle(0xddeeff, 0.09);
+    g.beginPath(); g.moveTo(x, y);
+    g.lineTo(x + Math.cos(-ang * 0.5) * len * 0.85, y + Math.sin(-ang * 0.5) * len * 0.85 + 30);
+    g.lineTo(x + Math.cos(ang * 0.5) * len * 0.85, y + Math.sin(ang * 0.5) * len * 0.85 + 30);
+    g.closePath(); g.fillPath();
+
+    g.fillStyle(0xffffff, 0.18);
+    g.beginPath(); g.moveTo(x, y);
+    g.lineTo(x + Math.cos(-ang * 0.18) * len * 0.65, y + Math.sin(-ang * 0.18) * len * 0.65 + 15);
+    g.lineTo(x + Math.cos(ang * 0.18) * len * 0.65, y + Math.sin(ang * 0.18) * len * 0.65 + 15);
+    g.closePath(); g.fillPath();
+
+    g.fillStyle(0xffffff, 0.55);
+    g.fillCircle(x, y, 5);
+    g.fillStyle(0xaaddff, 0.25);
+    g.fillCircle(x, y, 12);
+  }
+
+  drawPuddles() {
+    const g = this.puddleGfx;
+    const puddles = [
+      { x: 80,  y: H - 200, rx: 45, ry: 10 },
+      { x: 280, y: H - 230, rx: 38, ry:  8 },
+      { x: 190, y: H - 180, rx: 55, ry: 11 },
+    ];
+    puddles.forEach(p => {
+      g.fillStyle(0x0a1a2e, 0.5);
+      g.fillEllipse(p.x, p.y, p.rx * 2, p.ry * 2);
+      g.lineStyle(1, 0x3366aa, 0.2);
+      g.strokeEllipse(p.x, p.y, p.rx * 2, p.ry * 2);
+    });
+  }
+
+  updateRain(dt) {
+    const g = this.rainGfx;
+    g.clear();
+    for (const d of this.drops) {
+      d.y += d.speed;
+      d.x -= d.speed * 0.25;
+      if (d.y > H + 10) { d.y = -10; d.x = Phaser.Math.Between(0, W); }
+      g.lineStyle(1, 0x88aacc, 0.18);
+      g.beginPath(); g.moveTo(d.x, d.y);
+      g.lineTo(d.x - d.len * 0.25, d.y + d.len);
+      g.strokePath();
+    }
+  }
+}
+
+// ── Boot ──
+window.__GAME__ = new Phaser.Game({
+  type: Phaser.AUTO,
+  width: W, height: H,
+  parent: 'game-wrap',
+  transparent: true,
+  scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
+  scene: [BootScene, GameScene],
+});
+</script>
+</body>
+</html>

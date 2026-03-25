@@ -1,0 +1,18 @@
+{
+  "id": "qte-boss-parry",
+  "title": "QTE Boss Parry",
+  "description": "React to a boss's attacks with precisely timed parry inputs. High-pressure confrontation.",
+  "sceneTypes": [
+    "action",
+    "tension"
+  ],
+  "mechanic": "reaction",
+  "mood": [
+    "confrontational",
+    "intense",
+    "heroic"
+  ],
+  "difficulty": [
+    "hard"
+  ]
+}

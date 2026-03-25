@@ -1,0 +1,18 @@
+{
+  "id": "snake-sprint",
+  "title": "Snake Sprint",
+  "description": "Grow a snake by collecting items while avoiding walls and your own tail.",
+  "sceneTypes": [
+    "action",
+    "competitive"
+  ],
+  "mechanic": "navigation",
+  "mood": [
+    "growing",
+    "strategic",
+    "escalating"
+  ],
+  "difficulty": [
+    "moderate"
+  ]
+}

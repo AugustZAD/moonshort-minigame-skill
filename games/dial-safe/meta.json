@@ -1,0 +1,18 @@
+{
+  "id": "dial-safe",
+  "title": "Dial Safe",
+  "description": "Rotate a combination dial with precision to crack the safe. Demands patience and steady hands.",
+  "sceneTypes": [
+    "mystery",
+    "tension"
+  ],
+  "mechanic": "balance",
+  "mood": [
+    "secretive",
+    "precise",
+    "suspenseful"
+  ],
+  "difficulty": [
+    "hard"
+  ]
+}

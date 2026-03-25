@@ -17,9 +17,11 @@
 <body>
 <script>
 // Host params
+const CTX = window.__EPISODE_CTX__ || {};
 const params = new URLSearchParams(window.location.search);
-const ATTRIBUTE = params.get('attribute') || 'Charm';
-const PRIMARY_COLOR = params.get('primaryColor') || '#ff6b9d';
+const ATTRIBUTE = CTX.attribute || params.get('attribute') || 'Charm';
+const PRIMARY_COLOR = CTX.primaryColor || params.get('primaryColor') || '#ff6b9d';
+const DISPLAY_ATTRIBUTE = (CTX.character && CTX.character.name ? CTX.character.name + '\u7684' : '') + ATTRIBUTE;
 const COLOR_OBJ = Phaser.Display.Color.HexStringToColor(PRIMARY_COLOR);
 
 const COLORS = {
@@ -227,7 +229,7 @@ class ResultScene extends Phaser.Scene {
       color: '#111827'
     }).setOrigin(0.5);
 
-    this.add.text(W / 2, 370, ATTRIBUTE + ' ' + modText + ' (1 round)', {
+    this.add.text(W / 2, 370, DISPLAY_ATTRIBUTE + ' ' + modText + ' (1 round)', {
       fontFamily: 'Patrick Hand',
       fontSize: '20px',
       color: '#374151'

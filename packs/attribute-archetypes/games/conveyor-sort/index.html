@@ -1,0 +1,1101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no,viewport-fit=cover">
+<title>Conveyor Sort</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;900&family=Patrick+Hand&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100%; height: 100%; background: #EFF6FF; overflow: hidden; }
+  canvas { display: block; margin: 0 auto; }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
+</head>
+<body>
+<script>
+// ── Host context ─────────────────────────────────────────────────────────────
+const CTX = window.__EPISODE_CTX__ || {};
+const params = new URLSearchParams(window.location.search);
+const ATTRIBUTE = CTX.attribute || params.get('attribute') || 'Wisdom';
+const PRIMARY_COLOR = CTX.primaryColor || params.get('primaryColor') || '#3B82F6';
+const DISPLAY_ATTRIBUTE = (CTX.character && CTX.character.name ? CTX.character.name + '\u7684' : '') + ATTRIBUTE;
+
+const W = 393;
+const H = 736;
+const ROUND_SECONDS = 40;
+const RATING_THRESHOLDS = { S: 400, A: 300, B: 210, C: 130 };
+const MODIFIER_BY_RATING = { S: 3, A: 1, B: 0, C: -1 };
+
+function getRating(score) {
+  if (score >= RATING_THRESHOLDS.S) return 'S';
+  if (score >= RATING_THRESHOLDS.A) return 'A';
+  if (score >= RATING_THRESHOLDS.B) return 'B';
+  return 'C';
+}
+
+function getModifier(rating) {
+  return MODIFIER_BY_RATING[rating];
+}
+
+function notifyGameComplete(result) {
+  const payload = JSON.stringify(result);
+  if (window.webkit?.messageHandlers?.jsBridge) {
+    window.webkit.messageHandlers.jsBridge.postMessage(payload);
+    return;
+  }
+  if (window.jsBridge?.postMessage) {
+    window.jsBridge.postMessage(payload);
+    return;
+  }
+  if (window.parent !== window) {
+    window.parent.postMessage(payload, '*');
+    return;
+  }
+  console.log('[GameComplete]', result);
+}
+
+function clamp(v, min, max) {
+  return Math.max(min, Math.min(max, v));
+}
+
+function hexToRgb(hex) {
+  const raw = hex.replace('#', '');
+  const full = raw.length === 3 ? raw.split('').map(c => c + c).join('') : raw;
+  const v = parseInt(full, 16);
+  return { r: (v >> 16) & 255, g: (v >> 8) & 255, b: v & 255 };
+}
+
+function rgbToHex(r, g, b) {
+  const h = n => clamp(Math.round(n), 0, 255).toString(16).padStart(2, '0');
+  return '#' + h(r) + h(g) + h(b);
+}
+
+function blendHex(a, b, t) {
+  const ca = hexToRgb(a), cb = hexToRgb(b);
+  return rgbToHex(ca.r + (cb.r - ca.r) * t, ca.g + (cb.g - ca.g) * t, ca.b + (cb.b - ca.b) * t);
+}
+
+function hexToInt(hex) {
+  return parseInt(hex.replace('#', ''), 16);
+}
+
+// ── Attribute Theme System ───────────────────────────────────────────────────
+const ATTR_THEMES = {
+  ATK: { bgBase:'#FAF0E6', primary:'#FF6B9D', secondary:'#FF9B5E', accentGold:'#FFD76E', accentRed:'#E53E3E', trackBg:'#E8D5C4', trackBorder:'#D4C0AB', success:'#38C97A', warning:'#FFB347', danger:'#FF4D6A', textDark:'#1A1A2E', textMuted:'#7A7A8E', bgmStyle:'action' },
+  WIL: { bgBase:'#F5F0FA', primary:'#8B5CF6', secondary:'#6D28D9', accentGold:'#C084FC', accentRed:'#DC2626', trackBg:'#E4D9F0', trackBorder:'#C9B8DE', success:'#38C97A', warning:'#FFB347', danger:'#FF4D6A', textDark:'#1A1028', textMuted:'#6E6A80', bgmStyle:'tense' },
+  INT: { bgBase:'#EFF6FF', primary:'#3B82F6', secondary:'#0EA5E9', accentGold:'#67E8F9', accentRed:'#EF4444', trackBg:'#DBEAFE', trackBorder:'#BFDBFE', success:'#38C97A', warning:'#FFB347', danger:'#FF4D6A', textDark:'#0F172A', textMuted:'#64748B', bgmStyle:'mystery' },
+  CHA: { bgBase:'#FDF2F8', primary:'#F472B6', secondary:'#EC4899', accentGold:'#FBCFE8', accentRed:'#E11D48', trackBg:'#FCE7F3', trackBorder:'#F9A8D4', success:'#38C97A', warning:'#FFB347', danger:'#FF4D6A', textDark:'#1A1A2E', textMuted:'#7A6B80', bgmStyle:'romantic' },
+};
+
+function resolveTheme() {
+  const a = (ATTRIBUTE || '').toLowerCase();
+  if (/身手|atk|attack|agility/i.test(a)) return ATTR_THEMES.ATK;
+  if (/意志|wil/i.test(a)) return ATTR_THEMES.WIL;
+  if (/智慧|int|wisdom/i.test(a)) return ATTR_THEMES.INT;
+  if (/魅力|cha|charm/i.test(a)) return ATTR_THEMES.CHA;
+  return ATTR_THEMES.INT;
+}
+
+const THEME = resolveTheme();
+
+const PALETTE = {
+  bgBase:       THEME.bgBase,
+  bgDark:       '#1A1221',
+  primary:      PRIMARY_COLOR || THEME.primary,
+  primaryLight: blendHex(PRIMARY_COLOR || THEME.primary, '#ffffff', 0.55),
+  primaryDark:  blendHex(PRIMARY_COLOR || THEME.primary, '#000000', 0.3),
+  secondary:    THEME.secondary,
+  accentGold:   THEME.accentGold,
+  accentRed:    THEME.accentRed,
+  textDark:     THEME.textDark,
+  textLight:    '#FFFFFF',
+  textMuted:    THEME.textMuted,
+  surfaceCard:  '#FFFFFF',
+  success:      THEME.success,
+  warning:      THEME.warning,
+  danger:       THEME.danger,
+  trackBg:      THEME.trackBg,
+  trackBorder:  THEME.trackBorder,
+};
+
+const CANDY = {
+  btnTop:     blendHex(PRIMARY_COLOR || THEME.primary, '#ffffff', 0.35),
+  btnBottom:  blendHex(PRIMARY_COLOR || THEME.primary, '#000000', 0.1),
+  btnSlab:    blendHex(PRIMARY_COLOR || THEME.primary, '#000000', 0.35),
+  cardPink:   '#B5D4FF',
+  cardPinkLt: '#C8E0FF',
+};
+
+const CC = {};
+function initColors() {
+  Object.entries(PALETTE).forEach(([k, v]) => {
+    CC[k] = hexToInt(v);
+    CC[k + 'Hex'] = v;
+  });
+  CC.white = 0xffffff;
+  Object.entries(CANDY).forEach(([k, v]) => {
+    CC['candy_' + k] = hexToInt(v);
+  });
+}
+initColors();
+
+// ── MoonAudio Engine ─────────────────────────────────────────────────────────
+class MoonAudio {
+  constructor() { this._ctx = null; this._master = null; this._bgmNodes = []; this._unlocked = false; }
+
+  _ensure() {
+    if (this._ctx) return this._ctx;
+    this._ctx = new (window.AudioContext || window.webkitAudioContext)();
+    this._master = this._ctx.createGain();
+    this._master.gain.value = 0.5;
+    this._master.connect(this._ctx.destination);
+    return this._ctx;
+  }
+
+  unlock() {
+    if (this._unlocked) return;
+    this._ensure();
+    if (this._ctx.state === 'suspended') this._ctx.resume();
+    this._unlocked = true;
+  }
+
+  tap() {
+    const ctx = this._ensure(), t = ctx.currentTime;
+    const osc = ctx.createOscillator(), g = ctx.createGain();
+    osc.type = 'sine'; osc.frequency.setValueAtTime(1200, t);
+    osc.frequency.exponentialRampToValueAtTime(800, t + 0.08);
+    g.gain.setValueAtTime(0.25, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.1);
+    osc.connect(g).connect(this._master); osc.start(t); osc.stop(t + 0.1);
+  }
+
+  success() {
+    const ctx = this._ensure(), t = ctx.currentTime;
+    [523, 784].forEach((freq, i) => {
+      const osc = ctx.createOscillator(), g = ctx.createGain();
+      osc.type = 'sine'; osc.frequency.value = freq;
+      g.gain.setValueAtTime(0, t + i * 0.12);
+      g.gain.linearRampToValueAtTime(0.22, t + i * 0.12 + 0.03);
+      g.gain.exponentialRampToValueAtTime(0.001, t + i * 0.12 + 0.3);
+      osc.connect(g).connect(this._master); osc.start(t + i * 0.12); osc.stop(t + i * 0.12 + 0.3);
+    });
+  }
+
+  fail() {
+    const ctx = this._ensure(), t = ctx.currentTime;
+    const osc = ctx.createOscillator(), g = ctx.createGain();
+    osc.type = 'sawtooth'; osc.frequency.setValueAtTime(150, t);
+    osc.frequency.linearRampToValueAtTime(80, t + 0.25);
+    g.gain.setValueAtTime(0.18, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
+    osc.connect(g).connect(this._master); osc.start(t); osc.stop(t + 0.3);
+  }
+
+  alert() {
+    const ctx = this._ensure(), t = ctx.currentTime;
+    const osc = ctx.createOscillator(), g = ctx.createGain();
+    osc.type = 'square'; osc.frequency.setValueAtTime(880, t);
+    osc.frequency.exponentialRampToValueAtTime(220, t + 0.15);
+    g.gain.setValueAtTime(0.15, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.2);
+    osc.connect(g).connect(this._master); osc.start(t); osc.stop(t + 0.2);
+  }
+
+  heartbeat() {
+    const ctx = this._ensure(), t = ctx.currentTime;
+    [0, 0.18].forEach(off => {
+      const osc = ctx.createOscillator(), g = ctx.createGain();
+      osc.type = 'sine'; osc.frequency.setValueAtTime(60, t + off);
+      osc.frequency.exponentialRampToValueAtTime(30, t + off + 0.15);
+      g.gain.setValueAtTime(0.3, t + off); g.gain.exponentialRampToValueAtTime(0.001, t + off + 0.2);
+      osc.connect(g).connect(this._master); osc.start(t + off); osc.stop(t + off + 0.2);
+    });
+  }
+
+  tick() {
+    const ctx = this._ensure(), t = ctx.currentTime;
+    const osc = ctx.createOscillator(), g = ctx.createGain();
+    osc.type = 'sine'; osc.frequency.value = 1000;
+    g.gain.setValueAtTime(0.12, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.05);
+    osc.connect(g).connect(this._master); osc.start(t); osc.stop(t + 0.06);
+  }
+
+  bgm(style) {
+    this.stopBgm();
+    const ctx = this._ensure();
+    const PROG = {
+      action: [[164.81,196,246.94],[174.61,220,261.63],[146.83,174.61,220],[155.56,196,246.94]],
+      tense: [[130.81,155.56,196],[123.47,146.83,185],[116.54,138.59,174.61],[123.47,146.83,185]],
+      mystery: [[196,246.94,329.63],[220,277.18,349.23],[185,233.08,293.66],[207.65,261.63,329.63]],
+      romantic: [[261.63,329.63,392],[293.66,369.99,440],[246.94,311.13,392],[277.18,349.23,415.30]],
+    };
+    const chords = PROG[style] || PROG.mystery;
+    const beat = style === 'tense' ? 1.2 : style === 'mystery' ? 1.0 : 0.8;
+    const loopLen = chords.length * beat;
+    const mg = ctx.createGain(); mg.gain.value = 0;
+    mg.gain.linearRampToValueAtTime(0.1, ctx.currentTime + 1);
+    mg.connect(this._master);
+    const sched = () => {
+      const now = ctx.currentTime;
+      chords.forEach((ch, ci) => {
+        const ct = now + ci * beat;
+        ch.forEach(freq => {
+          const o = ctx.createOscillator(), e = ctx.createGain();
+          o.type = 'sawtooth'; o.frequency.value = freq;
+          e.gain.setValueAtTime(0, ct);
+          e.gain.linearRampToValueAtTime(0.06, ct + 0.05);
+          e.gain.setValueAtTime(0.06, ct + beat * 0.7);
+          e.gain.linearRampToValueAtTime(0, ct + beat);
+          o.connect(e).connect(mg); o.start(ct); o.stop(ct + beat);
+        });
+        const b = ctx.createOscillator(), be = ctx.createGain();
+        b.type = 'sine'; b.frequency.value = ch[0] / 2;
+        be.gain.setValueAtTime(0, ct);
+        be.gain.linearRampToValueAtTime(0.1, ct + 0.03);
+        be.gain.setValueAtTime(0.1, ct + beat * 0.5);
+        be.gain.linearRampToValueAtTime(0, ct + beat);
+        b.connect(be).connect(mg); b.start(ct); b.stop(ct + beat);
+      });
+    };
+    sched();
+    const iid = setInterval(() => {
+      if (!this._ctx || this._ctx.state === 'closed') { clearInterval(iid); return; }
+      sched();
+    }, loopLen * 1000);
+    this._bgmNodes.push({ masterGain: mg, intervalId: iid });
+  }
+
+  stopBgm(fadeMs) {
+    const fade = (fadeMs || 500) / 1000;
+    if (!this._ctx) return;
+    const t = this._ctx.currentTime;
+    for (const n of this._bgmNodes) {
+      if (n.intervalId) clearInterval(n.intervalId);
+      if (n.masterGain) n.masterGain.gain.linearRampToValueAtTime(0, t + fade);
+    }
+    this._bgmNodes = [];
+  }
+
+  stopAll() { this.stopBgm(200); }
+}
+
+const audio = new MoonAudio();
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+
+function drawRRect(gfx, x, y, w, h, r) {
+  gfx.beginPath();
+  gfx.moveTo(x + r, y);
+  gfx.lineTo(x + w - r, y);
+  gfx.arc(x + w - r, y + r, r, -Math.PI / 2, 0);
+  gfx.lineTo(x + w, y + h - r);
+  gfx.arc(x + w - r, y + h - r, r, 0, Math.PI / 2);
+  gfx.lineTo(x + r, y + h);
+  gfx.arc(x + r, y + h - r, r, Math.PI / 2, Math.PI);
+  gfx.lineTo(x, y + r);
+  gfx.arc(x + r, y + r, r, Math.PI, -Math.PI / 2);
+  gfx.closePath();
+}
+
+function spawnParticles(scene, x, y, color, count, life) {
+  for (let i = 0; i < count; i++) {
+    const angle = (Math.PI * 2 * i) / count + Math.random() * 0.3;
+    const speed = 80 + Math.random() * 120;
+    const sz = 3 + Math.random() * 4;
+    const p = scene.add.circle(x, y, sz, color, 1).setDepth(50);
+    scene.tweens.add({
+      targets: p, x: x + Math.cos(angle) * speed, y: y + Math.sin(angle) * speed,
+      alpha: 0, scaleX: 0.2, scaleY: 0.2, duration: life || 400,
+      ease: 'Quad.easeOut', onComplete: () => p.destroy()
+    });
+  }
+}
+
+function showToast(scene, text, colorHex, x, y) {
+  const t = scene.add.text(x, y, text, {
+    fontFamily: 'Nunito', fontSize: '28px', fontStyle: '900',
+    color: colorHex, stroke: '#ffffff', strokeThickness: 4
+  }).setOrigin(0.5).setDepth(60).setAlpha(0);
+  scene.tweens.add({
+    targets: t, y: y - 30, alpha: 1, duration: 200, ease: 'Back.easeOut',
+    onComplete: () => {
+      scene.time.delayedCall(600, () => {
+        scene.tweens.add({
+          targets: t, y: y - 50, alpha: 0, duration: 200, onComplete: () => t.destroy()
+        });
+      });
+    }
+  });
+}
+
+function damageFlash(scene) {
+  const flash = scene.add.rectangle(W / 2, H / 2, W, H, 0xff4d6a, 0).setDepth(80);
+  scene.tweens.add({
+    targets: flash, alpha: 0.3, yoyo: true, duration: 80, onComplete: () => flash.destroy()
+  });
+}
+
+function screenShake(scene, intensity) {
+  scene.cameras.main.shake(150, intensity || 0.008);
+}
+
+function drawGoldCorners(scene, cx, cy, cw, ch, radius, depth) {
+  const r = radius || 7;
+  const d = depth || 16;
+  const inset = r + 4;
+  const positions = [
+    [cx - cw / 2 + inset, cy - ch / 2 + inset],
+    [cx + cw / 2 - inset, cy - ch / 2 + inset],
+    [cx - cw / 2 + inset, cy + ch / 2 - inset],
+    [cx + cw / 2 - inset, cy + ch / 2 - inset],
+  ];
+  positions.forEach(([px, py]) => {
+    scene.add.circle(px, py, r, CC.accentGold, 1).setDepth(d);
+    scene.add.circle(px - 1, py - 1, r * 0.4, 0xffffff, 0.5).setDepth(d + 1);
+  });
+}
+
+function drawCandyCard(scene, cx, cy, cw, ch, bgColor, depth) {
+  const d = depth || 14;
+  const r = 24;
+  const shadowGfx = scene.add.graphics().setDepth(d);
+  shadowGfx.fillStyle(0x000000, 0.06);
+  shadowGfx.fillRoundedRect(cx - cw / 2 + 3, cy - ch / 2 + 5, cw, ch, r);
+  shadowGfx.fillStyle(0x000000, 0.04);
+  shadowGfx.fillRoundedRect(cx - cw / 2 + 1, cy - ch / 2 + 3, cw, ch, r);
+  const bodyGfx = scene.add.graphics().setDepth(d + 1);
+  bodyGfx.fillStyle(bgColor, 1);
+  bodyGfx.fillRoundedRect(cx - cw / 2, cy - ch / 2, cw, ch, r);
+  return bodyGfx;
+}
+
+function createTimerBar(scene, y, w) {
+  const h = 8;
+  const barObj = { maxW: w };
+  const trackGfx = scene.add.graphics().setDepth(5);
+  trackGfx.fillStyle(CC.trackBg, 1);
+  trackGfx.fillRoundedRect(W / 2 - w / 2, y, w, h, h / 2);
+  barObj.gfx = scene.add.graphics().setDepth(6);
+  barObj.y = y; barObj.h = h;
+  barObj.update = function(ratio) {
+    barObj.gfx.clear();
+    const r = clamp(ratio, 0, 1);
+    let col;
+    if (r > 0.33) col = CC.success;
+    else if (r > 0.15) col = CC.warning;
+    else col = CC.danger;
+    const fw = barObj.maxW * r;
+    barObj.gfx.fillStyle(col, 1);
+    barObj.gfx.fillRoundedRect(W / 2 - barObj.maxW / 2, barObj.y, fw, barObj.h, barObj.h / 2);
+    if (fw > 10) {
+      barObj.gfx.fillStyle(0xffffff, 0.3);
+      barObj.gfx.fillRoundedRect(W / 2 - barObj.maxW / 2 + 2, barObj.y + 1, fw - 4, 3, 1.5);
+    }
+  };
+  barObj.update(1);
+  return barObj;
+}
+
+function drawDotPattern(scene, opacity) {
+  const dots = scene.add.graphics().setDepth(0);
+  dots.fillStyle(CC.primary, opacity || 0.05);
+  for (let bx = 20; bx < W; bx += 28) {
+    for (let by = 18; by < H; by += 30) {
+      dots.fillCircle(bx + ((by / 30) % 2 ? 5 : -3), by, 2);
+    }
+  }
+}
+
+// ── Puffy Candy Button ───────────────────────────────────────────────────────
+function makeButton(scene, cfg) {
+  const { x, y, w, label, fontSize, onTap, icon } = cfg;
+  const h = cfg.h || 64;
+  const r = 22;
+  const slabH = 7;
+  const container = scene.add.container(x, y).setDepth(20);
+
+  const topInt = CC.candy_btnTop;
+  const bottomInt = CC.candy_btnBottom;
+  const slabInt = CC.candy_btnSlab;
+
+  const slabGfx = scene.add.graphics();
+  slabGfx.fillStyle(slabInt, 1);
+  drawRRect(slabGfx, -w / 2, -h / 2 + slabH, w, h, r);
+  slabGfx.fillPath();
+  container.add(slabGfx);
+
+  const bodyGfx = scene.add.graphics();
+  bodyGfx.fillStyle(bottomInt, 1);
+  drawRRect(bodyGfx, -w / 2, -h / 2, w, h, r);
+  bodyGfx.fillPath();
+  container.add(bodyGfx);
+
+  const topGfx = scene.add.graphics();
+  topGfx.fillStyle(topInt, 1);
+  drawRRect(topGfx, -w / 2, -h / 2, w, h * 0.55, r);
+  topGfx.fillPath();
+  container.add(topGfx);
+
+  const glossGfx = scene.add.graphics();
+  glossGfx.fillStyle(0xffffff, 0.28);
+  const glossH = h * 0.30;
+  const glossInset = 4;
+  drawRRect(glossGfx, -w / 2 + glossInset, -h / 2 + 3, w - glossInset * 2, glossH, r - 4);
+  glossGfx.fillPath();
+  container.add(glossGfx);
+
+  let iconText = null;
+  if (icon) {
+    iconText = scene.add.text(-w / 4 + 4, 0, icon, {
+      fontFamily: 'Nunito', fontSize: '22px', fontStyle: '900', color: '#ffffff'
+    }).setOrigin(0.5);
+    container.add(iconText);
+  }
+
+  const labelText = scene.add.text(icon ? 8 : 0, 0, label.toUpperCase(), {
+    fontFamily: 'Nunito', fontSize: (fontSize || 20) + 'px', fontStyle: '900',
+    color: '#ffffff', stroke: 'rgba(0,0,0,0.15)', strokeThickness: 1,
+    letterSpacing: 2
+  }).setOrigin(0.5);
+  container.add(labelText);
+
+  const hitArea = scene.add.rectangle(0, 0, w, h + slabH + 4).setOrigin(0.5).setInteractive({ useHandCursor: true }).setAlpha(0.001);
+  container.add(hitArea);
+
+  hitArea.on('pointerdown', () => {
+    container.setPosition(x, y + slabH - 1);
+    slabGfx.setVisible(false);
+    audio.tap();
+  });
+  hitArea.on('pointerup', () => {
+    container.setPosition(x, y);
+    slabGfx.setVisible(true);
+    if (onTap) onTap();
+  });
+  hitArea.on('pointerout', () => {
+    container.setPosition(x, y);
+    slabGfx.setVisible(true);
+  });
+
+  return container;
+}
+
+// ── Category definitions ─────────────────────────────────────────────────────
+const BASE_CATEGORIES = [
+  { key: 'data',   label: 'DATA',   emoji: '\uD83D\uDCCA', color: '#3B82F6' },
+  { key: 'code',   label: 'CODE',   emoji: '\uD83D\uDCBB', color: '#10B981' },
+  { key: 'mail',   label: 'MAIL',   emoji: '\u2709\uFE0F',  color: '#F59E0B' },
+  { key: 'media',  label: 'MEDIA',  emoji: '\uD83C\uDFA5', color: '#8B5CF6' },
+];
+
+const DECOY_DEF = { key: 'decoy', label: 'VIRUS', emoji: '\u26A0\uFE0F', color: '#EF4444' };
+
+// ══════════════════════════════════════════════════════════════════════════════
+//  BOOT SCENE
+// ══════════════════════════════════════════════════════════════════════════════
+class BootScene extends Phaser.Scene {
+  constructor() { super('BootScene'); }
+
+  create() {
+    this.cameras.main.setBackgroundColor(PALETTE.bgBase);
+    drawDotPattern(this, 0.06);
+
+    this.add.text(W / 2, H * 0.26, 'Conveyor Sort', {
+      fontFamily: 'Nunito', fontSize: '38px', fontStyle: '900',
+      color: PALETTE.primary, stroke: PALETTE.primaryDark, strokeThickness: 4
+    }).setOrigin(0.5).setDepth(10);
+
+    this.add.text(W / 2, H * 0.32, DISPLAY_ATTRIBUTE + ' Challenge', {
+      fontFamily: 'Patrick Hand', fontSize: '18px', color: PALETTE.textMuted
+    }).setOrigin(0.5).setDepth(10);
+
+    const cardX = W / 2, cardY = H * 0.50, cardW = W - 54, cardH = 180;
+    drawCandyCard(this, cardX, cardY, cardW, cardH, CC['candy_cardPink'], 5);
+    drawGoldCorners(this, cardX, cardY, cardW, cardH, 7, 8);
+
+    const instructions = 'Drag falling packages into matching bins.\nSpeed increases as you progress!\nWatch out for virus packages \u2014 tap to destroy them.';
+    this.add.text(cardX, cardY, instructions, {
+      fontFamily: 'Patrick Hand', fontSize: '16px', color: PALETTE.textDark,
+      align: 'center', lineSpacing: 8, wordWrap: { width: cardW - 40 }
+    }).setOrigin(0.5).setDepth(10);
+
+    makeButton(this, {
+      x: W / 2, y: H * 0.72, w: 200, h: 66, label: 'START', fontSize: 26,
+      onTap: () => {
+        audio.unlock();
+        this.scene.start('GameScene');
+      }
+    });
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+//  GAME SCENE
+// ══════════════════════════════════════════════════════════════════════════════
+class GameScene extends Phaser.Scene {
+  constructor() { super('GameScene'); }
+
+  init() {
+    this.score = 0;
+    this.timeLeft = ROUND_SECONDS;
+    this.isOver = false;
+    this.combo = 0;
+    this.maxCombo = 0;
+    this.sorted = 0;
+    this.missed = 0;
+    this.spawnMs = 0;
+    this.items = [];
+    this.difficulty = 0;
+    this.correctCount = 0;
+    this.lastTickSec = -1;
+    this.audioStarted = false;
+    this.activeBinCount = 3;
+    this.decoysEnabled = false;
+  }
+
+  create() {
+    this.cameras.main.setBackgroundColor(PALETTE.bgBase);
+    drawDotPattern(this, 0.05);
+
+    // Timer bar at top
+    this.timerBar = createTimerBar(this, 0, W);
+
+    // Title area
+    this.add.text(W / 2, 28, 'Conveyor Sort', {
+      fontFamily: 'Nunito', fontSize: '22px', fontStyle: '900', color: PALETTE.textDark
+    }).setOrigin(0.5).setDepth(16);
+    this.add.text(W / 2, 50, DISPLAY_ATTRIBUTE + ' check', {
+      fontFamily: 'Patrick Hand', fontSize: '16px', color: PALETTE.textMuted
+    }).setOrigin(0.5).setDepth(16);
+
+    // Score pill
+    const scoreGfx = this.add.graphics().setDepth(10);
+    scoreGfx.fillStyle(CC.white, 0.92);
+    drawRRect(scoreGfx, 16, 66, 100, 32, 16);
+    scoreGfx.fillPath();
+    const scoreShadow = this.add.graphics().setDepth(9);
+    scoreShadow.fillStyle(0x000000, 0.05);
+    drawRRect(scoreShadow, 17, 69, 100, 32, 16);
+    scoreShadow.fillPath();
+    this.scoreText = this.add.text(66, 82, '0', {
+      fontFamily: 'Nunito', fontSize: '16px', fontStyle: '900', color: PALETTE.textDark
+    }).setOrigin(0.5).setDepth(11);
+
+    // Timer pill
+    const timerShadow = this.add.graphics().setDepth(9);
+    timerShadow.fillStyle(0x000000, 0.05);
+    drawRRect(timerShadow, W - 115, 69, 100, 32, 16);
+    timerShadow.fillPath();
+    const timerGfx = this.add.graphics().setDepth(10);
+    timerGfx.fillStyle(CC.white, 0.92);
+    drawRRect(timerGfx, W - 116, 66, 100, 32, 16);
+    timerGfx.fillPath();
+    this.timerText = this.add.text(W - 66, 82, ROUND_SECONDS + 's', {
+      fontFamily: 'Nunito', fontSize: '16px', fontStyle: '900', color: PALETTE.textDark
+    }).setOrigin(0.5).setDepth(11);
+
+    // Play area card
+    this.playLeft = 20;
+    this.playRight = W - 20;
+    this.playTop = 110;
+    this.playBottom = 540;
+    const playW = this.playRight - this.playLeft;
+    const playH = this.playBottom - this.playTop;
+    const playX = W / 2;
+    const playY = this.playTop + playH / 2;
+
+    drawCandyCard(this, playX, playY, playW + 10, playH + 10, CC.white, 2);
+
+    // Conveyor track lines
+    this.trackGfx = this.add.graphics().setDepth(3);
+    this.trackGfx.fillStyle(CC.trackBg, 0.4);
+    for (let x = this.playLeft + 20; x < this.playRight - 10; x += 32) {
+      this.trackGfx.fillRoundedRect(x, this.playTop + 20, 14, playH - 80, 5);
+    }
+
+    // Bins area
+    this.binGfx = this.add.graphics().setDepth(4);
+    this.binLabels = [];
+    this.updateBins();
+
+    // Combo display
+    this.comboText = this.add.text(W / 2, 560, '', {
+      fontFamily: 'Nunito', fontSize: '20px', fontStyle: '900', color: PALETTE.primary,
+      stroke: '#ffffff', strokeThickness: 2
+    }).setOrigin(0.5).setDepth(20);
+
+    // Hint text
+    this.hintText = this.add.text(W / 2, 588, 'Drag packages to matching bins!', {
+      fontFamily: 'Patrick Hand', fontSize: '17px', color: PALETTE.textMuted
+    }).setOrigin(0.5).setDepth(20);
+
+    // First interaction unlocks audio
+    this.input.once('pointerdown', () => {
+      audio.unlock();
+      audio.bgm(THEME.bgmStyle);
+      this.audioStarted = true;
+    });
+  }
+
+  getActiveCategories() {
+    return BASE_CATEGORIES.slice(0, this.activeBinCount);
+  }
+
+  updateBins() {
+    this.binGfx.clear();
+    // Destroy old labels
+    this.binLabels.forEach(l => l.destroy());
+    this.binLabels = [];
+
+    const cats = this.getActiveCategories();
+    const binW = Math.min(80, (this.playRight - this.playLeft - 20) / cats.length);
+    const totalW = binW * cats.length + (cats.length - 1) * 6;
+    const startX = W / 2 - totalW / 2 + binW / 2;
+    const binY = this.playBottom - 36;
+
+    this.binRects = cats.map((cat, i) => {
+      const bx = startX + i * (binW + 6);
+      const col = hexToInt(cat.color);
+
+      // Bin body with candy shadow
+      this.binGfx.fillStyle(0x000000, 0.08);
+      this.binGfx.fillRoundedRect(bx - binW / 2 + 2, binY - 18 + 3, binW, 40, 12);
+      this.binGfx.fillStyle(col, 1);
+      this.binGfx.fillRoundedRect(bx - binW / 2, binY - 18, binW, 40, 12);
+      // Shine
+      this.binGfx.fillStyle(0xffffff, 0.25);
+      this.binGfx.fillRoundedRect(bx - binW / 2 + 4, binY - 16, binW - 8, 12, 6);
+
+      const label = this.add.text(bx, binY + 2, cat.emoji + '\n' + cat.label, {
+        fontFamily: 'Nunito', fontSize: '11px', fontStyle: '900',
+        color: '#ffffff', align: 'center', lineSpacing: -2
+      }).setOrigin(0.5).setDepth(5);
+      this.binLabels.push(label);
+
+      return { x: bx, y: binY, w: binW, h: 40, key: cat.key, color: col };
+    });
+  }
+
+  addScore(delta) {
+    this.score = Math.max(0, this.score + delta);
+    this.scoreText.setText(Math.round(this.score));
+    this.tweens.add({
+      targets: this.scoreText, scaleX: 1.2, scaleY: 1.2,
+      yoyo: true, duration: 120, ease: 'Quad.easeOut'
+    });
+  }
+
+  getSpawnInterval() {
+    const base = 900;
+    const min = 380;
+    return Math.max(min, base - this.difficulty * 40) + Math.random() * 120;
+  }
+
+  getFallSpeed() {
+    const base = 90;
+    const max = 220;
+    return Math.min(max, base + this.difficulty * 10) + Math.random() * 20;
+  }
+
+  spawnItem() {
+    const cats = this.getActiveCategories();
+    const isDecoy = this.decoysEnabled && Math.random() < 0.18;
+    const def = isDecoy ? DECOY_DEF : Phaser.Utils.Array.GetRandom(cats);
+
+    const x = Phaser.Math.Between(this.playLeft + 30, this.playRight - 30);
+    const container = this.add.container(x, this.playTop + 16).setDepth(10);
+    const col = hexToInt(def.color);
+
+    // Package shadow
+    const shadow = this.add.graphics();
+    shadow.fillStyle(0x000000, 0.1);
+    shadow.fillRoundedRect(-22 + 2, -16 + 2, 44, 34, 10);
+    container.add(shadow);
+
+    // Package body
+    const bodyGfx = this.add.graphics();
+    bodyGfx.fillStyle(col, 1);
+    bodyGfx.fillRoundedRect(-22, -16, 44, 34, 10);
+    // Shine
+    bodyGfx.fillStyle(0xffffff, 0.3);
+    bodyGfx.fillRoundedRect(-18, -14, 36, 10, 5);
+    container.add(bodyGfx);
+
+    const emoji = this.add.text(0, 0, def.emoji, {
+      fontFamily: 'Nunito', fontSize: '18px'
+    }).setOrigin(0.5);
+    container.add(emoji);
+
+    container.setSize(44, 34);
+    container.setInteractive({ draggable: !isDecoy, useHandCursor: true });
+    if (!isDecoy) {
+      this.input.setDraggable(container);
+    }
+
+    const item = {
+      container,
+      targetKey: def.key,
+      isDecoy,
+      speed: this.getFallSpeed(),
+      dragging: false
+    };
+
+    if (isDecoy) {
+      // Tap to destroy decoy
+      container.on('pointerdown', () => {
+        if (this.isOver) return;
+        this.resolveDecoy(item);
+      });
+    } else {
+      container.on('dragstart', () => {
+        item.dragging = true;
+        container.setDepth(30);
+      });
+      container.on('drag', (pointer, dragX, dragY) => {
+        container.x = clamp(dragX, this.playLeft + 22, this.playRight - 22);
+        container.y = clamp(dragY, this.playTop + 10, this.playBottom - 10);
+      });
+      container.on('dragend', () => {
+        item.dragging = false;
+        container.setDepth(10);
+        // Check if dropped on a bin
+        this.checkBinDrop(item);
+      });
+    }
+
+    this.items.push(item);
+
+    // Alert sound at high difficulty
+    if (this.difficulty >= 5 && Math.random() < 0.3) {
+      audio.alert();
+    }
+  }
+
+  checkBinDrop(item) {
+    const ix = item.container.x;
+    const iy = item.container.y;
+
+    for (const bin of this.binRects) {
+      if (Math.abs(ix - bin.x) < bin.w / 2 + 10 && Math.abs(iy - bin.y) < bin.h / 2 + 14) {
+        if (bin.key === item.targetKey) {
+          this.resolveCorrect(item, bin);
+        } else {
+          this.resolveWrong(item);
+        }
+        return;
+      }
+    }
+    // Not dropped on any bin — item stays, keeps falling
+  }
+
+  resolveCorrect(item, bin) {
+    const idx = this.items.indexOf(item);
+    if (idx !== -1) this.items.splice(idx, 1);
+
+    this.sorted += 1;
+    this.combo += 1;
+    this.correctCount += 1;
+    this.maxCombo = Math.max(this.maxCombo, this.combo);
+
+    // Difficulty ramp: per 5 correct sorts
+    this.difficulty = Math.floor(this.correctCount / 5);
+
+    // Add 4th bin at difficulty 4
+    if (this.difficulty >= 4 && this.activeBinCount < 4) {
+      this.activeBinCount = 4;
+      this.updateBins();
+    }
+    // Enable decoys at difficulty 8
+    if (this.difficulty >= 8 && !this.decoysEnabled) {
+      this.decoysEnabled = true;
+      this.hintText.setText('Watch out for VIRUS packages!');
+      this.hintText.setColor(PALETTE.danger);
+    }
+
+    const comboBonus = Math.min(this.combo, 5) * 3;
+    const gain = 14 + comboBonus;
+    this.addScore(gain);
+
+    spawnParticles(this, bin.x, bin.y - 10, bin.color, 8, 400);
+    showToast(this, '+' + gain, PALETTE.success, bin.x, bin.y - 40);
+    audio.success();
+
+    this.comboText.setText('Combo x' + this.combo);
+    this.tweens.add({
+      targets: this.comboText, scaleX: 1.3, scaleY: 1.3,
+      yoyo: true, duration: 120, ease: 'Quad.easeOut'
+    });
+
+    item.container.destroy();
+  }
+
+  resolveWrong(item) {
+    const idx = this.items.indexOf(item);
+    if (idx !== -1) this.items.splice(idx, 1);
+
+    this.missed += 1;
+    this.combo = 0;
+    this.addScore(-10);
+    this.comboText.setText('');
+
+    showToast(this, 'Wrong! -10', PALETTE.danger, item.container.x, item.container.y - 30);
+    audio.fail();
+    damageFlash(this);
+    screenShake(this, 0.012);
+
+    item.container.destroy();
+  }
+
+  resolveDecoy(item) {
+    const idx = this.items.indexOf(item);
+    if (idx !== -1) this.items.splice(idx, 1);
+
+    this.sorted += 1;
+    this.combo += 1;
+    this.maxCombo = Math.max(this.maxCombo, this.combo);
+    const gain = 10;
+    this.addScore(gain);
+
+    spawnParticles(this, item.container.x, item.container.y, CC.accentGold, 10, 350);
+    showToast(this, 'Blocked! +' + gain, PALETTE.accentGold, item.container.x, item.container.y - 30);
+    audio.success();
+    audio.tap();
+
+    this.comboText.setText('Combo x' + this.combo);
+    item.container.destroy();
+  }
+
+  resolveMiss(item) {
+    const idx = this.items.indexOf(item);
+    if (idx !== -1) this.items.splice(idx, 1);
+
+    if (item.isDecoy) {
+      // Decoy fell through — penalty
+      this.missed += 1;
+      this.combo = 0;
+      this.addScore(-8);
+      this.comboText.setText('');
+      showToast(this, 'Virus! -8', PALETTE.danger, item.container.x, this.playBottom - 50);
+      audio.fail();
+      damageFlash(this);
+      screenShake(this, 0.008);
+    } else {
+      // Regular item fell off bottom
+      this.missed += 1;
+      this.combo = 0;
+      this.addScore(-8);
+      this.comboText.setText('');
+      showToast(this, 'Missed! -8', PALETTE.danger, item.container.x, this.playBottom - 50);
+      audio.fail();
+      screenShake(this, 0.006);
+    }
+
+    item.container.destroy();
+  }
+
+  finishGame() {
+    if (this.isOver) return;
+    this.isOver = true;
+    audio.stopBgm(600);
+    this.scene.start('ResultScene', {
+      score: Math.round(this.score),
+      maxCombo: this.maxCombo,
+      hits: this.sorted,
+      misses: this.missed
+    });
+  }
+
+  update(time, delta) {
+    if (this.isOver) return;
+
+    this.timeLeft = Math.max(0, this.timeLeft - delta / 1000);
+    const sec = Math.ceil(this.timeLeft);
+    this.timerText.setText(sec + 's');
+    this.timerBar.update(this.timeLeft / ROUND_SECONDS);
+
+    // Timer audio cues
+    if (this.timeLeft <= 10 && sec !== this.lastTickSec && sec > 0) {
+      this.lastTickSec = sec;
+      if (this.timeLeft <= 5) audio.heartbeat();
+      else audio.tick();
+    }
+
+    if (this.timeLeft <= 10) {
+      this.timerText.setColor(PALETTE.danger);
+    } else {
+      this.timerText.setColor(PALETTE.textDark);
+    }
+
+    // Spawn logic
+    this.spawnMs -= delta;
+    if (this.spawnMs <= 0 && this.items.length < 5) {
+      this.spawnMs = this.getSpawnInterval();
+      this.spawnItem();
+    }
+
+    // Update items
+    for (let i = this.items.length - 1; i >= 0; i--) {
+      const item = this.items[i];
+      if (!item.dragging) {
+        item.container.y += item.speed * (delta / 1000);
+      }
+      // Item fell off bottom
+      if (item.container.y >= this.playBottom + 10) {
+        this.resolveMiss(item);
+      }
+    }
+
+    if (this.timeLeft <= 0) this.finishGame();
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+//  RESULT SCENE
+// ══════════════════════════════════════════════════════════════════════════════
+class ResultScene extends Phaser.Scene {
+  constructor() { super('ResultScene'); }
+
+  init(data) {
+    this.finalScore = data.score || 0;
+    this.maxCombo = data.maxCombo || 0;
+    this.hits = data.hits || 0;
+    this.misses = data.misses || 0;
+  }
+
+  create() {
+    this.cameras.main.setBackgroundColor(PALETTE.bgBase);
+    drawDotPattern(this, 0.04);
+
+    const rating = getRating(this.finalScore);
+    const modifier = getModifier(rating);
+    const modText = modifier > 0 ? '+' + modifier : String(modifier);
+
+    const ratingColors = { S: CC.accentGold, A: CC.primary, B: CC.secondary, C: hexToInt(PALETTE.textMuted) };
+    const ratingHex = { S: PALETTE.accentGold, A: PALETTE.primary, B: PALETTE.secondary, C: PALETTE.textMuted };
+    const ratingColor = ratingColors[rating];
+    const ratingColorHex = ratingHex[rating];
+
+    // Header card
+    const headerW = 340, headerH = 100;
+    drawCandyCard(this, W / 2, 80, headerW, headerH, CC.white, 5);
+    drawGoldCorners(this, W / 2, 80, headerW, headerH, 6, 8);
+
+    this.add.text(W / 2, 60, 'Settlement', {
+      fontFamily: 'Nunito', fontSize: '30px', fontStyle: '900', color: PALETTE.textDark
+    }).setOrigin(0.5).setDepth(8);
+    this.add.text(W / 2, 96, 'Conveyor Sort', {
+      fontFamily: 'Patrick Hand', fontSize: '18px', color: PALETTE.textMuted
+    }).setOrigin(0.5).setDepth(8);
+
+    // Rating letter with glow
+    const ratingText = this.add.text(W / 2, 230, rating, {
+      fontFamily: 'Nunito', fontSize: '96px', fontStyle: '900',
+      color: ratingColorHex, stroke: PALETTE.textDark, strokeThickness: 4
+    }).setOrigin(0.5).setDepth(10).setScale(0);
+
+    if (rating === 'S') {
+      const glow = this.add.circle(W / 2, 230, 70, ratingColor, 0.25).setDepth(9).setScale(0);
+      this.tweens.add({ targets: glow, scaleX: 1.5, scaleY: 1.5, alpha: 0, duration: 800 });
+      const glow2 = this.add.circle(W / 2, 230, 50, ratingColor, 0.15).setDepth(9).setScale(0);
+      this.tweens.add({ targets: glow2, scaleX: 2, scaleY: 2, alpha: 0, duration: 1000, delay: 100 });
+      spawnParticles(this, W / 2, 230, CC.accentGold, 16, 600);
+      audio.success();
+      this.time.delayedCall(100, () => audio.success());
+    } else if (rating === 'A') {
+      const glow = this.add.circle(W / 2, 230, 60, ratingColor, 0.18).setDepth(9).setScale(0);
+      this.tweens.add({ targets: glow, scaleX: 1.3, scaleY: 1.3, alpha: 0, duration: 600 });
+      audio.success();
+    }
+
+    this.tweens.add({
+      targets: ratingText, scaleX: 1, scaleY: 1, duration: 400,
+      ease: 'Back.easeOut', delay: 100
+    });
+
+    // Star row (4 stars)
+    const starCount = { S: 4, A: 3, B: 2, C: 1 }[rating];
+    for (let i = 0; i < 4; i++) {
+      const sx = W / 2 - 54 + i * 36;
+      const filled = i < starCount;
+      const star = this.add.text(sx, 300, '\u2605', {
+        fontFamily: 'Nunito', fontSize: '30px',
+        color: filled ? PALETTE.accentGold : '#D4C0AB',
+        stroke: filled ? PALETTE.primaryDark : 'transparent', strokeThickness: filled ? 1 : 0
+      }).setOrigin(0.5).setDepth(10).setScale(0);
+      this.tweens.add({
+        targets: star, scaleX: 1, scaleY: 1, duration: 300,
+        ease: 'Back.easeOut', delay: 200 + i * 80
+      });
+    }
+
+    // Score
+    this.add.text(W / 2, 350, 'Score ' + this.finalScore, {
+      fontFamily: 'Nunito', fontSize: '28px', fontStyle: '900', color: PALETTE.textDark
+    }).setOrigin(0.5).setDepth(10);
+
+    // Attribute modifier
+    this.add.text(W / 2, 388, DISPLAY_ATTRIBUTE + ' ' + modText, {
+      fontFamily: 'Patrick Hand', fontSize: '22px', color: PALETTE.textMuted
+    }).setOrigin(0.5).setDepth(10);
+
+    // Stat cards
+    const statCardW = 140;
+    const statCardH = 86;
+    const statY = 465;
+
+    // Combo card
+    drawCandyCard(this, W / 2 - statCardW / 2 - 12, statY, statCardW, statCardH, CC.white, 5);
+    drawGoldCorners(this, W / 2 - statCardW / 2 - 12, statY, statCardW, statCardH, 5, 8);
+
+    this.add.text(W / 2 - statCardW / 2 - 12, statY - 18, 'Max Combo', {
+      fontFamily: 'Nunito', fontSize: '13px', fontStyle: '700', color: PALETTE.textMuted
+    }).setOrigin(0.5).setDepth(8);
+    this.add.text(W / 2 - statCardW / 2 - 12, statY + 14, String(this.maxCombo), {
+      fontFamily: 'Nunito', fontSize: '28px', fontStyle: '900', color: PALETTE.textDark
+    }).setOrigin(0.5).setDepth(8);
+
+    // Sorted/Miss card
+    drawCandyCard(this, W / 2 + statCardW / 2 + 12, statY, statCardW, statCardH, CC.white, 5);
+    drawGoldCorners(this, W / 2 + statCardW / 2 + 12, statY, statCardW, statCardH, 5, 8);
+
+    this.add.text(W / 2 + statCardW / 2 + 12, statY - 18, 'Sorted / Miss', {
+      fontFamily: 'Nunito', fontSize: '13px', fontStyle: '700', color: PALETTE.textMuted
+    }).setOrigin(0.5).setDepth(8);
+    this.add.text(W / 2 + statCardW / 2 + 12, statY + 14, this.hits + ' / ' + this.misses, {
+      fontFamily: 'Nunito', fontSize: '26px', fontStyle: '900', color: PALETTE.textDark
+    }).setOrigin(0.5).setDepth(8);
+
+    // Continue button
+    makeButton(this, {
+      x: W / 2, y: H - 110, w: 240, h: 66, label: 'Continue', fontSize: 24,
+      onTap: () => {
+        notifyGameComplete({
+          rating: rating,
+          score: this.finalScore,
+          attribute: ATTRIBUTE,
+          modifier: modifier,
+          gameId: 'conveyor-sort',
+          maxCombo: this.maxCombo,
+          hits: this.hits,
+          misses: this.misses
+        });
+        this.time.delayedCall(600, () => this.scene.start('BootScene'));
+      }
+    });
+  }
+}
+
+// ── Phaser Config ────────────────────────────────────────────────────────────
+const config = {
+  type: Phaser.AUTO,
+  width: W,
+  height: H,
+  fps: { forceSetTimeOut: true },
+  scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
+  scene: [BootScene, GameScene, ResultScene]
+};
+
+window.__game = new Phaser.Game(config);
+</script>
+</body>
+</html>

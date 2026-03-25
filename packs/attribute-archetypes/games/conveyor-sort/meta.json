@@ -1,0 +1,18 @@
+{
+  "id": "conveyor-sort",
+  "title": "Conveyor Sort",
+  "description": "Sort items on a moving conveyor belt into the correct bins. Tests order and speed.",
+  "sceneTypes": [
+    "mystery",
+    "action"
+  ],
+  "mechanic": "sorting",
+  "mood": [
+    "methodical",
+    "busy",
+    "focused"
+  ],
+  "difficulty": [
+    "moderate"
+  ]
+}

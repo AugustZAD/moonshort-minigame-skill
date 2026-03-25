@@ -1,0 +1,19 @@
+{
+  "id": "stardew-fishing",
+  "title": "Stardew Fishing",
+  "description": "Hold a button to lift a bobber and keep it in the moving catch zone. Peaceful tension.",
+  "sceneTypes": [
+    "romantic",
+    "casual"
+  ],
+  "mechanic": "hold-release",
+  "mood": [
+    "patient",
+    "serene",
+    "rewarding"
+  ],
+  "difficulty": [
+    "easy",
+    "moderate"
+  ]
+}

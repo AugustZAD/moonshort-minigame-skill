@@ -10,7 +10,9 @@
 ├── list.md
 ├── roadmap.md
 ├── contracts/
+├── episodes/
 ├── host/
+├── packs/
 ├── standards/
 ├── templates/
 ├── examples/
@@ -32,12 +34,27 @@
 | `contracts/settlement.schema.json` | schema | Machine-readable payload validation schema |
 | `host/cocos-settlement-handler.ts` | host adapter | Host-side payload parser and guard |
 | `host/cocos-webview-integration.md` | guide | Cocos WebView integration reference |
+| `packs/attribute-archetypes/` | curated pack | 12-template working set for the four recurring attribute archetypes |
+| `packs/attribute-archetypes/style-guide.md` | pack guide | Unified visual language, color tokens, and scene palettes for the 12 curated templates |
+| `packs/attribute-archetypes/selection-matrix.md` | pack guide | Editor-facing maintenance table: gameplay description, scene fit, match cues |
+| `packs/attribute-archetypes/selection-manifest.json` | pack data | Machine-readable manifest for future LLM matching and tooling |
 | `standards/design-guide.md` | guide | Full visual and interaction guide |
 | `standards/framework-constraints.md` | standard | Compact compatibility constraints |
 | `templates/phaser-h5-template.html` | template | Starter template with bridge and settlement flow |
 | `examples/` | examples | Quality references for mechanic and result-scene structure |
 | `games/` | output dir | Shipped game instances (`<game_id>/index.html`) |
 | `scripts/validate-settlement.js` | script | Local settlement validator |
+| `scripts/patch-games-episode-ctx.js` | script | One-time migration — patches all 53 files to CTX-aware param block |
+| `scripts/build-episode-game.js` | script | Episode build pipeline: resolves game via ZenMux DeepSeek LLM → static fallback, injects CTX + narrative overlay, writes output HTML |
+| `scripts/patch-games-dynamic-attr.js` | script | One-time migration — adds `DISPLAY_ATTRIBUTE` + patches settlement text in all 53 files for character-qualified attribute names |
+| `episodes/episode.schema.json` | schema | JSON Schema (draft-07) for per-scene episode configs |
+| `episodes/game-selector.json` | data | Static fallback mapping: sceneType × difficulty → gameId[] |
+| `episodes/game-selector.md` | guide | Editor-facing game selector mapping guide |
+| `episodes/example-ep01-scene02.json` | example | Annotated example episode config (ep01 / scene02) |
+| `templates/episode-ctx-snippet.js` | snippet | Canonical 4-line CTX reader block for all games |
+| `host/episode-context-builder.ts` | host module | Cocos-side TypeScript helpers: `buildEpisodeCtx`, `injectCtxScript`, `appendCtxToUrl`, `readCtxSnippet`, `isEpisodeCtx`; supports `NarrativeLine[]` + `characters` map |
+| `host/dramatizer-adapter.ts` | host module | Converts Dramatizer episode JSON + enrichment → `EpisodeCtxInput`; parses check strings ("WIL（意志）12"), extracts narrative lines, maps multi-character portraits |
+| `episodes/example-ep05-scene01.json` | example | EP5「派对上的咸猪手」adapted config — WIL检定/hard, 4-line multi-character narrative overlay |
 | `qa/compatibility-checklist.md` | qa | Pre-release compatibility checklist |
 
 ## Maintenance Rules
@@ -48,7 +65,7 @@
 
 ## Game Inventory
 
-Current total: `50` games
+Current total: `52` games
 
 | Name | Gameplay | Directory |
 | --- | --- | --- |
@@ -76,6 +93,7 @@ Current total: `50` games
 | Mini Golf Putt | 拉杆蓄力完成推杆进洞 | `games/mini-golf-putt/index.html` |
 | Odd One Out | 找出不一样的目标 | `games/odd-one-out/index.html` |
 | Orbit Avoid | 环轨切线收星避障 | `games/orbit-avoid/index.html` |
+| Parking Chase | 暗夜停车场潜行躲藏 | `games/parking-chase/index.html` |
 | Parking Rush | 抢占车位并快速入位 | `games/parking-rush/index.html` |
 | Path Picker | 在分岔路径中选安全路线 | `games/path-picker/index.html` |
 | Power Swing | 力度条定点挥击 | `games/power-swing/index.html` |
@@ -102,6 +120,8 @@ Current total: `50` games
 | Traffic Control | 切换红绿灯疏导路口 | `games/traffic-control/index.html` |
 | Whack-a-Mole | 打地鼠 | `games/whack-a-mole/index.html` |
 | Word Scramble | 看提示拼回正确单词 | `games/word-scramble/index.html` |
+| EP6 Campus Showdown | EP6剧情QTE: Jason挡在Avery前面保护她对抗Aiden | `games/ep-6_scene01/index.html` |
+| EP8 Heartstrings (Sweet) | EP8深度定制: 甜蜜心跳同步 — Avery与Jason放学后漫步 | `games/ep-8_scene01-sweet/index.html` |
 
 ## Conventions
 
@@ -111,3 +131,4 @@ Current total: `50` games
   - `games/<game_id>/index.html`
 - Optional per-game docs may be added as:
   - `games/<game_id>/README.md`
+- Curated packs may group copied subsets of games under `packs/<pack_id>/games/` for routing, maintenance, or model selection workflows.

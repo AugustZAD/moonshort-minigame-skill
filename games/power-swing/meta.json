@@ -1,0 +1,18 @@
+{
+  "id": "power-swing",
+  "title": "Power Swing",
+  "description": "Tap at the perfect moment to swing for maximum power — a golf-style timing game.",
+  "sceneTypes": [
+    "action",
+    "competitive"
+  ],
+  "mechanic": "rhythm",
+  "mood": [
+    "bold",
+    "confident",
+    "decisive"
+  ],
+  "difficulty": [
+    "moderate"
+  ]
+}

@@ -1,0 +1,36 @@
+{
+  "episodeId": "ep01",
+  "sceneId": "scene02",
+
+  "attribute": "Courage",
+  "primaryColor": "#E05C5C",
+
+  "sceneContext": "The female protagonist is cornered in an alley at night. She decides to fight back against the attacker. The player must press the right buttons in time to land counter-attacks.",
+  "sceneType": "action",
+  "difficulty": "moderate",
+
+  "character": {
+    "name": "Aria",
+    "portraitUrl": "https://assets.example.com/ep01/aria-determined.png"
+  },
+  "background": {
+    "url": "https://assets.example.com/ep01/alley-night.jpg"
+  },
+
+  "narrative": [
+    {
+      "speaker": "Aria",
+      "text": "I'm done running.",
+      "portraitKey": "determined"
+    },
+    {
+      "speaker": "Narrator",
+      "text": "She turns to face her pursuer. Her heart pounds — but her hands are steady."
+    },
+    {
+      "speaker": "Aria",
+      "text": "Come on then.",
+      "portraitKey": "fierce"
+    }
+  ]
+}

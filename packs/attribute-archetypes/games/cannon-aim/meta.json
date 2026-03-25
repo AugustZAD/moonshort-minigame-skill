@@ -1,0 +1,18 @@
+{
+  "id": "cannon-aim",
+  "title": "Cannon Aim",
+  "description": "Aim and fire a cannon at moving targets with precision timing.",
+  "sceneTypes": [
+    "action",
+    "competitive"
+  ],
+  "mechanic": "aim",
+  "mood": [
+    "decisive",
+    "sharp",
+    "bold"
+  ],
+  "difficulty": [
+    "moderate"
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "id": "whack-a-mole",
+  "title": "Whack-a-Mole",
+  "description": "Tap pop-up targets as fast as possible. Classic reflex action with escalating speed.",
+  "sceneTypes": [
+    "action",
+    "competitive"
+  ],
+  "mechanic": "tap-burst",
+  "mood": [
+    "energetic",
+    "frenetic",
+    "fun"
+  ],
+  "difficulty": [
+    "easy",
+    "moderate"
+  ]
+}

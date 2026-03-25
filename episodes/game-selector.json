@@ -1,0 +1,38 @@
+{
+  "_comment": "Static fallback mapping used when LLM is unavailable or gameId is provided directly. Keys are sceneType values; each entry has easy/moderate/hard pools.",
+  "action": {
+    "easy":     ["target-tap", "balloon-pop", "whack-a-mole", "color-match"],
+    "moderate": ["qte-challenge", "qte-boss-parry", "qte-direction-switch", "falling-rhythm", "jump-hurdle"],
+    "hard":     ["qte-sequence-recall", "qte-hold-release", "lane-dash", "survive-30-seconds", "meteor-dodge"]
+  },
+  "tension": {
+    "easy":     ["pulse-keeper", "dial-safe", "reactor-cooler"],
+    "moderate": ["bomb-defuse", "red-light-green-light", "stardew-fishing", "balance-beam"],
+    "hard":     ["qte-boss-parry", "qte-hold-release", "bomb-defuse", "survive-30-seconds"]
+  },
+  "romantic": {
+    "easy":     ["memory-flip", "shell-shuffle", "spotlight-seek", "odd-one-out"],
+    "moderate": ["rapid-memory", "gate-picker", "path-picker", "shape-match"],
+    "hard":     ["code-breaker", "word-scramble", "tile-trace", "quiz-gauntlet"]
+  },
+  "comedic": {
+    "easy":     ["whack-a-mole", "balloon-pop", "basket-catch", "slot-machine"],
+    "moderate": ["target-tap", "color-match", "gate-picker", "shell-shuffle"],
+    "hard":     ["stack-drop", "conveyor-sort", "parking-rush", "odd-one-out"]
+  },
+  "mystery": {
+    "easy":     ["odd-one-out", "spotlight-seek", "shell-shuffle"],
+    "moderate": ["code-breaker", "memory-flip", "rapid-memory", "maze-escape"],
+    "hard":     ["bomb-defuse", "word-scramble", "code-breaker", "quiz-gauntlet"]
+  },
+  "competitive": {
+    "easy":     ["snake-sprint", "flappy-bird", "breakout-blitz", "slot-machine"],
+    "moderate": ["merge-2048", "arithmetic-rush", "power-swing", "cannon-aim"],
+    "hard":     ["snake-sprint", "orbit-avoid", "breakout-blitz", "traffic-control"]
+  },
+  "reflective": {
+    "easy":     ["stardew-fishing", "pulse-keeper", "dial-safe", "memory-flip"],
+    "moderate": ["mini-golf-putt", "tile-trace", "reactor-cooler", "balance-beam"],
+    "hard":     ["maze-escape", "goalie-guard", "conveyor-sort", "shape-match"]
+  }
+}

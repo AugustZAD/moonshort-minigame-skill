@@ -1,0 +1,311 @@
+{
+  "packId": "attribute-archetypes",
+  "version": "2026-03-24",
+  "description": "Curated 12-template pack for the four recurring attribute checks used in the narrative pipeline.",
+  "attributes": [
+    {
+      "code": "ATK",
+      "name": "身手",
+      "summary": "Physical skill, reflexes, timing, movement, and precise execution under pressure.",
+      "games": [
+        {
+          "gameId": "qte-boss-parry",
+          "title": "QTE Boss Parry",
+          "sourcePath": "games/qte-boss-parry",
+          "packPath": "packs/attribute-archetypes/games/qte-boss-parry",
+          "mechanic": "reaction",
+          "gameplayDescription": "Read the enemy wind-up, parry inside a short timing window, and chain successful counters to survive escalating pressure.",
+          "fitReason": "Best for direct confrontation, protecting someone, or winning a close-range clash through pure combat skill.",
+          "bestFor": [
+            "fight",
+            "parry",
+            "protect",
+            "counterattack",
+            "close-range confrontation"
+          ],
+          "keywordsZh": [
+            "打架",
+            "挡招",
+            "保护别人",
+            "反击",
+            "近身对抗"
+          ]
+        },
+        {
+          "gameId": "lane-dash",
+          "title": "Lane Dash",
+          "sourcePath": "games/lane-dash",
+          "packPath": "packs/attribute-archetypes/games/lane-dash",
+          "mechanic": "dodge",
+          "gameplayDescription": "Switch lanes quickly to dodge hazards and keep sprinting as speed ramps up.",
+          "fitReason": "Captures body control, evasive movement, and the fantasy of escaping danger through fast reactions.",
+          "bestFor": [
+            "chase",
+            "escape",
+            "sprint",
+            "weaving through danger",
+            "survival movement"
+          ],
+          "keywordsZh": [
+            "追逐",
+            "逃跑",
+            "冲刺",
+            "闪避",
+            "穿越危险区域"
+          ]
+        },
+        {
+          "gameId": "cannon-aim",
+          "title": "Cannon Aim",
+          "sourcePath": "games/cannon-aim",
+          "packPath": "packs/attribute-archetypes/games/cannon-aim",
+          "mechanic": "aim",
+          "gameplayDescription": "Adjust aim and timing to hit moving targets or a critical point with precision.",
+          "fitReason": "Adds a precision-strike branch so ATK can represent accurate execution, not only speed or dodging.",
+          "bestFor": [
+            "aim",
+            "throw",
+            "precision shot",
+            "ranged hit",
+            "critical object interaction"
+          ],
+          "keywordsZh": [
+            "瞄准",
+            "投掷",
+            "精准命中",
+            "远距离出手",
+            "击中关键物件"
+          ]
+        }
+      ]
+    },
+    {
+      "code": "WIL",
+      "name": "意志",
+      "summary": "Restraint, composure, endurance, and the ability to resist pressure or fear.",
+      "games": [
+        {
+          "gameId": "will-surge",
+          "title": "Will Surge",
+          "sourcePath": "games/will-surge",
+          "packPath": "packs/attribute-archetypes/games/will-surge",
+          "mechanic": "tap-burst",
+          "gameplayDescription": "Tap rapidly to keep a willpower bar from collapsing while periodic surge waves spike the pressure until the timer ends.",
+          "fitReason": "The clearest one-to-one mapping for a willpower check: endure, resist, and hold out without breaking.",
+          "bestFor": [
+            "resistance",
+            "endurance",
+            "surviving pressure",
+            "holding the line",
+            "waiting for rescue"
+          ],
+          "keywordsZh": [
+            "忍住",
+            "不屈服",
+            "顶住压力",
+            "扛住恐惧",
+            "撑到救援"
+          ]
+        },
+        {
+          "gameId": "red-light-green-light",
+          "title": "123 Wooden Man",
+          "sourcePath": "games/red-light-green-light",
+          "packPath": "packs/attribute-archetypes/games/red-light-green-light",
+          "mechanic": "stop-go",
+          "gameplayDescription": "Move forward during green light, freeze instantly when the light turns red; any movement during red light costs a penalty.",
+          "fitReason": "The stop-go impulse control is a direct test of self-discipline — perfect for scenes about suppressing panic, staying still under threat, or not blowing your cover.",
+          "bestFor": [
+            "stay still",
+            "impulse control",
+            "don't blow cover",
+            "freeze under threat",
+            "self-discipline"
+          ],
+          "keywordsZh": [
+            "别动",
+            "忍住冲动",
+            "不暴露",
+            "装死",
+            "自律"
+          ]
+        },
+        {
+          "gameId": "qte-hold-release",
+          "title": "QTE Hold & Release",
+          "sourcePath": "games/qte-hold-release",
+          "packPath": "packs/attribute-archetypes/games/qte-hold-release",
+          "mechanic": "hold-release",
+          "gameplayDescription": "Hold to charge, wait for the exact release window, then let go at the right moment.",
+          "fitReason": "Ideal when the dramatic core is restraint, patience, and not acting too early.",
+          "bestFor": [
+            "restraint",
+            "patience",
+            "timed release",
+            "waiting for the right moment",
+            "suppressing impulse"
+          ],
+          "keywordsZh": [
+            "克制",
+            "忍耐",
+            "等时机",
+            "蓄势",
+            "压住冲动"
+          ]
+        }
+      ]
+    },
+    {
+      "code": "INT",
+      "name": "智慧",
+      "summary": "Logic, planning, spatial reasoning, and solving a problem faster than the environment closes in.",
+      "games": [
+        {
+          "gameId": "conveyor-sort",
+          "title": "Conveyor Sort",
+          "sourcePath": "games/conveyor-sort",
+          "packPath": "packs/attribute-archetypes/games/conveyor-sort",
+          "mechanic": "sorting",
+          "gameplayDescription": "Drag parcels from a moving conveyor into the correct bins before they fall off; speed increases and new categories appear over time.",
+          "fitReason": "Fast classification under pressure — maps naturally to rapid analysis, prioritization, and sorting through information or evidence.",
+          "bestFor": [
+            "quick analysis",
+            "categorization",
+            "sorting evidence",
+            "prioritization",
+            "information triage"
+          ],
+          "keywordsZh": [
+            "快速分析",
+            "分类判断",
+            "整理线索",
+            "优先排序",
+            "信息筛选"
+          ]
+        },
+        {
+          "gameId": "parking-rush",
+          "title": "Parking Rush",
+          "sourcePath": "games/parking-rush",
+          "packPath": "packs/attribute-archetypes/games/parking-rush",
+          "mechanic": "puzzle",
+          "gameplayDescription": "Reposition vehicles or blockers in the right order to open a path with minimal wasted moves.",
+          "fitReason": "Turns intelligence into practical planning and multi-step spatial problem solving instead of abstract trivia.",
+          "bestFor": [
+            "route planning",
+            "move obstacles",
+            "multi-step puzzle",
+            "coordination",
+            "layout solving"
+          ],
+          "keywordsZh": [
+            "规划路线",
+            "挪开障碍",
+            "多步解法",
+            "调度",
+            "布局"
+          ]
+        },
+        {
+          "gameId": "maze-escape",
+          "title": "Maze Escape",
+          "sourcePath": "games/maze-escape",
+          "packPath": "packs/attribute-archetypes/games/maze-escape",
+          "mechanic": "navigation",
+          "gameplayDescription": "Find the exit or key route through a maze while minimizing wrong turns and dead ends.",
+          "fitReason": "Best for scenes built around searching, infiltration, scouting, or deciding the smartest path fast.",
+          "bestFor": [
+            "find exit",
+            "navigation",
+            "infiltration",
+            "terrain reading",
+            "spatial reasoning"
+          ],
+          "keywordsZh": [
+            "找出口",
+            "探路",
+            "潜入",
+            "地形判断",
+            "空间推理"
+          ]
+        }
+      ]
+    },
+    {
+      "code": "CHA",
+      "name": "魅力",
+      "summary": "Presence, attraction, chemistry, rhythm, and controlling social or emotional attention.",
+      "games": [
+        {
+          "gameId": "color-match",
+          "title": "Color Match",
+          "sourcePath": "games/color-match",
+          "packPath": "packs/attribute-archetypes/games/color-match",
+          "mechanic": "matching",
+          "gameplayDescription": "Read the color cue and tap the matching swatch as fast as possible; rounds speed up and distractors increase.",
+          "fitReason": "Maps to reading social signals, matching someone's mood, and responding with the right emotional tone — a fast-paced empathy test.",
+          "bestFor": [
+            "read the room",
+            "match energy",
+            "social intuition",
+            "quick rapport",
+            "emotional read"
+          ],
+          "keywordsZh": [
+            "察言观色",
+            "配合情绪",
+            "社交直觉",
+            "氛围感",
+            "快速回应"
+          ]
+        },
+        {
+          "gameId": "spotlight-seek",
+          "title": "Spotlight Seek",
+          "sourcePath": "games/spotlight-seek",
+          "packPath": "packs/attribute-archetypes/games/spotlight-seek",
+          "mechanic": "navigation",
+          "gameplayDescription": "Sweep a spotlight through the dark to reveal the person or object that matters.",
+          "fitReason": "Useful when charm is expressed as attention, recognition, eye contact, or becoming the focus in a crowd.",
+          "bestFor": [
+            "finding someone in a crowd",
+            "secret meeting",
+            "locking eyes",
+            "attention pull",
+            "social focus"
+          ],
+          "keywordsZh": [
+            "人群中找人",
+            "目光锁定",
+            "偷偷见面",
+            "被吸引",
+            "焦点感"
+          ]
+        },
+        {
+          "gameId": "stardew-fishing",
+          "title": "Stardew Fishing",
+          "sourcePath": "games/stardew-fishing",
+          "packPath": "packs/attribute-archetypes/games/stardew-fishing",
+          "mechanic": "hold-release",
+          "gameplayDescription": "Control a floating marker with careful holds and releases so it stays attached to a moving target zone.",
+          "fitReason": "A strong metaphor for flirtation, conversational pacing, social tug-of-war, and keeping someone's attention without overcommitting.",
+          "bestFor": [
+            "flirting",
+            "teasing",
+            "social pacing",
+            "maintaining attention",
+            "emotional tug-of-war"
+          ],
+          "keywordsZh": [
+            "调情",
+            "试探",
+            "聊天节奏",
+            "拉扯",
+            "维持关注"
+          ]
+        }
+      ]
+    }
+  ]
+}

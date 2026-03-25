@@ -1,0 +1,19 @@
+{
+  "id": "red-light-green-light",
+  "title": "Red Light Green Light",
+  "description": "Move only on green, freeze on red — react instantly or lose everything.",
+  "sceneTypes": [
+    "tension",
+    "competitive"
+  ],
+  "mechanic": "reaction",
+  "mood": [
+    "dread",
+    "survival",
+    "nerve-wracking"
+  ],
+  "difficulty": [
+    "moderate",
+    "hard"
+  ]
+}

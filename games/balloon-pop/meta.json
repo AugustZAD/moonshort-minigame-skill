@@ -1,0 +1,19 @@
+{
+  "id": "balloon-pop",
+  "title": "Balloon Pop",
+  "description": "Tap floating balloons before they drift away. Light, fast-paced, and satisfying.",
+  "sceneTypes": [
+    "casual",
+    "romantic"
+  ],
+  "mechanic": "tap-burst",
+  "mood": [
+    "playful",
+    "carefree",
+    "joyful"
+  ],
+  "difficulty": [
+    "easy",
+    "moderate"
+  ]
+}

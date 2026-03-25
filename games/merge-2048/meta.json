@@ -1,0 +1,17 @@
+{
+  "id": "merge-2048",
+  "title": "Merge 2048",
+  "description": "Slide and merge numbered tiles to reach 2048. Deep strategy under tile pressure.",
+  "sceneTypes": [
+    "mystery"
+  ],
+  "mechanic": "puzzle",
+  "mood": [
+    "strategic",
+    "methodical",
+    "satisfying"
+  ],
+  "difficulty": [
+    "hard"
+  ]
+}

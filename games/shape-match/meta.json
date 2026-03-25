@@ -1,0 +1,19 @@
+{
+  "id": "shape-match",
+  "title": "Shape Match",
+  "description": "Match falling shapes to their outlines. Quick pattern recognition under mild pressure.",
+  "sceneTypes": [
+    "casual",
+    "mystery"
+  ],
+  "mechanic": "matching",
+  "mood": [
+    "orderly",
+    "satisfying",
+    "calm"
+  ],
+  "difficulty": [
+    "easy",
+    "moderate"
+  ]
+}

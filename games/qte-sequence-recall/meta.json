@@ -1,0 +1,18 @@
+{
+  "id": "qte-sequence-recall",
+  "title": "QTE Sequence Recall",
+  "description": "Memorize and replay a button sequence under time pressure.",
+  "sceneTypes": [
+    "mystery",
+    "tension"
+  ],
+  "mechanic": "memory",
+  "mood": [
+    "alert",
+    "focused",
+    "cerebral"
+  ],
+  "difficulty": [
+    "hard"
+  ]
+}

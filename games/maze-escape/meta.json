@@ -1,0 +1,18 @@
+{
+  "id": "maze-escape",
+  "title": "Maze Escape",
+  "description": "Navigate a maze to find the exit before time runs out. Tests spatial reasoning.",
+  "sceneTypes": [
+    "mystery",
+    "tension"
+  ],
+  "mechanic": "navigation",
+  "mood": [
+    "trapped",
+    "searching",
+    "escaping"
+  ],
+  "difficulty": [
+    "hard"
+  ]
+}

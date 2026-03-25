@@ -1,0 +1,19 @@
+{
+  "id": "target-tap",
+  "title": "Target Tap",
+  "description": "Tap shrinking targets before they vanish. Precision and speed under time pressure.",
+  "sceneTypes": [
+    "action",
+    "competitive"
+  ],
+  "mechanic": "tap-burst",
+  "mood": [
+    "sharp",
+    "focused",
+    "quick"
+  ],
+  "difficulty": [
+    "moderate",
+    "hard"
+  ]
+}

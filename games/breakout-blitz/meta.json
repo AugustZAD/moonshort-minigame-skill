@@ -1,0 +1,19 @@
+{
+  "id": "breakout-blitz",
+  "title": "Breakout Blitz",
+  "description": "Bounce a ball to break bricks. Escalating pace rewards persistence and spatial awareness.",
+  "sceneTypes": [
+    "action",
+    "competitive"
+  ],
+  "mechanic": "aim",
+  "mood": [
+    "persistent",
+    "energetic",
+    "determined"
+  ],
+  "difficulty": [
+    "moderate",
+    "hard"
+  ]
+}

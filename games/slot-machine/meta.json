@@ -1,0 +1,18 @@
+{
+  "id": "slot-machine",
+  "title": "Slot Machine",
+  "description": "Pull the lever and stop the reels at the right moment for the best alignment.",
+  "sceneTypes": [
+    "casual",
+    "romantic"
+  ],
+  "mechanic": "rhythm",
+  "mood": [
+    "risky",
+    "fun",
+    "lucky"
+  ],
+  "difficulty": [
+    "easy"
+  ]
+}

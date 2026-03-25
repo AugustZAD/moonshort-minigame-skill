@@ -1,0 +1,138 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Moonshort Episode Mini-Game Config",
+  "description": "Per-scene config that drives game selection and asset injection for the episode content pipeline.",
+  "type": "object",
+  "required": ["episodeId", "sceneId", "attribute", "primaryColor"],
+  "additionalProperties": false,
+  "properties": {
+    "episodeId": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+      "description": "Kebab-case episode identifier, e.g. ep01"
+    },
+    "sceneId": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+      "description": "Kebab-case scene identifier within the episode, e.g. scene02"
+    },
+    "attribute": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 32,
+      "description": "Character attribute echoed in settlement payload, e.g. Charm"
+    },
+    "primaryColor": {
+      "type": "string",
+      "pattern": "^#[0-9A-Fa-f]{6}$",
+      "description": "Hex theme color seed passed to the game, e.g. #FF6B9D"
+    },
+    "sceneContext": {
+      "type": "string",
+      "minLength": 10,
+      "maxLength": 500,
+      "description": "Natural language description of the scene for LLM game selection. Required when gameId is not provided."
+    },
+    "sceneType": {
+      "type": "string",
+      "enum": ["action", "tension", "romantic", "comedic", "mystery", "competitive", "reflective"],
+      "description": "Broad scene category used as a hint for static fallback mapping."
+    },
+    "difficulty": {
+      "type": "string",
+      "enum": ["easy", "moderate", "hard"],
+      "default": "moderate",
+      "description": "Desired difficulty level; influences game pool selection."
+    },
+    "gameId": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+      "description": "Direct game override. When present, skips LLM selection entirely."
+    },
+    "character": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "portraitUrl": {
+          "type": "string",
+          "format": "uri"
+        }
+      },
+      "description": "Optional character asset injected into the game HUD."
+    },
+    "background": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "url": {
+          "type": "string",
+          "format": "uri"
+        }
+      },
+      "description": "Optional scene background image injected behind the game canvas."
+    },
+    "narrative": {
+      "type": "array",
+      "maxItems": 12,
+      "items": {
+        "oneOf": [
+          {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 300,
+            "description": "Plain text line (no speaker change)"
+          },
+          {
+            "type": "object",
+            "required": ["speaker", "text"],
+            "additionalProperties": false,
+            "properties": {
+              "speaker": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 64,
+                "description": "Character name shown above the dialogue box"
+              },
+              "text": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 300,
+                "description": "Dialogue text"
+              },
+              "portraitUrl": {
+                "type": "string",
+                "format": "uri",
+                "description": "Portrait URL override for this specific line; falls back to characters[speaker]"
+              }
+            }
+          }
+        ]
+      },
+      "description": "Pre-game dialogue lines. Items can be plain strings or {speaker, text, portraitUrl?} objects for per-line character switching."
+    },
+    "characters": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string",
+        "format": "uri"
+      },
+      "description": "Multi-character portrait map for the narrative overlay. Keys = character display names; values = portrait image URLs. Used as fallback when a narrative line does not carry its own portraitUrl.",
+      "examples": [
+        { "Avery": "https://cdn.example.com/avery.png", "Aiden": "https://cdn.example.com/aiden.png" }
+      ]
+    }
+  },
+  "if": {
+    "not": {
+      "required": ["gameId"]
+    }
+  },
+  "then": {
+    "required": ["sceneContext"]
+  }
+}

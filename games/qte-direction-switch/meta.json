@@ -1,0 +1,18 @@
+{
+  "id": "qte-direction-switch",
+  "title": "QTE Direction Switch",
+  "description": "Swipe in the indicated direction before the window closes. Tests spatial reflexes.",
+  "sceneTypes": [
+    "action",
+    "competitive"
+  ],
+  "mechanic": "reaction",
+  "mood": [
+    "instinctive",
+    "fast",
+    "energetic"
+  ],
+  "difficulty": [
+    "moderate"
+  ]
+}

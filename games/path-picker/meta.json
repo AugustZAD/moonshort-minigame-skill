@@ -1,0 +1,18 @@
+{
+  "id": "path-picker",
+  "title": "Path Picker",
+  "description": "Choose branching paths to navigate a network and reach the goal fastest.",
+  "sceneTypes": [
+    "mystery",
+    "tension"
+  ],
+  "mechanic": "navigation",
+  "mood": [
+    "calculating",
+    "instinctive",
+    "consequential"
+  ],
+  "difficulty": [
+    "moderate"
+  ]
+}
