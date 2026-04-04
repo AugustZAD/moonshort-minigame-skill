@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no,viewport-fit=cover">
+<title>Maze Escape</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700;800;900&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100%; height: 100%; overflow: hidden; font-family: 'Montserrat', sans-serif; }
+
+  #game-shell {
+    position: relative;
+    width: 393px; height: 852px;
+    margin: 0 auto; overflow: hidden;
+  }
+
+  #phaser-container {
+    position: absolute; top: 0; left: 0;
+    width: 393px; height: 852px;
+    z-index: 1;
+  }
+  #phaser-container canvas { display: block; }
+
+  .title-bar {
+    position: absolute; top: 0; left: 0; width: 100%; height: 76px;
+    z-index: 10;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .title-bar::after {
+    content: ''; position: absolute; bottom: -12px; left: 0;
+    width: 100%; height: 12px;
+    background-size: 24px 12px; background-repeat: repeat-x;
+  }
+  .title-text { font-weight: 900; font-size: 18px; color: #fff; }
+
+  .maze-info {
+    position: absolute; top: 96px; left: 0; width: 100%; height: 36px;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 16px; z-index: 10;
+  }
+  .maze-info .key-status {
+    font-weight: 700; font-size: 13px;
+    max-width: 150px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .maze-info .score-area {
+    display: flex; flex-direction: column; align-items: center;
+  }
+  .maze-info .score-label {
+    font-weight: 700; font-size: 10px; letter-spacing: 2px; text-transform: uppercase;
+  }
+  .maze-info .score-wrap { position: relative; display: inline-block; }
+  .maze-info .score-value { font-weight: 900; font-size: 22px; line-height: 1; }
+  .maze-info .delta {
+    position: absolute; top: -4px; right: -24px;
+    font-weight: 900; font-size: 14px; opacity: 0; pointer-events: none;
+  }
+  .maze-info .delta.pop { animation: deltaPop 0.8s ease-out forwards; }
+  .maze-info .delta.plus { color: #4FECA2; }
+  .maze-info .delta.minus { color: #FF4D6A; }
+  .maze-info .timer-text {
+    font-weight: 800; font-size: 16px; min-width: 44px; text-align: right;
+  }
+  .maze-info .timer-text.warn { color: #FF4D6A !important; }
+
+  @keyframes deltaPop {
+    0%   { opacity: 1; transform: translateY(0); }
+    60%  { opacity: 1; transform: translateY(-6px); }
+    100% { opacity: 0; transform: translateY(-14px); }
+  }
+
+  .maze-label {
+    position: absolute; top: 134px; left: 0; width: 100%;
+    text-align: center; font-weight: 800; font-size: 14px; z-index: 10;
+  }
+
+  .combo-text {
+    position: absolute; top: 152px; left: 0; width: 100%;
+    text-align: center; font-weight: 900; font-size: 16px; z-index: 11;
+    text-shadow: 0 0 4px rgba(255,255,255,0.5);
+    transition: transform 0.12s ease;
+  }
+
+  .dpad-area {
+    position: absolute; bottom: 20px; left: 0; width: 100%;
+    z-index: 10;
+    display: flex; flex-direction: column; align-items: center; gap: 6px;
+  }
+  .dpad-row { display: flex; gap: 6px; justify-content: center; }
+
+  .btn-candy {
+    position: relative; border-radius: 18px;
+    border: 2px solid transparent;
+    box-shadow: 0 4px 0 rgba(0,0,0,0.15);
+    overflow: hidden; cursor: pointer; z-index: 10;
+    -webkit-tap-highlight-color: transparent; user-select: none;
+  }
+  .btn-candy .base { position: absolute; inset: 0; border-radius: 16px; }
+  .btn-candy .glass { position: absolute; inset: 0; background: rgba(255,255,255,0.3); border-radius: 16px; }
+  .btn-candy .highlight {
+    position: absolute; left: 0; right: 0; top: 2px; height: 14px;
+    background: rgba(255,255,255,0.3); border-radius: 16px 16px 0 0;
+  }
+  .btn-candy .label {
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 900; color: #fff; z-index: 1;
+  }
+  .btn-candy:active { transform: translateY(3px); box-shadow: none; }
+  .btn-dpad { width: 70px; height: 50px; }
+  .btn-dpad .label { font-size: 22px; }
+  .btn-candy.full { width: 369px; height: 64px; }
+  .btn-candy.full .label { font-size: 18px; }
+  .btn-candy.spacer { width: 70px; height: 50px; visibility: hidden; }
+
+  .stars-row {
+    position: absolute; left: 0; width: 100%;
+    display: flex; justify-content: center; gap: 12px; z-index: 11;
+  }
+  .stars-row .star {
+    font-size: 30px; opacity: 0;
+    animation: popIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  }
+  .stars-row .star.filled { color: #F5C842; }
+  .stars-row .star.empty { color: #555555; }
+
+  .result-info {
+    position: absolute; left: 0; width: 100%;
+    text-align: center; z-index: 11;
+  }
+  .result-info .attr-mod { font-weight: 700; font-size: 16px; margin-bottom: 12px; }
+  .result-info .stats {
+    display: flex; justify-content: center; gap: 40px;
+    font-weight: 700; font-size: 14px; color: #fff;
+  }
+
+  @keyframes popIn { 0% { transform: scale(0); } 100% { transform: scale(1); } }
+  .hidden { display: none !important; }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
+</head>
+<body>
+<div id="game-shell">
+  <div id="phaser-container"></div>
+
+  <div class="title-bar" id="title-bar">
+    <span class="title-text" id="title-text">Maze Escape</span>
+  </div>
+
+  <div class="maze-info hidden" id="maze-info">
+    <span class="key-status" id="key-status">Find the Key!</span>
+    <div class="score-area">
+      <span class="score-label" id="score-label">SCORE</span>
+      <div class="score-wrap">
+        <span class="score-value" id="score-value">0</span>
+        <span class="delta" id="score-delta"></span>
+      </div>
+    </div>
+    <span class="timer-text" id="timer-text">30s</span>
+  </div>
+
+  <div class="maze-label hidden" id="maze-label">Maze 1</div>
+  <div class="combo-text hidden" id="combo-text"></div>
+  <div class="stars-row hidden" id="stars-row"></div>
+  <div class="result-info hidden" id="result-info">
+    <div class="attr-mod" id="attr-mod"></div>
+    <div class="stats"><span id="stat-combo"></span><span id="stat-hits"></span></div>
+  </div>
+
+  <div class="dpad-area hidden" id="dpad-area">
+    <div class="dpad-row">
+      <div class="btn-candy btn-dpad spacer"></div>
+      <div class="btn-candy btn-dpad" id="btn-up"><div class="base"></div><div class="glass"></div><div class="highlight"></div><div class="label">&#9650;</div></div>
+      <div class="btn-candy btn-dpad spacer"></div>
+    </div>
+    <div class="dpad-row">
+      <div class="btn-candy btn-dpad" id="btn-left"><div class="base"></div><div class="glass"></div><div class="highlight"></div><div class="label">&#9664;</div></div>
+      <div class="btn-candy btn-dpad" id="btn-down"><div class="base"></div><div class="glass"></div><div class="highlight"></div><div class="label">&#9660;</div></div>
+      <div class="btn-candy btn-dpad" id="btn-right"><div class="base"></div><div class="glass"></div><div class="highlight"></div><div class="label">&#9654;</div></div>
+    </div>
+  </div>
+
+  <div class="boot-card hidden" id="boot-card" style="position:absolute;top:380px;left:0;width:100%;text-align:center;z-index:12;">
+    <div style="font-weight:900;font-size:28px;color:var(--primary,#3B82F6);margin-bottom:8px;">迷宫探险</div>
+    <div style="font-weight:700;font-size:14px;color:#64748B;margin-bottom:24px;" id="boot-subtitle">Wisdom Challenge</div>
+    <div style="font-weight:700;font-size:13px;color:#E2E8F0;line-height:2;">Navigate the maze with D-pad or swipe.<br>Collect the key, then reach the exit.<br>Avoid bumping walls!</div>
+  </div>
+  <div class="btn-area hidden" id="btn-area" style="position:absolute;bottom:20px;left:12px;right:12px;display:flex;flex-direction:column;gap:14px;z-index:10;"></div>
+</div>
+
+<script>
+// ── Host context ─────────────────────────────────────────────────────────────
+var CTX = window.__EPISODE_CTX__ || {};
+var params = new URLSearchParams(window.location.search);
+var ATTRIBUTE = CTX.attribute || params.get('attribute') || 'Wisdom';
+var PRIMARY_COLOR = CTX.primaryColor || params.get('primaryColor') || '#3B82F6';
+var DISPLAY_ATTRIBUTE = (CTX.character && CTX.character.name ? CTX.character.name + '\u7684' : '') + ATTRIBUTE;
+var EPISODE_LABEL = CTX.episodeLabel || params.get('episodeLabel') || '';
+var EPISODE_TITLE = CTX.episodeTitle || params.get('episodeTitle') || 'Maze Escape';
+
+var W = 393, H = 852;
+var ROUND_SECONDS = 30;
+var RATING_THRESHOLDS = { S: 220, A: 160, B: 110, C: 70 };
+var MODIFIER_BY_RATING = { S: 3, A: 1, B: 0, C: -1 };
+
+function getRating(s) { if(s>=RATING_THRESHOLDS.S)return'S'; if(s>=RATING_THRESHOLDS.A)return'A'; if(s>=RATING_THRESHOLDS.B)return'B'; return'C'; }
+function getModifier(r) { return MODIFIER_BY_RATING[r]; }
+function notifyGameComplete(result) {
+  var p = JSON.stringify(result);
+  if(window.webkit&&window.webkit.messageHandlers&&window.webkit.messageHandlers.jsBridge){window.webkit.messageHandlers.jsBridge.postMessage(p);return;}
+  if(window.jsBridge&&window.jsBridge.postMessage){window.jsBridge.postMessage(p);return;}
+  if(window.parent!==window){window.parent.postMessage(p,'*');return;}
+  console.log('[GameComplete]',result);
+}
+function clamp(v,mn,mx){return Math.max(mn,Math.min(mx,v));}
+function hexToRgb(h){var r=h.replace('#','');var f=r.length===3?r.split('').map(function(c){return c+c;}).join(''):r;var v=parseInt(f,16);return{r:(v>>16)&255,g:(v>>8)&255,b:v&255};}
+function rgbToHex(r,g,b){function h(n){return clamp(Math.round(n),0,255).toString(16).padStart(2,'0');}return'#'+h(r)+h(g)+h(b);}
+function blendHex(a,b,t){var ca=hexToRgb(a),cb=hexToRgb(b);return rgbToHex(ca.r+(cb.r-ca.r)*t,ca.g+(cb.g-ca.g)*t,ca.b+(cb.b-ca.b)*t);}
+function hexToInt(h){return parseInt(h.replace('#',''),16);}
+
+// ── Theme ───────────────────────────────────────────────────────────────────
+var THEMES = {
+  mystery:{bg:'#0F172A',primary:'#3B82F6',accent:'#67E8F9',gold:'#F5C842',success:'#4FECA2',danger:'#FF4D6A',warning:'#FFB347',text:'#E2E8F0',textMuted:'#64748B',surface:'#1E293B'},
+  nature:{bg:'#1A2E1A',primary:'#38C97A',accent:'#A3E635',gold:'#F5C842',success:'#4FECA2',danger:'#FF4D6A',warning:'#FFB347',text:'#E2F0E2',textMuted:'#6B8E6B',surface:'#2D4A2D'},
+  cute:{bg:'#1A1221',primary:'#EC4F99',accent:'#F472B6',gold:'#F5C842',success:'#4FECA2',danger:'#FF4D6A',warning:'#FFB347',text:'#F0E2F0',textMuted:'#8E6B8E',surface:'#2D1E2D'}
+};
+function resolveThemeKey(){var a=(ATTRIBUTE||'').toLowerCase();if(/智慧|int|wisdom/i.test(a))return'mystery';if(/身手|atk|attack|agility/i.test(a))return'cute';if(/意志|wil/i.test(a))return'mystery';if(/魅力|cha|charm/i.test(a))return'cute';return'mystery';}
+var TK=resolveThemeKey(), T=THEMES[TK], PRI=PRIMARY_COLOR||T.primary;
+
+// ── DOM Helpers ──────────────────────────────────────────────────────────────
+function $(id){return document.getElementById(id);}
+function setVisible(id,v){var e=$(id);if(!e)return;if(v)e.classList.remove('hidden');else e.classList.add('hidden');}
+function makeCandyButton(label,cls,fs,onClick){
+  var b=document.createElement('div');b.className='btn-candy '+(cls||'full');b.style.borderColor=PRI;
+  b.innerHTML='<div class="base" style="background:'+PRI+'"></div><div class="glass"></div><div class="highlight"></div><div class="label" style="font-size:'+(fs||18)+'px">'+label+'</div>';
+  b.addEventListener('pointerdown',function(e){e.preventDefault();audio.tap();});
+  b.addEventListener('pointerup',function(e){e.preventDefault();if(onClick)onClick();});
+  return b;
+}
+function clearBtnArea(){$('btn-area').innerHTML='';}
+function deltaPop(v){var e=$('score-delta');e.classList.remove('pop','plus','minus');e.textContent=(v>=0?'+':'')+v;e.classList.add(v>=0?'plus':'minus');void e.offsetWidth;e.classList.add('pop');}
+
+function applyTheme(){
+  var s=$('game-shell').style;s.background=T.bg;document.body.style.background=T.bg;
+  $('title-bar').style.background=PRI;
+  var s=document.createElement('style');s.textContent='.title-bar::after{background-image:radial-gradient(circle at 12px 0px,'+PRI+' 12px,transparent 12px);}';document.head.appendChild(s);
+  $('key-status').style.color=T.gold;$('score-label').style.color=T.textMuted;
+  $('score-value').style.color=T.text;$('timer-text').style.color=T.text;
+  $('maze-label').style.color=PRI;$('combo-text').style.color=PRI;
+  document.querySelectorAll('.btn-dpad').forEach(function(b){b.style.borderColor=PRI;var base=b.querySelector('.base');if(base)base.style.background=PRI;});
+}
+function fitShell(){var sh=$('game-shell'),sw=window.innerWidth,shh=window.innerHeight,sc=Math.min(sw/393,shh/852);sh.style.transform='scale('+sc+')';sh.style.transformOrigin='top center';sh.style.marginTop=Math.max(0,(shh-852*sc)/2)+'px';}
+window.addEventListener('resize',fitShell);
+
+// ── Maze Generator (DFS) ───────────────────────────────────────────────────
+function generateMaze(cols,rows){
+  var w=2*cols+1,h=2*rows+1,grid=[];
+  for(var y=0;y<h;y++){var row=[];for(var x=0;x<w;x++)row.push('#');grid[y]=row;}
+  var visited={},dirs=[[0,-1],[1,0],[0,1],[-1,0]];
+  function carve(cx,cy){visited[cx+','+cy]=true;grid[cy*2+1][cx*2+1]='.';var sh=dirs.slice().sort(function(){return Math.random()-0.5;});for(var i=0;i<sh.length;i++){var dx=sh[i][0],dy=sh[i][1],nx=cx+dx,ny=cy+dy;if(nx>=0&&nx<cols&&ny>=0&&ny<rows&&!visited[nx+','+ny]){grid[cy*2+1+dy][cx*2+1+dx]='.';carve(nx,ny);}}}
+  carve(0,0);grid[1][1]='S';grid[h-2][w-2]='E';
+  var dead=[];for(var cy=0;cy<rows;cy++)for(var cx=0;cx<cols;cx++){var gy=cy*2+1,gx=cx*2+1;if(grid[gy][gx]!=='.')continue;var on=0;for(var d=0;d<dirs.length;d++){var c=grid[gy+dirs[d][1]]?grid[gy+dirs[d][1]][gx+dirs[d][0]]:undefined;if(c==='.'||c==='S'||c==='E')on++;}if(on===1)dead.push([gx,gy]);}
+  if(dead.length>0){var kp=dead[Math.floor(Math.random()*dead.length)];grid[kp[1]][kp[0]]='K';}else{grid[2*Math.floor(rows/2)+1][2*Math.floor(cols/2)+1]='K';}
+  return grid.map(function(r){return r.join('');});
+}
+
+// ── MoonAudio ───────────────────────────────────────────────────────────────
+class MoonAudio{
+  constructor(){this._ctx=null;this._master=null;this._bgmNodes=[];this._unlocked=false;}
+  _ensure(){if(this._ctx)return this._ctx;this._ctx=new(window.AudioContext||window.webkitAudioContext)();this._master=this._ctx.createGain();this._master.gain.value=0.5;this._master.connect(this._ctx.destination);return this._ctx;}
+  unlock(){if(this._unlocked)return;this._ensure();if(this._ctx.state==='suspended')this._ctx.resume();this._unlocked=true;}
+  tap(){var c=this._ensure(),t=c.currentTime,o=c.createOscillator(),g=c.createGain();o.type='sine';o.frequency.setValueAtTime(1200,t);o.frequency.exponentialRampToValueAtTime(800,t+0.08);g.gain.setValueAtTime(0.25,t);g.gain.exponentialRampToValueAtTime(0.001,t+0.1);o.connect(g).connect(this._master);o.start(t);o.stop(t+0.1);}
+  success(){var c=this._ensure(),t=c.currentTime;var self=this;[523,784].forEach(function(f,i){var o=c.createOscillator(),g=c.createGain();o.type='sine';o.frequency.value=f;g.gain.setValueAtTime(0,t+i*0.12);g.gain.linearRampToValueAtTime(0.22,t+i*0.12+0.03);g.gain.exponentialRampToValueAtTime(0.001,t+i*0.12+0.3);o.connect(g).connect(self._master);o.start(t+i*0.12);o.stop(t+i*0.12+0.3);});}
+  fail(){var c=this._ensure(),t=c.currentTime,o=c.createOscillator(),g=c.createGain();o.type='sawtooth';o.frequency.setValueAtTime(150,t);o.frequency.linearRampToValueAtTime(80,t+0.25);g.gain.setValueAtTime(0.18,t);g.gain.exponentialRampToValueAtTime(0.001,t+0.3);o.connect(g).connect(this._master);o.start(t);o.stop(t+0.3);}
+  alert(){var c=this._ensure(),t=c.currentTime,o=c.createOscillator(),g=c.createGain();o.type='square';o.frequency.setValueAtTime(880,t);o.frequency.exponentialRampToValueAtTime(220,t+0.15);g.gain.setValueAtTime(0.15,t);g.gain.exponentialRampToValueAtTime(0.001,t+0.2);o.connect(g).connect(this._master);o.start(t);o.stop(t+0.2);}
+  heartbeat(){var c=this._ensure(),t=c.currentTime;var self=this;[0,0.18].forEach(function(off){var o=c.createOscillator(),g=c.createGain();o.type='sine';o.frequency.setValueAtTime(60,t+off);o.frequency.exponentialRampToValueAtTime(30,t+off+0.15);g.gain.setValueAtTime(0.3,t+off);g.gain.exponentialRampToValueAtTime(0.001,t+off+0.2);o.connect(g).connect(self._master);o.start(t+off);o.stop(t+off+0.2);});}
+  tick(){var c=this._ensure(),t=c.currentTime,o=c.createOscillator(),g=c.createGain();o.type='sine';o.frequency.value=1000;g.gain.setValueAtTime(0.12,t);g.gain.exponentialRampToValueAtTime(0.001,t+0.05);o.connect(g).connect(this._master);o.start(t);o.stop(t+0.06);}
+  bgm(style){this.stopBgm();var c=this._ensure(),PROG={mystery:[[146.83,174.61,220],[138.59,164.81,207.65],[130.81,155.56,196],[138.59,174.61,220]],action:[[164.81,196,246.94],[174.61,220,261.63],[146.83,174.61,220],[155.56,196,246.94]]};var ch=PROG[style]||PROG.mystery,bt=1.2,ll=ch.length*bt,mg=c.createGain();mg.gain.value=0;mg.gain.linearRampToValueAtTime(0.1,c.currentTime+1);mg.connect(this._master);var self=this;var sched=function(){var now=c.currentTime;ch.forEach(function(chord,ci){var ct=now+ci*bt;chord.forEach(function(f){var o=c.createOscillator(),e=c.createGain();o.type='triangle';o.frequency.value=f;e.gain.setValueAtTime(0,ct);e.gain.linearRampToValueAtTime(0.06,ct+0.05);e.gain.setValueAtTime(0.06,ct+bt*0.7);e.gain.linearRampToValueAtTime(0,ct+bt);o.connect(e).connect(mg);o.start(ct);o.stop(ct+bt);});var b=c.createOscillator(),be=c.createGain();b.type='sine';b.frequency.value=chord[0]/2;be.gain.setValueAtTime(0,ct);be.gain.linearRampToValueAtTime(0.1,ct+0.03);be.gain.setValueAtTime(0.1,ct+bt*0.5);be.gain.linearRampToValueAtTime(0,ct+bt);b.connect(be).connect(mg);b.start(ct);b.stop(ct+bt);});};sched();var iid=setInterval(function(){if(!self._ctx||self._ctx.state==='closed'){clearInterval(iid);return;}sched();},ll*1000);this._bgmNodes.push({masterGain:mg,intervalId:iid});}
+  stopBgm(f){var fade=(f||500)/1000;if(!this._ctx)return;var t=this._ctx.currentTime;for(var i=0;i<this._bgmNodes.length;i++){var n=this._bgmNodes[i];if(n.intervalId)clearInterval(n.intervalId);if(n.masterGain)n.masterGain.gain.linearRampToValueAtTime(0,t+fade);}this._bgmNodes=[];}
+  stopAll(){this.stopBgm(200);}
+}
+var audio=new MoonAudio();
+
+// ── Phaser Helpers ──────────────────────────────────────────────────────────
+function spawnParticles(sc,x,y,col,cnt,life){for(var i=0;i<cnt;i++){var a=(Math.PI*2*i)/cnt+Math.random()*0.3,sp=80+Math.random()*120,sz=3+Math.random()*4;var p=sc.add.circle(x,y,sz,col,1).setDepth(50);sc.tweens.add({targets:p,x:x+Math.cos(a)*sp,y:y+Math.sin(a)*sp,alpha:0,scaleX:0.2,scaleY:0.2,duration:life||400,ease:'Quad.easeOut',onComplete:function(){p.destroy();}});}}
+function showToast(sc,text,col,x,y){var t=sc.add.text(x,y,text,{fontFamily:'Montserrat',fontSize:'24px',fontStyle:'900',color:col,stroke:'#000000',strokeThickness:3}).setOrigin(0.5).setDepth(60).setAlpha(0);sc.tweens.add({targets:t,y:y-30,alpha:1,duration:200,ease:'Back.easeOut',onComplete:function(){sc.time.delayedCall(500,function(){sc.tweens.add({targets:t,y:y-50,alpha:0,duration:200,onComplete:function(){t.destroy();}});});}});}
+function damageFlash(sc){var f=sc.add.rectangle(W/2,H/2,W,H,0xff4d6a,0).setDepth(80);sc.tweens.add({targets:f,alpha:0.3,yoyo:true,duration:80,onComplete:function(){f.destroy();}});}
+function screenShake(sc,i){sc.cameras.main.shake(150,i||0.008);}
+
+// ══════════════════════════════════════════════════════════════════════════════
+//  BOOT SCENE
+// ══════════════════════════════════════════════════════════════════════════════
+class BootScene extends Phaser.Scene{
+  constructor(){super('BootScene');}
+  create(){
+    this.children.removeAll(true);
+    setVisible('maze-info',false);setVisible('maze-label',false);setVisible('dpad-area',false);
+    setVisible('combo-text',false);setVisible('stars-row',false);setVisible('result-info',false);
+    setVisible('btn-area',true);setVisible('boot-card',true);
+
+    // Update boot card subtitle with attribute
+    $('boot-subtitle').textContent=DISPLAY_ATTRIBUTE+' Challenge';
+
+    clearBtnArea();
+    $('btn-area').appendChild(makeCandyButton('START','full',20,function(){audio.unlock();window.__game.scene.start('GameScene');}));
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+//  GAME SCENE
+// ══════════════════════════════════════════════════════════════════════════════
+class GameScene extends Phaser.Scene{
+  constructor(){super('GameScene');}
+  init(){
+    this.score=0;this.timeLeft=ROUND_SECONDS;this.isOver=false;this.combo=0;this.maxCombo=0;
+    this.escapes=0;this.bumps=0;this.mazeIndex=0;this.cell=24;this.boardX=40;this.boardY=170;
+    this.lastTickSec=-1;this.audioStarted=false;this.difficulty=1;this.timePenaltyPerBump=1.5;
+    this.hasKey=false;this.player=null;this.key=null;this.exit=null;this.map=null;this.trail={};
+  }
+  create(){
+    this.children.removeAll(true);
+    var self=this;window.__activeGameScene=this;
+    setVisible('boot-card',false);
+    setVisible('maze-info',true);setVisible('maze-label',true);setVisible('dpad-area',true);
+    setVisible('combo-text',true);setVisible('btn-area',false);setVisible('stars-row',false);setVisible('result-info',false);
+    $('score-value').textContent='0';$('timer-text').textContent=ROUND_SECONDS+'s';
+    $('timer-text').classList.remove('warn');$('key-status').textContent='Find the Key!';
+    $('key-status').style.color=T.gold;$('combo-text').textContent='';
+
+    this.graphics=this.add.graphics().setDepth(5);
+    this.trailGfx=this.add.graphics().setDepth(3);
+
+    // D-pad
+    $('btn-up').onpointerdown=function(e){e.preventDefault();audio.tap();};
+    $('btn-up').onpointerup=function(e){e.preventDefault();self.tryMove(0,-1);};
+    $('btn-down').onpointerdown=function(e){e.preventDefault();audio.tap();};
+    $('btn-down').onpointerup=function(e){e.preventDefault();self.tryMove(0,1);};
+    $('btn-left').onpointerdown=function(e){e.preventDefault();audio.tap();};
+    $('btn-left').onpointerup=function(e){e.preventDefault();self.tryMove(-1,0);};
+    $('btn-right').onpointerdown=function(e){e.preventDefault();audio.tap();};
+    $('btn-right').onpointerup=function(e){e.preventDefault();self.tryMove(1,0);};
+
+    this.cursors=this.input.keyboard.createCursorKeys();
+    this.swipeStart=null;
+    this.input.on('pointerdown',function(ptr){self.swipeStart={x:ptr.x,y:ptr.y};});
+    this.input.on('pointerup',function(ptr){
+      if(!self.swipeStart)return;var dx=ptr.x-self.swipeStart.x,dy=ptr.y-self.swipeStart.y;
+      if(Math.abs(dx)<18&&Math.abs(dy)<18)return;
+      if(Math.abs(dx)>Math.abs(dy))self.tryMove(dx>0?1:-1,0);else self.tryMove(0,dy>0?1:-1);
+      self.swipeStart=null;
+    });
+    this.input.once('pointerdown',function(){audio.unlock();audio.bgm('mystery');self.audioStarted=true;});
+    this.loadMaze(0);
+  }
+
+  loadMaze(idx){
+    var bc=5,br=5,ex=Math.min(idx,4);
+    this.map=generateMaze(bc+ex,br+ex);
+    var gw=this.map[0].length,gh=this.map.length;
+    var maxW=W-30,maxH=480;
+    this.cell=Math.floor(Math.min(maxW/gw,maxH/gh));
+    this.boardX=Math.floor((W-gw*this.cell)/2);this.boardY=170;
+    this.mazeIndex=idx;this.hasKey=false;this.trail={};
+    for(var y=0;y<this.map.length;y++)for(var x=0;x<this.map[y].length;x++){
+      var c=this.map[y][x];
+      if(c==='S')this.player={x:x,y:y};
+      if(c==='K')this.key={x:x,y:y};
+      if(c==='E')this.exit={x:x,y:y};
+    }
+    $('maze-label').textContent='Maze '+(this.escapes+1);
+    $('key-status').textContent='Find the Key!';$('key-status').style.color=T.gold;
+    this.drawMaze();
+  }
+
+  addScore(d){this.score=Math.max(0,this.score+d);$('score-value').textContent=Math.round(this.score);deltaPop(d);}
+
+  tryMove(dx,dy){
+    if(this.isOver)return;
+    if(!this.audioStarted){audio.unlock();audio.bgm('mystery');this.audioStarted=true;}
+    var nx=this.player.x+dx,ny=this.player.y+dy;
+    if(nx<0||ny<0||ny>=this.map.length||nx>=this.map[0].length||this.map[ny][nx]==='#'){
+      this.bumps++;this.combo=0;var pen=-(2+Math.min(this.bumps,5));this.addScore(pen);
+      this.timeLeft=Math.max(0,this.timeLeft-this.timePenaltyPerBump);
+      showToast(this,'Wall! '+pen,T.danger,W/2,400);audio.fail();damageFlash(this);screenShake(this,0.006);
+      $('combo-text').textContent='';return;
+    }
+    this.trail[this.player.x+','+this.player.y]=true;
+    this.player.x=nx;this.player.y=ny;
+
+    if(!this.hasKey&&this.player.x===this.key.x&&this.player.y===this.key.y){
+      this.hasKey=true;var kb=14+Math.min(this.escapes,3)*4;this.addScore(kb);
+      showToast(this,'Key +'+kb,T.gold,W/2,400);
+      spawnParticles(this,this.boardX+this.key.x*this.cell+this.cell/2,this.boardY+this.key.y*this.cell+this.cell/2,hexToInt(T.gold),8,400);
+      audio.success();$('key-status').textContent='Got it! Find Exit!';$('key-status').style.color=T.success;
+    } else if(this.player.x===this.exit.x&&this.player.y===this.exit.y){
+      if(!this.hasKey){showToast(this,'Need key!',T.warning,W/2,400);audio.alert();}
+      else{
+        var cB=Math.max(0,14-this.bumps*2),dB=Math.min(this.difficulty,8)*2,coB=Math.min(this.combo,4)*4;
+        var gain=36+cB+coB+dB;this.escapes++;this.combo++;this.maxCombo=Math.max(this.maxCombo,this.combo);
+        this.addScore(gain);this.difficulty=Math.min(12,this.difficulty+1);
+        this.timePenaltyPerBump=Math.min(3,1.5+this.difficulty*0.15);
+        showToast(this,'Escaped +'+gain,T.success,W/2,400);
+        spawnParticles(this,W/2,350,hexToInt(T.gold),12,500);audio.success();
+        $('combo-text').textContent='Combo x'+this.combo;
+        this.loadMaze(this.mazeIndex+1);
+      }
+    }
+    this.drawMaze();
+  }
+
+  drawMaze(){
+    this.graphics.clear();this.trailGfx.clear();
+    var priI=hexToInt(PRI),floorI=hexToInt(blendHex(T.bg,'#ffffff',0.08));
+    for(var y=0;y<this.map.length;y++)for(var x=0;x<this.map[y].length;x++){
+      var ch=this.map[y][x],px=this.boardX+x*this.cell,py=this.boardY+y*this.cell;
+      if(ch==='#'){this.graphics.fillStyle(priI,0.7);this.graphics.fillRoundedRect(px,py,this.cell-1,this.cell-1,3);}
+      else{this.graphics.fillStyle(floorI,0.5);this.graphics.fillRoundedRect(px,py,this.cell-1,this.cell-1,2);}
+    }
+    // Trail
+    for(var k in this.trail){var pts=k.split(','),tx=parseInt(pts[0]),ty=parseInt(pts[1]);
+      this.trailGfx.fillStyle(priI,0.15);this.trailGfx.fillRoundedRect(this.boardX+tx*this.cell+2,this.boardY+ty*this.cell+2,this.cell-5,this.cell-5,2);}
+    var r=Math.max(3,this.cell*0.3);
+    // Key
+    if(!this.hasKey){this.graphics.fillStyle(hexToInt(T.gold),1);this.graphics.fillCircle(this.boardX+this.key.x*this.cell+this.cell/2,this.boardY+this.key.y*this.cell+this.cell/2,r);}
+    // Exit
+    var ec=this.hasKey?hexToInt(T.success):hexToInt(T.textMuted),pd=Math.max(2,this.cell*0.15);
+    this.graphics.fillStyle(ec,1);this.graphics.fillRoundedRect(this.boardX+this.exit.x*this.cell+pd,this.boardY+this.exit.y*this.cell+pd,this.cell-pd*2,this.cell-pd*2,4);
+    // Player
+    this.graphics.fillStyle(0xffffff,1);this.graphics.fillCircle(this.boardX+this.player.x*this.cell+this.cell/2,this.boardY+this.player.y*this.cell+this.cell/2,r);
+    this.graphics.fillStyle(priI,0.5);this.graphics.fillCircle(this.boardX+this.player.x*this.cell+this.cell/2-r*0.2,this.boardY+this.player.y*this.cell+this.cell/2-r*0.2,r*0.4);
+  }
+
+  finishGame(){if(this.isOver)return;this.isOver=true;window.__activeGameScene=null;audio.stopBgm(600);
+    this.scene.start('ResultScene',{score:Math.round(this.score),maxCombo:this.maxCombo,hits:this.escapes,misses:this.bumps});}
+
+  update(time,delta){
+    if(this.isOver)return;
+    if(Phaser.Input.Keyboard.JustDown(this.cursors.left))this.tryMove(-1,0);
+    if(Phaser.Input.Keyboard.JustDown(this.cursors.right))this.tryMove(1,0);
+    if(Phaser.Input.Keyboard.JustDown(this.cursors.up))this.tryMove(0,-1);
+    if(Phaser.Input.Keyboard.JustDown(this.cursors.down))this.tryMove(0,1);
+    this.timeLeft=Math.max(0,this.timeLeft-delta/1000);var sec=Math.ceil(this.timeLeft);
+    $('timer-text').textContent=sec+'s';
+    if(this.timeLeft<=10&&sec!==this.lastTickSec&&sec>0){this.lastTickSec=sec;if(this.timeLeft<=5)audio.heartbeat();else audio.tick();}
+    if(this.timeLeft<=10)$('timer-text').classList.add('warn');else $('timer-text').classList.remove('warn');
+    if(this.timeLeft<=0)this.finishGame();
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+//  RESULT SCENE
+// ══════════════════════════════════════════════════════════════════════════════
+class ResultScene extends Phaser.Scene{
+  constructor(){super('ResultScene');}
+  init(data){this.finalScore=data.score||0;this.maxCombo=data.maxCombo||0;this.hits=data.hits||0;this.misses=data.misses||0;}
+  create(){
+    this.children.removeAll(true);
+    var rating=getRating(this.finalScore),modifier=getModifier(rating),modText=modifier>0?'+'+modifier:String(modifier);
+    var rHex={S:T.gold,A:PRI,B:T.accent,C:T.textMuted},rcHex=rHex[rating];
+
+    setVisible('boot-card',false);
+    setVisible('maze-info',false);setVisible('maze-label',false);setVisible('dpad-area',false);
+    setVisible('combo-text',false);setVisible('stars-row',true);setVisible('result-info',true);setVisible('btn-area',true);
+
+    var g=this.add.text(W/2,300,rating,{fontFamily:'Montserrat',fontSize:'96px',fontStyle:'900',color:rcHex,stroke:'#000000',strokeThickness:4}).setOrigin(0.5).setDepth(10).setScale(0);
+    if(rating==='S'){spawnParticles(this,W/2,300,hexToInt(T.gold),16,600);audio.success();this.time.delayedCall(100,function(){audio.success();});}
+    else if(rating==='A')audio.success();
+    this.tweens.add({targets:g,scaleX:1,scaleY:1,duration:400,ease:'Back.easeOut',delay:100});
+
+    this.add.text(W/2,380,'Score '+this.finalScore,{fontFamily:'Montserrat',fontSize:'24px',fontStyle:'900',color:T.text}).setOrigin(0.5).setDepth(10);
+    this.add.text(W/2,412,DISPLAY_ATTRIBUTE+' '+modText,{fontFamily:'Montserrat',fontSize:'16px',fontStyle:'700',color:T.textMuted}).setOrigin(0.5).setDepth(10);
+
+    var sr=$('stars-row');sr.innerHTML='';sr.style.top='440px';
+    var sc={S:4,A:3,B:2,C:1}[rating];
+    for(var i=0;i<4;i++){var s=document.createElement('span');s.className='star '+(i<sc?'filled':'empty');s.textContent='\u2605';s.style.animationDelay=(0.1+i*0.08)+'s';sr.appendChild(s);}
+
+    $('result-info').style.top='490px';$('attr-mod').textContent='';$('attr-mod').style.color=T.textMuted;
+    $('stat-combo').textContent='Combo: '+this.maxCombo;$('stat-hits').textContent='Escapes: '+this.hits+' / Bumps: '+this.misses;
+
+    var self=this;clearBtnArea();
+    $('btn-area').appendChild(makeCandyButton('CONTINUE','full',18,function(){
+      notifyGameComplete({rating:rating,score:self.finalScore,attribute:ATTRIBUTE,modifier:modifier,gameId:'maze-escape',maxCombo:self.maxCombo,hits:self.hits,misses:self.misses});
+      self.time.delayedCall(600,function(){self.scene.start('BootScene');});
+    }));
+  }
+}
+
+// ── Init ────────────────────────────────────────────────────────────────────
+applyTheme();fitShell();
+$('title-text').textContent=(EPISODE_LABEL?EPISODE_LABEL+': ':'')+EPISODE_TITLE;
+
+var config={
+  type:Phaser.CANVAS, width:W, height:H, parent:'phaser-container', transparent:true,
+  fps:{forceSetTimeOut:true}, render:{pixelArt:false,antialias:true},
+  scale:{mode:Phaser.Scale.NONE}, scene:[BootScene,GameScene,ResultScene]
+};
+window.__game=new Phaser.Game(config);
+window.__game.events.once('ready',function(){var c=document.querySelector('#phaser-container canvas');if(c){c.style.width=W+'px';c.style.height=H+'px';}});
+</script>
+</body>
+</html>

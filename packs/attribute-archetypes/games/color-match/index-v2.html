@@ -1,0 +1,900 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no,viewport-fit=cover">
+<title>Color Match</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700;800;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --primary: #EC4F99;
+    --primary-light: #F7A3C8;
+    --primary-dark: #B83A75;
+    --bg: #1A1221;
+    --bg-light: #2A1E35;
+    --success: #4FECA2;
+    --warning: #FFB347;
+    --danger: #FF4D6A;
+    --text-muted: #888;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100%; height: 100%; background: var(--bg); overflow: hidden; font-family: 'Montserrat', sans-serif; }
+
+  #game-shell {
+    position: relative;
+    width: 393px; height: 852px;
+    margin: 0 auto; overflow: hidden;
+    background: var(--bg);
+  }
+
+  #phaser-container {
+    position: absolute; top: 0; left: 0;
+    width: 393px; height: 852px;
+    z-index: 1;
+  }
+  #phaser-container canvas { display: block; }
+
+  /* Title bar */
+  .title-bar {
+    position: absolute; top: 0; left: 0; width: 100%; height: 76px;
+    background: var(--primary); z-index: 10;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .title-bar::after {
+    content: ''; position: absolute; bottom: -12px; left: 0;
+    width: 100%; height: 12px;
+    background-image: radial-gradient(circle at 12px 0px, var(--primary) 12px, transparent 12px);
+    background-size: 24px 12px; background-repeat: repeat-x;
+  }
+  .title-text { font-weight: 900; font-size: 18px; color: #fff; }
+
+  /* Round + Timer row */
+  .round-row {
+    position: absolute; top: 96px; left: 0; width: 100%;
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 0 24px; z-index: 11;
+  }
+  .round-label { font-weight: 800; font-size: 16px; color: var(--primary-light); }
+  .timer-label { font-weight: 700; font-size: 14px; color: var(--text-muted); }
+  .timer-label.warn { color: var(--danger); }
+
+  /* Color Card */
+  .color-card-wrap {
+    position: absolute; top: 140px; left: 50%; transform: translateX(-50%);
+    width: 320px; height: 180px; z-index: 11;
+    perspective: 600px;
+  }
+  .color-card {
+    width: 100%; height: 100%;
+    border-radius: 24px;
+    border: 2px solid var(--primary);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.1);
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    transition: transform 0.3s ease, opacity 0.3s ease;
+    position: relative; overflow: hidden;
+  }
+  .color-card .card-swatch {
+    width: 100%; height: 100%;
+    border-radius: 22px;
+    position: absolute; top: 0; left: 0;
+  }
+  .color-card .card-text {
+    font-weight: 900; font-size: 48px;
+    position: relative; z-index: 2;
+    text-shadow: 0 2px 8px rgba(0,0,0,0.3);
+  }
+  .color-card .card-question {
+    font-weight: 900; font-size: 64px; color: #fff;
+    position: relative; z-index: 2;
+    background: linear-gradient(135deg, #FF6B6B, #FFD93D, #6BCB77, #4D96FF, #9B59B6);
+    background-size: 300% 300%;
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    animation: rainbowShimmer 3s ease infinite;
+  }
+  @keyframes rainbowShimmer {
+    0%,100% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+  }
+  .color-card.flip { transform: scale(0.9); opacity: 0.5; }
+
+  /* Instruction text below card */
+  .mode-hint {
+    position: absolute; top: 330px; left: 0; width: 100%;
+    text-align: center; font-weight: 700; font-size: 14px;
+    color: var(--text-muted); z-index: 11;
+  }
+  .mode-hint.stroop { color: var(--warning); }
+
+  /* Answer Grid */
+  .answer-grid {
+    position: absolute; top: 360px; left: 50%; transform: translateX(-50%);
+    display: grid; gap: 12px; z-index: 11;
+    grid-template-columns: repeat(2, 150px);
+    justify-content: center;
+  }
+  .answer-grid.cols3 { grid-template-columns: repeat(3, 105px); }
+  .answer-btn {
+    height: 72px; border-radius: 16px;
+    border: 2px solid rgba(255,255,255,0.15);
+    box-shadow: 0 4px 0 rgba(0,0,0,0.2);
+    cursor: pointer; position: relative; overflow: hidden;
+    display: flex; align-items: center; justify-content: center;
+    -webkit-tap-highlight-color: transparent; user-select: none;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+  }
+  .answer-btn .btn-label {
+    font-weight: 900; font-size: 16px; color: #fff;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.3);
+    position: relative; z-index: 2;
+  }
+  .answer-btn .btn-shine {
+    position: absolute; top: 0; left: 0; right: 0; height: 40%;
+    background: linear-gradient(to bottom, rgba(255,255,255,0.3), transparent);
+    border-radius: 14px 14px 0 0;
+    pointer-events: none;
+  }
+  .answer-btn:active { transform: translateY(3px); box-shadow: none; }
+  .answer-btn.correct {
+    animation: correctPop 0.4s ease forwards;
+    border-color: var(--success);
+    box-shadow: 0 0 16px rgba(79,236,162,0.5);
+  }
+  .answer-btn.wrong {
+    animation: wrongShake 0.35s ease;
+    border-color: var(--danger);
+    opacity: 0.6;
+  }
+  @keyframes correctPop {
+    0% { transform: scale(1); }
+    40% { transform: scale(1.1); }
+    100% { transform: scale(1); }
+  }
+  @keyframes wrongShake {
+    0%,100% { transform: translateX(0); }
+    20% { transform: translateX(-6px); }
+    40% { transform: translateX(6px); }
+    60% { transform: translateX(-4px); }
+    80% { transform: translateX(4px); }
+  }
+
+  /* Score area */
+  .score-display {
+    position: absolute; top: 560px; left: 0; width: 100%;
+    display: flex; flex-direction: column; align-items: center; z-index: 11;
+  }
+  .score-display .label { font-weight: 700; font-size: 13px; color: #888; letter-spacing: 2px; text-transform: uppercase; }
+  .score-display .value-wrap { position: relative; display: inline-block; margin-top: 2px; }
+  .score-display .value { font-weight: 900; font-size: 42px; color: #fff; line-height: 1; }
+  .score-display .delta {
+    position: absolute; top: -2px; right: -28px;
+    font-weight: 900; font-size: 18px; opacity: 0; pointer-events: none;
+  }
+  .score-display .delta.pop { animation: deltaPop 0.8s ease-out forwards; }
+  .score-display .delta.plus { color: var(--success); }
+  .score-display .delta.minus { color: var(--danger); }
+  @keyframes deltaPop {
+    0% { opacity: 1; transform: translateY(0); }
+    60% { opacity: 1; transform: translateY(-6px); }
+    100% { opacity: 0; transform: translateY(-14px); }
+  }
+
+  /* Combo */
+  .combo-text {
+    position: absolute; top: 540px; left: 0; width: 100%;
+    text-align: center; font-weight: 900; font-size: 18px;
+    color: var(--primary); z-index: 11;
+    text-shadow: 0 0 4px rgba(255,255,255,0.5);
+    transition: transform 0.12s ease;
+  }
+
+  /* Timer bar (per-round) */
+  .answer-timer {
+    position: absolute; top: 350px; left: 50%; transform: translateX(-50%);
+    width: 280px; height: 6px;
+    background: rgba(255,255,255,0.1); border-radius: 3px;
+    z-index: 11; overflow: hidden;
+  }
+  .answer-timer-fill {
+    height: 100%; border-radius: 3px;
+    background: var(--success);
+    transition: width 0.08s linear, background-color 0.3s;
+  }
+
+  /* Stars row */
+  .stars-row {
+    position: absolute; top: 580px; left: 0; width: 100%;
+    display: flex; justify-content: center; gap: 12px; z-index: 11;
+  }
+  .stars-row .star {
+    font-size: 30px; opacity: 0;
+    animation: popIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  }
+  .stars-row .star.filled { color: #F5C842; }
+  .stars-row .star.empty { color: #555555; }
+  @keyframes popIn { 0% { transform: scale(0); } 100% { transform: scale(1); } }
+
+  /* Result info */
+  .result-info {
+    position: absolute; top: 626px; left: 0; width: 100%;
+    text-align: center; z-index: 11;
+  }
+  .result-info .attr-mod { font-weight: 700; font-size: 16px; color: #aaa; margin-bottom: 12px; }
+  .result-info .stats { display: flex; justify-content: center; gap: 40px; font-weight: 700; font-size: 14px; color: #fff; }
+
+  /* Buttons */
+  .btn-area {
+    position: absolute; bottom: 20px; left: 12px; right: 12px;
+    display: flex; flex-direction: column; gap: 14px; z-index: 10;
+  }
+  .btn-candy {
+    position: relative; height: 64px; border-radius: 24px;
+    border: 2px solid var(--primary);
+    box-shadow: 0 4px 0 rgba(0,0,0,0.15);
+    overflow: hidden; cursor: pointer; z-index: 10;
+    -webkit-tap-highlight-color: transparent; user-select: none;
+  }
+  .btn-candy.full { width: 369px; }
+  .btn-candy .base { position: absolute; inset: 0; background: var(--primary); border-radius: 22px; }
+  .btn-candy .glass { position: absolute; inset: 0; background: rgba(255,255,255,0.3); border-radius: 22px; }
+  .btn-candy .highlight {
+    position: absolute; left: 0; right: 0; top: 2px; height: 20px;
+    background: rgba(255,255,255,0.3); border-radius: 20px 20px 0 0;
+  }
+  .btn-candy .glow {
+    position: absolute; inset: 0;
+    box-shadow: inset 0 0 4px 4px rgba(255,255,255,0.5);
+    border-radius: 22px; pointer-events: none;
+  }
+  .btn-candy .btn-candy-label {
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 900; font-size: 18px; color: #fff; z-index: 1;
+  }
+  .btn-candy:active { transform: translateY(3px); box-shadow: none; }
+
+  .hidden { display: none !important; }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
+</head>
+<body>
+<div id="game-shell">
+  <div id="phaser-container"></div>
+
+  <div class="title-bar">
+    <span class="title-text" id="title-text">Color Match</span>
+  </div>
+
+  <!-- Round + Timer -->
+  <div class="round-row" id="round-row">
+    <span class="round-label" id="round-label">Round 1</span>
+    <span class="timer-label" id="timer-label">38s</span>
+  </div>
+
+  <!-- Color Card -->
+  <div class="color-card-wrap" id="color-card-wrap">
+    <div class="color-card" id="color-card">
+      <div class="card-swatch" id="card-swatch"></div>
+      <span class="card-text" id="card-text"></span>
+      <span class="card-question hidden" id="card-question">?</span>
+    </div>
+  </div>
+
+  <!-- Mode hint -->
+  <div class="mode-hint" id="mode-hint"></div>
+
+  <!-- Answer timer bar -->
+  <div class="answer-timer" id="answer-timer">
+    <div class="answer-timer-fill" id="answer-timer-fill" style="width:100%"></div>
+  </div>
+
+  <!-- Answer Grid -->
+  <div class="answer-grid" id="answer-grid"></div>
+
+  <!-- Combo -->
+  <div class="combo-text hidden" id="combo-text"></div>
+
+  <!-- Score -->
+  <div class="score-display hidden" id="score-display">
+    <span class="label">SCORE</span>
+    <div class="value-wrap">
+      <span class="value" id="score-value">0</span>
+      <span class="delta" id="score-delta"></span>
+    </div>
+  </div>
+
+  <!-- Stars row -->
+  <div class="stars-row hidden" id="stars-row"></div>
+
+  <!-- Result info -->
+  <div class="result-info hidden" id="result-info">
+    <div class="attr-mod" id="attr-mod"></div>
+    <div class="stats">
+      <span id="stat-combo"></span>
+      <span id="stat-hits"></span>
+    </div>
+  </div>
+
+  <div class="btn-area" id="btn-area"></div>
+</div>
+
+<script>
+// ── Host context ─────────────────────────────────────────────────────────────
+var CTX = window.__EPISODE_CTX__ || {};
+var params = new URLSearchParams(window.location.search);
+var ATTRIBUTE = CTX.attribute || params.get('attribute') || 'Charm';
+var PRIMARY_COLOR = CTX.primaryColor || params.get('primaryColor') || '#EC4F99';
+var DISPLAY_ATTRIBUTE = (CTX.character && CTX.character.name ? CTX.character.name + '\u7684' : '') + ATTRIBUTE;
+var EPISODE_LABEL = CTX.episodeLabel || params.get('episodeLabel') || '';
+var EPISODE_TITLE = CTX.episodeTitle || params.get('episodeTitle') || 'Color Match';
+
+var W = 393;
+var H = 852;
+var ROUND_SECONDS = 38;
+var RATING_THRESHOLDS = { S: 380, A: 290, B: 200, C: 120 };
+var MODIFIER_BY_RATING = { S: 3, A: 1, B: 0, C: -1 };
+
+function getRating(score) {
+  if (score >= RATING_THRESHOLDS.S) return 'S';
+  if (score >= RATING_THRESHOLDS.A) return 'A';
+  if (score >= RATING_THRESHOLDS.B) return 'B';
+  return 'C';
+}
+function getModifier(rating) { return MODIFIER_BY_RATING[rating]; }
+
+function notifyGameComplete(result) {
+  var payload = JSON.stringify(result);
+  if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.jsBridge) { window.webkit.messageHandlers.jsBridge.postMessage(payload); return; }
+  if (window.jsBridge && window.jsBridge.postMessage) { window.jsBridge.postMessage(payload); return; }
+  if (window.parent !== window) { window.parent.postMessage(payload, '*'); return; }
+  console.log('[GameComplete]', result);
+}
+
+function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
+
+// ── DOM Helpers ──────────────────────────────────────────────────────────────
+function $(id) { return document.getElementById(id); }
+function setVisible(id, visible) {
+  var el = $(id); if (!el) return;
+  if (visible) el.classList.remove('hidden'); else el.classList.add('hidden');
+}
+
+function makeCandyButton(label, cssClass, fontSize, onClick) {
+  var btn = document.createElement('div');
+  btn.className = 'btn-candy ' + (cssClass || 'full');
+  btn.innerHTML = '<div class="base"></div><div class="glass"></div><div class="highlight"></div><div class="glow"></div><div class="btn-candy-label" style="font-size:' + (fontSize || 18) + 'px">' + label + '</div>';
+  btn.addEventListener('pointerdown', function(e) { e.preventDefault(); audio.tap(); });
+  btn.addEventListener('pointerup', function(e) { e.preventDefault(); if (onClick) onClick(); });
+  return btn;
+}
+
+function clearBtnArea() { $('btn-area').innerHTML = ''; }
+
+function addScoreDOM(delta) {
+  var el = $('score-delta');
+  el.classList.remove('pop', 'plus', 'minus');
+  el.textContent = (delta >= 0 ? '+' : '') + delta;
+  el.classList.add(delta >= 0 ? 'plus' : 'minus');
+  void el.offsetWidth;
+  el.classList.add('pop');
+}
+
+// ── Apply theme ──────────────────────────────────────────────────────────────
+function applyTheme() {
+  var root = document.documentElement;
+  root.style.setProperty('--primary', PRIMARY_COLOR);
+  $('title-text').textContent = EPISODE_LABEL ? EPISODE_LABEL + ': ' + EPISODE_TITLE : EPISODE_TITLE;
+}
+
+// ── MoonAudio Engine ─────────────────────────────────────────────────────────
+function MoonAudio() { this._ctx = null; this._master = null; this._bgmNodes = []; this._unlocked = false; }
+MoonAudio.prototype._ensure = function() {
+  if (this._ctx) return this._ctx;
+  this._ctx = new (window.AudioContext || window.webkitAudioContext)();
+  this._master = this._ctx.createGain(); this._master.gain.value = 0.5;
+  this._master.connect(this._ctx.destination); return this._ctx;
+};
+MoonAudio.prototype.unlock = function() { if (this._unlocked) return; this._ensure(); if (this._ctx.state === 'suspended') this._ctx.resume(); this._unlocked = true; };
+MoonAudio.prototype.tap = function() { var ctx = this._ensure(), t = ctx.currentTime; var osc = ctx.createOscillator(), g = ctx.createGain(); osc.type = 'sine'; osc.frequency.setValueAtTime(1200, t); osc.frequency.exponentialRampToValueAtTime(800, t + 0.08); g.gain.setValueAtTime(0.25, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.1); osc.connect(g).connect(this._master); osc.start(t); osc.stop(t + 0.1); };
+MoonAudio.prototype.success = function() { var ctx = this._ensure(), t = ctx.currentTime, self = this; [523, 784].forEach(function(freq, i) { var osc = ctx.createOscillator(), g = ctx.createGain(); osc.type = 'sine'; osc.frequency.value = freq; g.gain.setValueAtTime(0, t + i * 0.12); g.gain.linearRampToValueAtTime(0.22, t + i * 0.12 + 0.03); g.gain.exponentialRampToValueAtTime(0.001, t + i * 0.12 + 0.3); osc.connect(g).connect(self._master); osc.start(t + i * 0.12); osc.stop(t + i * 0.12 + 0.3); }); };
+MoonAudio.prototype.fail = function() { var ctx = this._ensure(), t = ctx.currentTime; var osc = ctx.createOscillator(), g = ctx.createGain(); osc.type = 'sawtooth'; osc.frequency.setValueAtTime(150, t); osc.frequency.linearRampToValueAtTime(80, t + 0.25); g.gain.setValueAtTime(0.18, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.3); osc.connect(g).connect(this._master); osc.start(t); osc.stop(t + 0.3); };
+MoonAudio.prototype.alert = function() { var ctx = this._ensure(), t = ctx.currentTime; var osc = ctx.createOscillator(), g = ctx.createGain(); osc.type = 'square'; osc.frequency.setValueAtTime(880, t); osc.frequency.exponentialRampToValueAtTime(220, t + 0.15); g.gain.setValueAtTime(0.15, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.2); osc.connect(g).connect(this._master); osc.start(t); osc.stop(t + 0.2); };
+MoonAudio.prototype.heartbeat = function() { var ctx = this._ensure(), t = ctx.currentTime; [0, 0.18].forEach(function(off) { var osc = ctx.createOscillator(), g = ctx.createGain(); osc.type = 'sine'; osc.frequency.setValueAtTime(60, t + off); osc.frequency.exponentialRampToValueAtTime(30, t + off + 0.15); g.gain.setValueAtTime(0.3, t + off); g.gain.exponentialRampToValueAtTime(0.001, t + off + 0.2); osc.connect(g).connect(this._master); osc.start(t + off); osc.stop(t + off + 0.2); }.bind(this)); };
+MoonAudio.prototype.tick = function() { var ctx = this._ensure(), t = ctx.currentTime; var osc = ctx.createOscillator(), g = ctx.createGain(); osc.type = 'sine'; osc.frequency.value = 1000; g.gain.setValueAtTime(0.12, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.05); osc.connect(g).connect(this._master); osc.start(t); osc.stop(t + 0.06); };
+MoonAudio.prototype.bgm = function(style) {
+  this.stopBgm(); var ctx = this._ensure();
+  var PROG = {
+    action: [[164.81,196,246.94],[174.61,220,261.63],[146.83,174.61,220],[155.56,196,246.94]],
+    romantic: [[261.63,329.63,392],[293.66,349.23,440],[246.94,311.13,370],[261.63,329.63,415.30]],
+  };
+  var chords = PROG[style] || PROG.romantic; var beat = 1.0; var loopLen = chords.length * beat;
+  var mg = ctx.createGain(); mg.gain.value = 0; mg.gain.linearRampToValueAtTime(0.1, ctx.currentTime + 1); mg.connect(this._master);
+  var sched = function() { var now = ctx.currentTime; chords.forEach(function(ch, ci) { var ct = now + ci * beat; ch.forEach(function(freq) { var o = ctx.createOscillator(), e = ctx.createGain(); o.type = 'triangle'; o.frequency.value = freq; e.gain.setValueAtTime(0, ct); e.gain.linearRampToValueAtTime(0.05, ct + 0.05); e.gain.setValueAtTime(0.05, ct + beat * 0.7); e.gain.linearRampToValueAtTime(0, ct + beat); o.connect(e).connect(mg); o.start(ct); o.stop(ct + beat); }); var b = ctx.createOscillator(), be = ctx.createGain(); b.type = 'sine'; b.frequency.value = ch[0] / 2; be.gain.setValueAtTime(0, ct); be.gain.linearRampToValueAtTime(0.08, ct + 0.03); be.gain.setValueAtTime(0.08, ct + beat * 0.5); be.gain.linearRampToValueAtTime(0, ct + beat); b.connect(be).connect(mg); b.start(ct); b.stop(ct + beat); }); };
+  sched(); var self = this;
+  var iid = setInterval(function() { if (!self._ctx || self._ctx.state === 'closed') { clearInterval(iid); return; } sched(); }, loopLen * 1000);
+  this._bgmNodes.push({ masterGain: mg, intervalId: iid });
+};
+MoonAudio.prototype.stopBgm = function(fadeMs) { var fade = (fadeMs || 500) / 1000; if (!this._ctx) return; var t = this._ctx.currentTime; for (var i = 0; i < this._bgmNodes.length; i++) { var n = this._bgmNodes[i]; if (n.intervalId) clearInterval(n.intervalId); if (n.masterGain) n.masterGain.gain.linearRampToValueAtTime(0, t + fade); } this._bgmNodes = []; };
+MoonAudio.prototype.stopAll = function() { this.stopBgm(200); };
+
+var audio = new MoonAudio();
+
+// ── Phaser Helpers ───────────────────────────────────────────────────────────
+function spawnParticles(scene, x, y, color, count, life) {
+  for (var i = 0; i < count; i++) {
+    var angle = (Math.PI * 2 * i) / count + Math.random() * 0.3;
+    var speed = 80 + Math.random() * 120;
+    var sz = 3 + Math.random() * 4;
+    var p = scene.add.circle(x, y, sz, color, 1).setDepth(50);
+    scene.tweens.add({ targets: p, x: x + Math.cos(angle) * speed, y: y + Math.sin(angle) * speed, alpha: 0, scaleX: 0.2, scaleY: 0.2, duration: life || 400, ease: 'Quad.easeOut', onComplete: function() { p.destroy(); } });
+  }
+}
+
+function showToast(scene, text, colorHex, x, y) {
+  var t = scene.add.text(x, y, text, { fontFamily: 'Montserrat', fontSize: '28px', fontStyle: '900', color: colorHex, stroke: '#ffffff', strokeThickness: 4 }).setOrigin(0.5).setDepth(60).setAlpha(0);
+  scene.tweens.add({ targets: t, y: y - 30, alpha: 1, duration: 200, ease: 'Back.easeOut', onComplete: function() { scene.time.delayedCall(600, function() { scene.tweens.add({ targets: t, y: y - 50, alpha: 0, duration: 200, onComplete: function() { t.destroy(); } }); }); } });
+}
+
+function damageFlash(scene) {
+  var flash = scene.add.rectangle(W / 2, H / 2, W, H, 0xff4d6a, 0).setDepth(80);
+  scene.tweens.add({ targets: flash, alpha: 0.3, yoyo: true, duration: 80, onComplete: function() { flash.destroy(); } });
+}
+
+function screenShake(scene, intensity) { scene.cameras.main.shake(150, intensity || 0.008); }
+
+// ── Color definitions ────────────────────────────────────────────────────────
+var COLORS = [
+  { name: 'Coral',  hex: '#FF7F6E' },
+  { name: 'Mint',   hex: '#5FD19A' },
+  { name: 'Sky',    hex: '#60A5FA' },
+  { name: 'Sun',    hex: '#FACC15' },
+  { name: 'Berry',  hex: '#C084FC' },
+  { name: 'Slate',  hex: '#64748B' },
+  { name: 'Rose',   hex: '#FB7185' },
+  { name: 'Lime',   hex: '#84CC16' },
+  { name: 'Teal',   hex: '#2DD4BF' },
+  { name: 'Amber',  hex: '#F59E0B' },
+];
+
+// ══════════════════════════════════════════════════════════════════════════════
+//  BOOT SCENE
+// ══════════════════════════════════════════════════════════════════════════════
+var BootScene = new Phaser.Class({
+  Extends: Phaser.Scene,
+  initialize: function() { Phaser.Scene.call(this, 'BootScene'); },
+
+  create: function() {
+    this.children.removeAll(true);
+    setVisible('round-row', false);
+    setVisible('color-card-wrap', true);
+    setVisible('mode-hint', false);
+    setVisible('answer-timer', false);
+    setVisible('answer-grid', false);
+    setVisible('combo-text', false);
+    setVisible('score-display', false);
+    setVisible('stars-row', false);
+    setVisible('result-info', false);
+
+    // Show question mark card
+    $('card-swatch').style.background = 'linear-gradient(135deg, #2A1E35, #1A1221)';
+    $('card-text').textContent = '';
+    setVisible('card-text', false);
+    setVisible('card-question', true);
+
+    clearBtnArea();
+    $('btn-area').appendChild(makeCandyButton('START', 'full', 18, function() {
+      audio.unlock();
+      window.__game.scene.start('GameScene');
+    }));
+  }
+});
+
+// ══════════════════════════════════════════════════════════════════════════════
+//  GAME SCENE
+// ══════════════════════════════════════════════════════════════════════════════
+var GameScene = new Phaser.Class({
+  Extends: Phaser.Scene,
+  initialize: function() { Phaser.Scene.call(this, 'GameScene'); },
+
+  init: function() {
+    this.score = 0;
+    this.timeLeft = ROUND_SECONDS;
+    this.isOver = false;
+    this.round = 0;
+    this.difficulty = 0;
+    this.combo = 0;
+    this.maxCombo = 0;
+    this.totalHits = 0;
+    this.totalMiss = 0;
+    this.lastTickSec = -1;
+    this.audioStarted = false;
+    this.roundTimeLeft = 0;
+    this.roundTimeMax = 5;
+    this.waitingForAnswer = false;
+    this.current = null;
+  },
+
+  create: function() {
+    this.children.removeAll(true);
+    var self = this;
+    window.__activeGameScene = this;
+
+    // Show game DOM
+    setVisible('round-row', true);
+    setVisible('color-card-wrap', true);
+    setVisible('mode-hint', true);
+    setVisible('answer-timer', true);
+    setVisible('answer-grid', true);
+    setVisible('combo-text', true);
+    setVisible('score-display', true);
+    setVisible('stars-row', false);
+    setVisible('result-info', false);
+    setVisible('card-question', false);
+    setVisible('card-text', true);
+
+    $('score-value').textContent = '0';
+    $('score-delta').classList.remove('pop', 'plus', 'minus');
+    $('timer-label').textContent = ROUND_SECONDS + 's';
+    $('timer-label').classList.remove('warn');
+    $('combo-text').textContent = '';
+
+    clearBtnArea();
+
+    this.input.once('pointerdown', function() {
+      audio.unlock();
+      audio.bgm('romantic');
+      self.audioStarted = true;
+    });
+
+    this.nextRound();
+  },
+
+  getAnswerWindow: function() { return Math.max(2, 5 - this.difficulty * 0.3); },
+  getOptionCount: function() { return this.difficulty >= 6 ? 5 : 4; },
+  isStroopRound: function() { return this.difficulty >= 3 && Math.random() < 0.4 + this.difficulty * 0.03; },
+
+  nextRound: function() {
+    this.round += 1;
+    this.difficulty = Math.min(12, Math.floor((this.round - 1) / 2));
+    this.waitingForAnswer = true;
+
+    var optCount = this.getOptionCount();
+    // Shuffle and pick
+    var shuffled = COLORS.slice().sort(function() { return Math.random() - 0.5; });
+    var bank = shuffled.slice(0, optCount);
+    var correctIndex = Math.floor(Math.random() * bank.length);
+    var correct = bank[correctIndex];
+    var useStroop = this.isStroopRound();
+    var mode = Math.random() > 0.5 ? 'name-to-swatch' : 'swatch-to-name';
+
+    var stroopHex = null;
+    if (useStroop && mode === 'name-to-swatch') {
+      var others = bank.filter(function(c) { return c.name !== correct.name; });
+      stroopHex = others[Math.floor(Math.random() * others.length)].hex;
+    }
+
+    // Shuffle options
+    var opts = bank.slice().sort(function() { return Math.random() - 0.5; });
+
+    this.current = {
+      mode: mode,
+      correctName: correct.name,
+      correctHex: correct.hex,
+      opts: opts,
+      answer: opts.findIndex(function(item) { return item.name === correct.name; }),
+      stroop: useStroop,
+      stroopHex: stroopHex
+    };
+
+    // Update round label
+    $('round-label').textContent = 'Round ' + this.round;
+
+    // Update color card
+    var card = $('color-card');
+    card.classList.add('flip');
+    var self = this;
+
+    setTimeout(function() {
+      if (mode === 'name-to-swatch') {
+        $('card-swatch').style.background = 'linear-gradient(135deg, #2A1E35, #1A1221)';
+        $('card-text').textContent = correct.name.toUpperCase();
+        if (useStroop && stroopHex) {
+          $('card-text').style.color = stroopHex;
+          $('mode-hint').textContent = 'Tricky! Read the WORD, ignore the color!';
+          $('mode-hint').classList.add('stroop');
+        } else {
+          $('card-text').style.color = '#fff';
+          $('mode-hint').textContent = 'Tap the matching swatch';
+          $('mode-hint').classList.remove('stroop');
+        }
+      } else {
+        $('card-swatch').style.background = correct.hex;
+        $('card-text').textContent = '';
+        $('mode-hint').textContent = 'Tap the correct color name';
+        $('mode-hint').classList.remove('stroop');
+      }
+      card.classList.remove('flip');
+    }, 150);
+
+    // Timer
+    this.roundTimeMax = self.getAnswerWindow();
+    this.roundTimeLeft = this.roundTimeMax;
+    $('answer-timer-fill').style.width = '100%';
+    $('answer-timer-fill').style.backgroundColor = 'var(--success)';
+
+    // Build answer buttons
+    var grid = $('answer-grid');
+    grid.innerHTML = '';
+    if (optCount > 4) {
+      grid.classList.add('cols3');
+    } else {
+      grid.classList.remove('cols3');
+    }
+
+    for (var i = 0; i < optCount; i++) {
+      (function(idx) {
+        var option = opts[idx];
+        var btn = document.createElement('div');
+        btn.className = 'answer-btn';
+
+        if (mode === 'name-to-swatch') {
+          btn.style.background = option.hex;
+          btn.innerHTML = '<div class="btn-shine"></div>';
+        } else {
+          btn.style.background = 'rgba(255,255,255,0.08)';
+          btn.style.border = '2px solid rgba(255,255,255,0.2)';
+          btn.innerHTML = '<span class="btn-label">' + option.name + '</span><div class="btn-shine"></div>';
+        }
+
+        btn.addEventListener('pointerup', function(e) {
+          e.preventDefault();
+          if (self.current) self.answer(idx);
+        });
+        grid.appendChild(btn);
+      })(i);
+    }
+
+    if (this.difficulty > 0 && this.difficulty % 3 === 0 && this.round > 1) {
+      audio.alert();
+    }
+  },
+
+  answer: function(index) {
+    if (this.isOver || !this.current || !this.waitingForAnswer) return;
+    if (!this.audioStarted) { audio.unlock(); audio.bgm('romantic'); this.audioStarted = true; }
+
+    this.waitingForAnswer = false;
+    var btns = $('answer-grid').children;
+    var self = this;
+
+    if (index === this.current.answer) {
+      var speedRatio = this.roundTimeLeft / this.roundTimeMax;
+      var speedBonus = Math.round(speedRatio * 6);
+      var comboBonus = Math.min(this.combo, 5) * 3;
+      var gain = 14 + comboBonus + speedBonus;
+      this.combo += 1;
+      this.maxCombo = Math.max(this.maxCombo, this.combo);
+      this.totalHits += 1;
+      this.addScore(gain);
+
+      if (btns[index]) btns[index].classList.add('correct');
+
+      var isFast = speedRatio > 0.7;
+      if (isFast) {
+        showToast(this, 'Fast +' + gain, '#4FECA2', W / 2, 300);
+        spawnParticles(this, W / 2, 260, 0xF5C842, 10, 400);
+      } else {
+        showToast(this, '+' + gain, '#4FECA2', W / 2, 300);
+        spawnParticles(this, W / 2, 260, 0xEC4F99, 6, 300);
+      }
+      audio.success();
+      $('combo-text').textContent = 'Combo x' + this.combo;
+      $('combo-text').style.transform = 'scale(1.3)';
+      setTimeout(function() { $('combo-text').style.transform = 'scale(1)'; }, 120);
+
+      this.time.delayedCall(300, function() { if (!self.isOver) self.nextRound(); });
+      return;
+    }
+
+    // Wrong
+    this.combo = 0;
+    this.totalMiss += 1;
+    this.addScore(-8);
+    if (btns[index]) btns[index].classList.add('wrong');
+    // Highlight correct
+    if (btns[this.current.answer]) btns[this.current.answer].classList.add('correct');
+    showToast(this, 'Wrong! -8', '#FF4D6A', W / 2, 300);
+    audio.fail();
+    damageFlash(this);
+    screenShake(this, 0.012);
+    $('combo-text').textContent = '';
+
+    this.time.delayedCall(400, function() { if (!self.isOver) self.nextRound(); });
+  },
+
+  handleTimeout: function() {
+    if (this.isOver || !this.waitingForAnswer) return;
+    this.waitingForAnswer = false;
+    this.combo = 0;
+    this.totalMiss += 1;
+    this.addScore(-6);
+    var btns = $('answer-grid').children;
+    if (this.current && btns[this.current.answer]) btns[this.current.answer].classList.add('correct');
+    showToast(this, 'Too slow! -6', '#FFB347', W / 2, 300);
+    audio.fail();
+    damageFlash(this);
+    $('combo-text').textContent = '';
+    var self = this;
+    this.time.delayedCall(400, function() { if (!self.isOver) self.nextRound(); });
+  },
+
+  addScore: function(delta) {
+    this.score = Math.max(0, this.score + delta);
+    $('score-value').textContent = Math.round(this.score);
+    addScoreDOM(delta);
+  },
+
+  finishGame: function(reason) {
+    if (this.isOver) return;
+    this.isOver = true;
+    window.__activeGameScene = null;
+    audio.stopBgm(600);
+    this.scene.start('ResultScene', {
+      score: Math.round(this.score),
+      maxCombo: this.maxCombo,
+      hits: this.totalHits,
+      misses: this.totalMiss,
+      reason: reason || 'time'
+    });
+  },
+
+  update: function(time, delta) {
+    if (this.isOver) return;
+
+    this.timeLeft = Math.max(0, this.timeLeft - delta / 1000);
+    var sec = Math.ceil(this.timeLeft);
+    $('timer-label').textContent = sec + 's';
+
+    if (this.timeLeft <= 10 && sec !== this.lastTickSec && sec > 0) {
+      this.lastTickSec = sec;
+      if (this.timeLeft <= 5) audio.heartbeat(); else audio.tick();
+    }
+    if (this.timeLeft <= 10) { $('timer-label').classList.add('warn'); }
+    else { $('timer-label').classList.remove('warn'); }
+
+    // Per-round timer
+    if (this.waitingForAnswer) {
+      this.roundTimeLeft = Math.max(0, this.roundTimeLeft - delta / 1000);
+      var ratio = this.roundTimeLeft / this.roundTimeMax;
+      $('answer-timer-fill').style.width = (ratio * 100) + '%';
+      if (ratio > 0.5) $('answer-timer-fill').style.backgroundColor = 'var(--success)';
+      else if (ratio > 0.25) $('answer-timer-fill').style.backgroundColor = 'var(--warning)';
+      else $('answer-timer-fill').style.backgroundColor = 'var(--danger)';
+      if (this.roundTimeLeft <= 0) this.handleTimeout();
+    }
+
+    if (this.timeLeft <= 0) this.finishGame('time');
+  }
+});
+
+// ══════════════════════════════════════════════════════════════════════════════
+//  RESULT SCENE
+// ══════════════════════════════════════════════════════════════════════════════
+var ResultScene = new Phaser.Class({
+  Extends: Phaser.Scene,
+  initialize: function() { Phaser.Scene.call(this, 'ResultScene'); },
+
+  init: function(data) {
+    this.finalScore = data.score || 0;
+    this.maxCombo = data.maxCombo || 0;
+    this.hits = data.hits || 0;
+    this.misses = data.misses || 0;
+    this.reason = data.reason || 'time';
+  },
+
+  create: function() {
+    this.children.removeAll(true);
+    var self = this;
+    var rating = getRating(this.finalScore);
+    var modifier = getModifier(rating);
+    var modText = modifier > 0 ? '+' + modifier : String(modifier);
+
+    var GRADE_COLORS = { S: '#F5C842', A: PRIMARY_COLOR, B: '#9B7DB8', C: '#888' };
+
+    // Hide game DOM
+    setVisible('round-row', false);
+    setVisible('mode-hint', false);
+    setVisible('answer-timer', false);
+    setVisible('answer-grid', false);
+    setVisible('combo-text', false);
+    setVisible('score-display', false);
+    setVisible('stars-row', true);
+    setVisible('result-info', true);
+    setVisible('color-card-wrap', true);
+    setVisible('card-question', false);
+    setVisible('card-text', true);
+
+    // Color card shows grade
+    $('card-swatch').style.background = 'linear-gradient(135deg, #2A1E35, #1A1221)';
+    $('card-text').textContent = rating;
+    $('card-text').style.color = GRADE_COLORS[rating];
+    $('card-text').style.fontSize = '72px';
+
+    // Stars
+    var starsRow = $('stars-row');
+    starsRow.innerHTML = '';
+    var starCount = { S: 4, A: 3, B: 2, C: 1 }[rating];
+    for (var i = 0; i < 4; i++) {
+      var star = document.createElement('span');
+      star.className = 'star ' + (i < starCount ? 'filled' : 'empty');
+      star.textContent = '\u2605';
+      star.style.animationDelay = (0.2 + i * 0.08) + 's';
+      starsRow.appendChild(star);
+    }
+
+    // Result info
+    $('attr-mod').textContent = DISPLAY_ATTRIBUTE + ' ' + modText + '  |  Score: ' + this.finalScore;
+    $('stat-combo').textContent = 'Combo: ' + this.maxCombo;
+    $('stat-hits').textContent = 'Hits: ' + this.hits + '/' + this.misses;
+
+    if (rating === 'S') {
+      spawnParticles(this, W / 2, 260, 0xF5C842, 16, 600);
+      audio.success();
+      setTimeout(function() { audio.success(); }, 100);
+    } else if (rating === 'A') {
+      audio.success();
+    }
+
+    // Buttons
+    clearBtnArea();
+    $('btn-area').appendChild(makeCandyButton('CONTINUE', 'full', 18, function() {
+      notifyGameComplete({
+        rating: rating, score: self.finalScore, attribute: ATTRIBUTE,
+        modifier: modifier, gameId: 'color-match',
+        maxCombo: self.maxCombo, hits: self.hits, misses: self.misses
+      });
+      setTimeout(function() { window.__game.scene.start('BootScene'); }, 600);
+    }));
+    $('btn-area').appendChild(makeCandyButton('REPLAY', 'full', 18, function() {
+      $('card-text').style.fontSize = '48px';
+      window.__game.scene.start('GameScene');
+    }));
+  }
+});
+
+// ── Initialize ───────────────────────────────────────────────────────────────
+applyTheme();
+
+var DPR = Math.min(window.devicePixelRatio || 1, 3);
+
+var config = {
+  type: Phaser.CANVAS,
+  parent: 'phaser-container',
+  width: W, height: H,
+  resolution: DPR,
+  transparent: true,
+  fps: { forceSetTimeOut: true },
+  scale: { mode: Phaser.Scale.NONE },
+  render: { antialias: true },
+  scene: [BootScene, GameScene, ResultScene]
+};
+
+window.__game = new Phaser.Game(config);
+
+function fitShell() {
+  var shell = $('game-shell');
+  var sw = window.innerWidth, sh = window.innerHeight;
+  var scaleX = sw / W, scaleY = sh / H;
+  var scale = Math.min(scaleX, scaleY, 1);
+  shell.style.transform = 'scale(' + scale + ')';
+  shell.style.transformOrigin = 'top center';
+  if (scaleY < scaleX) shell.style.marginTop = '0px';
+  else shell.style.marginTop = Math.max(0, (sh - H * scale) / 2) + 'px';
+}
+window.addEventListener('resize', fitShell);
+fitShell();
+</script>
+</body>
+</html>

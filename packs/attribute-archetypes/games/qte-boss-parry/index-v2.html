@@ -1,0 +1,1176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no,viewport-fit=cover">
+<title>QTE Boss Parry</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700;800;900&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100%; height: 100%; background: #1A1221; overflow: hidden; font-family: 'Montserrat', sans-serif; }
+
+  /* ── Shell Container ── */
+  #game-shell {
+    position: relative;
+    width: 393px; height: 852px;
+    margin: 0 auto; overflow: hidden;
+    background: #1A1221;
+  }
+
+  /* ── Phaser container ── */
+  #phaser-container {
+    position: absolute; top: 0; left: 0;
+    width: 393px; height: 852px;
+    z-index: 1;
+  }
+  #phaser-container canvas { display: block; }
+
+  /* ── Title bar ── */
+  .title-bar {
+    position: absolute; top: 0; left: 0; width: 100%; height: 76px;
+    background: #EC4F99; z-index: 10;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .title-bar::after {
+    content: ''; position: absolute; bottom: -12px; left: 0;
+    width: 100%; height: 12px;
+    background-image: radial-gradient(circle at 12px 0px, #EC4F99 12px, transparent 12px);
+    background-size: 24px 12px; background-repeat: repeat-x;
+  }
+  .title-text { font-weight: 900; font-size: 18px; color: #fff; }
+
+  /* ── Portraits ── */
+  .portrait {
+    position: absolute; top: 100px; width: 72px; height: 72px;
+    border-radius: 100px; background: #fff;
+    display: flex; justify-content: center; align-items: center;
+    font-weight: 900; font-size: 28px; color: #EC4F99; z-index: 11;
+  }
+  .portrait.left { left: 24px; }
+  .portrait.right { right: 24px; }
+
+  /* ── VS ── */
+  .vs-text {
+    position: absolute; top: 116px; left: 0; width: 100%;
+    text-align: center; font-weight: 800; font-size: 40px;
+    color: #EC4F99; z-index: 11;
+  }
+
+  /* ── Names ── */
+  .name {
+    position: absolute; top: 180px; width: 72px;
+    text-align: center; font-weight: 700; font-size: 14px;
+    color: #fff; z-index: 11;
+  }
+  .name.left { left: 24px; }
+  .name.right { right: 24px; }
+
+  /* ── HP bars ── */
+  .hp-bar {
+    position: absolute; top: 206px; width: 163px; height: 24px;
+    border-radius: 100px; border: 2px solid #fff;
+    overflow: hidden; z-index: 11;
+  }
+  .hp-bar.left { left: 24px; }
+  .hp-bar.right { right: 24px; }
+  .hp-fill {
+    position: absolute; top: 0; bottom: 0; transition: width 0.3s ease;
+  }
+  .hp-bar.left .hp-fill {
+    left: 0;
+    background: linear-gradient(to right, rgba(79,236,162,0.3), #4FECA2);
+    border-radius: 100px 0 0 100px;
+  }
+  .hp-bar.right .hp-fill {
+    right: 0;
+    background: linear-gradient(to left, rgba(236,79,153,0.3), #EC4F99);
+    border-radius: 0 100px 100px 0;
+  }
+  .hp-bar .pct {
+    position: absolute; top: 0; bottom: 0;
+    display: flex; align-items: center;
+    font-weight: 700; font-size: 12px; color: #fff;
+  }
+  .hp-bar.left .pct { right: 8px; }
+  .hp-bar.right .pct { left: 8px; }
+
+  /* ── Score display (below circle + combo) ── */
+  .score-display {
+    position: absolute; top: 600px; left: 0; width: 100%;
+    display: flex; flex-direction: column; align-items: center;
+    z-index: 11;
+  }
+  .score-display .label {
+    font-weight: 700; font-size: 13px; color: #888;
+    letter-spacing: 2px; text-transform: uppercase;
+  }
+  .score-display .value-wrap {
+    position: relative; display: inline-block; margin-top: 2px;
+  }
+  .score-display .value {
+    font-weight: 900; font-size: 42px; color: #fff;
+    line-height: 1;
+  }
+  .score-display .delta {
+    position: absolute; top: -2px; right: -28px;
+    font-weight: 900; font-size: 18px;
+    opacity: 0; pointer-events: none;
+  }
+  .score-display .delta.pop {
+    animation: deltaPop 0.8s ease-out forwards;
+  }
+  .score-display .delta.plus { color: #4FECA2; }
+  .score-display .delta.minus { color: #EC4F99; }
+  @keyframes deltaPop {
+    0%   { opacity: 1; transform: translateY(0); }
+    60%  { opacity: 1; transform: translateY(-6px); }
+    100% { opacity: 0; transform: translateY(-14px); }
+  }
+  /* Timer (small, below score) */
+  .timer-text {
+    position: absolute; top: 660px; left: 0; width: 100%;
+    text-align: center; font-weight: 700; font-size: 13px;
+    color: #888; z-index: 11;
+  }
+  .timer-text.warn { color: #FF4D6A; }
+
+  /* ── Dialogue bubble ── */
+  .dialogue {
+    position: absolute; top: 256px; right: 24px;
+    width: 228px; min-height: 56px;
+    background: #fff; border-radius: 12px;
+    filter: drop-shadow(0 4px 12px rgba(0,0,0,0.15));
+    padding: 10px 16px; z-index: 11;
+    font-weight: 700; font-size: 14px; color: #1A1221;
+    text-align: center; line-height: 1.4;
+  }
+  .dialogue::before {
+    content: ''; position: absolute; top: -8px; right: 40px;
+    width: 0; height: 0;
+    border-left: 8px solid transparent;
+    border-right: 8px solid transparent;
+    border-bottom: 8px solid #fff;
+  }
+
+  /* ── Main circle frame ── */
+  .circle-frame {
+    position: absolute; top: 304px; left: 50%;
+    transform: translateX(-50%);
+    width: 280px; height: 280px;
+    border-radius: 1000px; border: 4px solid #EC4F99;
+    z-index: 5; overflow: hidden;
+    background: conic-gradient(from 90deg, #EC4F99, #F17BB3, #F6A7CC, #FAD3E6, #FFF);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .circle-inner {
+    width: 256px; height: 256px; border-radius: 1000px;
+    background: radial-gradient(circle, white, #FFE0F8);
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    position: relative; text-align: center;
+  }
+
+  /* ── Circle content variants ── */
+  .circle-inner .rule-title {
+    font-weight: 900; font-size: 20px; color: #EC4F99;
+    margin-bottom: 8px;
+  }
+  .circle-inner .rule-desc {
+    font-weight: 700; font-size: 15px; color: #4A4A5A;
+    line-height: 1.6;
+  }
+  .circle-inner .cue-symbol {
+    font-weight: 900; font-size: 52px; color: #9E9E9E;
+    transition: color 0.15s;
+  }
+  .circle-inner .cue-label {
+    font-weight: 700; font-size: 16px; color: #fff;
+    margin-top: 4px;
+  }
+  .circle-inner .grade-letter {
+    font-weight: 900; font-size: 72px;
+    transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  .circle-inner .grade-score {
+    font-weight: 700; font-size: 16px; color: #4A4A5A;
+    margin-top: 4px;
+  }
+  .grade-letter.pop-in {
+    animation: popIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  }
+  @keyframes popIn {
+    0% { transform: scale(0); }
+    100% { transform: scale(1); }
+  }
+
+  /* ── Timing bar INSIDE circle (lower area) ── */
+  .timing-bar-area {
+    position: absolute; top: 510px; left: 50%;
+    transform: translateX(-50%);
+    width: 200px; height: 14px;
+    z-index: 12;
+  }
+  .timing-bar-track {
+    width: 100%; height: 100%; border-radius: 7px;
+    background: rgba(51,51,51,0.4);
+    overflow: hidden;
+  }
+  .timing-bar-fill {
+    height: 8px; margin: 3px; border-radius: 4px;
+    background: #4FECA2;
+    transition: width 0.05s linear;
+    position: relative;
+  }
+  .timing-bar-fill::after {
+    content: ''; position: absolute; top: 1px; left: 2px;
+    right: 4px; height: 2px; border-radius: 1px;
+    background: rgba(255,255,255,0.3);
+  }
+
+  /* ── Hint text INSIDE circle ── */
+  .hint-text {
+    position: absolute; top: 528px; left: 0; width: 100%;
+    text-align: center; font-weight: 700; font-size: 13px;
+    color: #AAAAAA; z-index: 12;
+  }
+
+  /* ── Combo display (above score) ── */
+  .combo-text {
+    position: absolute; top: 582px; left: 0; width: 100%;
+    text-align: center; font-weight: 900; font-size: 18px;
+    color: #EC4F99; z-index: 11;
+    text-shadow: 0 0 4px rgba(255,255,255,0.5);
+    transition: transform 0.12s ease;
+  }
+
+  /* ── Stars row ── */
+  .stars-row {
+    position: absolute; top: 580px; left: 0; width: 100%;
+    display: flex; justify-content: center; gap: 12px;
+    z-index: 11;
+  }
+  .stars-row .star {
+    font-size: 30px; opacity: 0;
+    animation: popIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  }
+  .stars-row .star.filled { color: #F5C842; }
+  .stars-row .star.empty { color: #555555; }
+
+  /* ── Result info ── */
+  .result-info {
+    position: absolute; top: 626px; left: 0; width: 100%;
+    text-align: center; z-index: 11;
+  }
+  .result-info .attr-mod {
+    font-weight: 700; font-size: 16px; color: #AAAAAA;
+    margin-bottom: 12px;
+  }
+  .result-info .stats {
+    display: flex; justify-content: center; gap: 40px;
+    font-weight: 700; font-size: 14px; color: #fff;
+  }
+
+  /* ── Buttons — candy material ── */
+  .btn-area {
+    position: absolute; bottom: 20px; left: 12px; right: 12px;
+    display: flex; flex-direction: column; gap: 14px;
+    z-index: 10;
+  }
+  .btn-row {
+    display: flex; gap: 10px; justify-content: center;
+  }
+  .btn-candy {
+    position: relative; height: 64px; border-radius: 24px;
+    border: 2px solid #EC4F99;
+    box-shadow: 0 4px 0 rgba(0,0,0,0.15);
+    overflow: hidden; cursor: pointer; z-index: 10;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+  }
+  .btn-candy.full { width: 369px; }
+  .btn-candy.third { width: 115px; height: 56px; }
+  .btn-candy .base {
+    position: absolute; inset: 0; background: #EC4F99; border-radius: 22px;
+  }
+  .btn-candy .glass {
+    position: absolute; inset: 0;
+    background: rgba(255,255,255,0.3); border-radius: 22px;
+  }
+  .btn-candy .highlight {
+    position: absolute; left: 0; right: 0; top: 2px; height: 20px;
+    background: rgba(255,255,255,0.3);
+    border-radius: 20px 20px 0 0;
+  }
+  .btn-candy .glow {
+    position: absolute; inset: 0;
+    box-shadow: inset 0 0 4px 4px rgba(255,255,255,0.5);
+    border-radius: 22px; pointer-events: none;
+  }
+  .btn-candy .label {
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 900; font-size: 18px; color: #fff; z-index: 1; gap: 8px;
+  }
+  .btn-candy.third .label { font-size: 15px; }
+  .btn-candy:active {
+    transform: translateY(3px);
+    box-shadow: none;
+  }
+
+  /* ── Section visibility ── */
+  .hidden { display: none !important; }
+
+  /* ── Responsive scaling ── */
+  @media (max-height: 852px) {
+    #game-shell {
+      transform-origin: top center;
+    }
+  }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
+</head>
+<body>
+
+<div id="game-shell">
+  <!-- Phaser canvas container — z-index:1, behind all DOM -->
+  <div id="phaser-container"></div>
+
+  <!-- Title bar -->
+  <div class="title-bar">
+    <span class="title-text" id="title-text">EP 8: Boss Parry</span>
+  </div>
+
+  <!-- Portraits -->
+  <div class="portrait left" id="portrait-left">P</div>
+  <div class="portrait right" id="portrait-right">B</div>
+
+  <!-- VS -->
+  <div class="vs-text">VS</div>
+
+  <!-- Names -->
+  <div class="name left" id="name-left">Player</div>
+  <div class="name right" id="name-right">Boss</div>
+
+  <!-- HP bars -->
+  <div class="hp-bar left" id="hp-left">
+    <div class="hp-fill" id="hp-fill-left" style="width:100%;"></div>
+    <span class="pct" id="hp-pct-left">100%</span>
+  </div>
+  <div class="hp-bar right" id="hp-right">
+    <div class="hp-fill" id="hp-fill-right" style="width:100%;"></div>
+    <span class="pct" id="hp-pct-right">100%</span>
+  </div>
+
+  <!-- Score display (below circle) -->
+  <div class="score-display hidden" id="score-display">
+    <span class="label">SCORE</span>
+    <div class="value-wrap">
+      <span class="value" id="score-value">0</span>
+      <span class="delta" id="score-delta"></span>
+    </div>
+  </div>
+  <div class="timer-text hidden" id="timer-text">30s</div>
+
+  <!-- Dialogue bubble -->
+  <div class="dialogue" id="dialogue">Boss will attack with SLASH, HEAVY, or BURST.</div>
+
+  <!-- Main circle frame -->
+  <div class="circle-frame">
+    <div class="circle-inner" id="circle-content">
+      <!-- Content swapped per scene -->
+    </div>
+  </div>
+
+  <!-- Timing bar (GameScene only) -->
+  <div class="timing-bar-area hidden" id="timing-bar-area">
+    <div class="timing-bar-track">
+      <div class="timing-bar-fill" id="timing-bar-fill" style="width:0%;"></div>
+    </div>
+  </div>
+
+  <!-- Hint text -->
+  <div class="hint-text hidden" id="hint-text">Counter with the right action!</div>
+
+  <!-- Combo text -->
+  <div class="combo-text hidden" id="combo-text"></div>
+
+  <!-- Stars row (ResultScene only) -->
+  <div class="stars-row hidden" id="stars-row"></div>
+
+  <!-- Result info (ResultScene only) -->
+  <div class="result-info hidden" id="result-info">
+    <div class="attr-mod" id="attr-mod"></div>
+    <div class="stats">
+      <span id="stat-combo"></span>
+      <span id="stat-hits"></span>
+    </div>
+  </div>
+
+  <!-- Button area -->
+  <div class="btn-area" id="btn-area"></div>
+</div>
+
+<script>
+// ── Host context ─────────────────────────────────────────────────────────────
+const CTX = window.__EPISODE_CTX__ || {};
+const params = new URLSearchParams(window.location.search);
+const ATTRIBUTE = CTX.attribute || params.get('attribute') || 'Agility';
+const PRIMARY_COLOR = CTX.primaryColor || params.get('primaryColor') || '#EC4F99';
+const DISPLAY_ATTRIBUTE = (CTX.character && CTX.character.name ? CTX.character.name + '\u7684' : '') + ATTRIBUTE;
+const EPISODE_LABEL = CTX.episodeLabel || params.get('episodeLabel') || 'EP 8';
+const EPISODE_TITLE = CTX.episodeTitle || params.get('episodeTitle') || 'Boss Parry';
+
+const W = 393;
+const H = 852;
+const ROUND_SECONDS = 30;
+const RATING_THRESHOLDS = { S: 340, A: 260, B: 180, C: 110 };
+const MODIFIER_BY_RATING = { S: 3, A: 1, B: 0, C: -1 };
+
+function getRating(score) {
+  if (score >= RATING_THRESHOLDS.S) return 'S';
+  if (score >= RATING_THRESHOLDS.A) return 'A';
+  if (score >= RATING_THRESHOLDS.B) return 'B';
+  return 'C';
+}
+
+function getModifier(rating) {
+  return MODIFIER_BY_RATING[rating];
+}
+
+function notifyGameComplete(result) {
+  const payload = JSON.stringify(result);
+  if (window.webkit?.messageHandlers?.jsBridge) {
+    window.webkit.messageHandlers.jsBridge.postMessage(payload);
+    return;
+  }
+  if (window.jsBridge?.postMessage) {
+    window.jsBridge.postMessage(payload);
+    return;
+  }
+  if (window.parent !== window) {
+    window.parent.postMessage(payload, '*');
+    return;
+  }
+  console.log('[GameComplete]', result);
+}
+
+function clamp(v, min, max) {
+  return Math.max(min, Math.min(max, v));
+}
+
+// ── DOM Helpers ──────────────────────────────────────────────────────────────
+
+function $(id) { return document.getElementById(id); }
+
+function setVisible(id, visible) {
+  const el = $(id);
+  if (!el) return;
+  if (visible) el.classList.remove('hidden');
+  else el.classList.add('hidden');
+}
+
+function makeCandyButton(label, cssClass, fontSize, onClick) {
+  const btn = document.createElement('div');
+  btn.className = 'btn-candy ' + (cssClass || 'full');
+  btn.innerHTML = '<div class="base"></div><div class="glass"></div><div class="highlight"></div><div class="glow"></div><div class="label" style="font-size:' + (fontSize || 18) + 'px">' + label + '</div>';
+  btn.addEventListener('pointerdown', function(e) {
+    e.preventDefault();
+    audio.tap();
+  });
+  btn.addEventListener('pointerup', function(e) {
+    e.preventDefault();
+    if (onClick) onClick();
+  });
+  return btn;
+}
+
+function clearBtnArea() {
+  $('btn-area').innerHTML = '';
+}
+
+function setCircleContent(html) {
+  $('circle-content').innerHTML = html;
+}
+
+function updateHpBar(side, ratio) {
+  const pct = Math.round(clamp(ratio, 0, 1) * 100);
+  const fillId = side === 'left' ? 'hp-fill-left' : 'hp-fill-right';
+  const pctId = side === 'left' ? 'hp-pct-left' : 'hp-pct-right';
+  $(fillId).style.width = pct + '%';
+  $(pctId).textContent = pct + '%';
+}
+
+// ── Initialize title from context ────────────────────────────────────────────
+function initShellDOM() {
+  $('title-text').textContent = EPISODE_LABEL + ': ' + EPISODE_TITLE;
+  const playerChar = (CTX.character && CTX.character.name) ? CTX.character.name.charAt(0) : 'P';
+  $('portrait-left').textContent = playerChar;
+}
+
+// ── MoonAudio Engine ─────────────────────────────────────────────────────────
+class MoonAudio {
+  constructor() { this._ctx = null; this._master = null; this._bgmNodes = []; this._unlocked = false; }
+
+  _ensure() {
+    if (this._ctx) return this._ctx;
+    this._ctx = new (window.AudioContext || window.webkitAudioContext)();
+    this._master = this._ctx.createGain();
+    this._master.gain.value = 0.5;
+    this._master.connect(this._ctx.destination);
+    return this._ctx;
+  }
+
+  unlock() {
+    if (this._unlocked) return;
+    this._ensure();
+    if (this._ctx.state === 'suspended') this._ctx.resume();
+    this._unlocked = true;
+  }
+
+  tap() {
+    const ctx = this._ensure(), t = ctx.currentTime;
+    const osc = ctx.createOscillator(), g = ctx.createGain();
+    osc.type = 'sine'; osc.frequency.setValueAtTime(1200, t);
+    osc.frequency.exponentialRampToValueAtTime(800, t + 0.08);
+    g.gain.setValueAtTime(0.25, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.1);
+    osc.connect(g).connect(this._master); osc.start(t); osc.stop(t + 0.1);
+  }
+
+  success() {
+    const ctx = this._ensure(), t = ctx.currentTime;
+    [523, 784].forEach(function(freq, i) {
+      const osc = ctx.createOscillator(), g = ctx.createGain();
+      osc.type = 'sine'; osc.frequency.value = freq;
+      g.gain.setValueAtTime(0, t + i * 0.12);
+      g.gain.linearRampToValueAtTime(0.22, t + i * 0.12 + 0.03);
+      g.gain.exponentialRampToValueAtTime(0.001, t + i * 0.12 + 0.3);
+      osc.connect(g).connect(this._master); osc.start(t + i * 0.12); osc.stop(t + i * 0.12 + 0.3);
+    }.bind(this));
+  }
+
+  fail() {
+    const ctx = this._ensure(), t = ctx.currentTime;
+    const osc = ctx.createOscillator(), g = ctx.createGain();
+    osc.type = 'sawtooth'; osc.frequency.setValueAtTime(150, t);
+    osc.frequency.linearRampToValueAtTime(80, t + 0.25);
+    g.gain.setValueAtTime(0.18, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
+    osc.connect(g).connect(this._master); osc.start(t); osc.stop(t + 0.3);
+  }
+
+  alert() {
+    const ctx = this._ensure(), t = ctx.currentTime;
+    const osc = ctx.createOscillator(), g = ctx.createGain();
+    osc.type = 'square'; osc.frequency.setValueAtTime(880, t);
+    osc.frequency.exponentialRampToValueAtTime(220, t + 0.15);
+    g.gain.setValueAtTime(0.15, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.2);
+    osc.connect(g).connect(this._master); osc.start(t); osc.stop(t + 0.2);
+  }
+
+  swoosh() {
+    const ctx = this._ensure(), t = ctx.currentTime;
+    const len = ctx.sampleRate * 0.15, buf = ctx.createBuffer(1, len, ctx.sampleRate);
+    const d = buf.getChannelData(0);
+    for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / len);
+    const src = ctx.createBufferSource(); src.buffer = buf;
+    const f = ctx.createBiquadFilter(); f.type = 'bandpass'; f.frequency.setValueAtTime(2000, t);
+    f.frequency.exponentialRampToValueAtTime(500, t + 0.15); f.Q.value = 2;
+    const g = ctx.createGain(); g.gain.setValueAtTime(0.25, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.15);
+    src.connect(f).connect(g).connect(this._master); src.start(t);
+  }
+
+  heartbeat() {
+    const ctx = this._ensure(), t = ctx.currentTime;
+    [0, 0.18].forEach(function(off) {
+      const osc = ctx.createOscillator(), g = ctx.createGain();
+      osc.type = 'sine'; osc.frequency.setValueAtTime(60, t + off);
+      osc.frequency.exponentialRampToValueAtTime(30, t + off + 0.15);
+      g.gain.setValueAtTime(0.3, t + off); g.gain.exponentialRampToValueAtTime(0.001, t + off + 0.2);
+      osc.connect(g).connect(this._master); osc.start(t + off); osc.stop(t + off + 0.2);
+    }.bind(this));
+  }
+
+  tick() {
+    const ctx = this._ensure(), t = ctx.currentTime;
+    const osc = ctx.createOscillator(), g = ctx.createGain();
+    osc.type = 'sine'; osc.frequency.value = 1000;
+    g.gain.setValueAtTime(0.12, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.05);
+    osc.connect(g).connect(this._master); osc.start(t); osc.stop(t + 0.06);
+  }
+
+  bgm(style) {
+    this.stopBgm();
+    const ctx = this._ensure();
+    const PROG = {
+      action: [[164.81,196,246.94],[174.61,220,261.63],[146.83,174.61,220],[155.56,196,246.94]],
+      tense: [[130.81,155.56,196],[123.47,146.83,185],[116.54,138.59,174.61],[123.47,146.83,185]],
+    };
+    const chords = PROG[style] || PROG.action;
+    const beat = style === 'tense' ? 1.2 : 0.8;
+    const loopLen = chords.length * beat;
+    const mg = ctx.createGain(); mg.gain.value = 0;
+    mg.gain.linearRampToValueAtTime(0.1, ctx.currentTime + 1);
+    mg.connect(this._master);
+    const self = this;
+    const sched = function() {
+      const now = ctx.currentTime;
+      chords.forEach(function(ch, ci) {
+        const ct = now + ci * beat;
+        ch.forEach(function(freq) {
+          const o = ctx.createOscillator(), e = ctx.createGain();
+          o.type = 'sawtooth'; o.frequency.value = freq;
+          e.gain.setValueAtTime(0, ct);
+          e.gain.linearRampToValueAtTime(0.06, ct + 0.05);
+          e.gain.setValueAtTime(0.06, ct + beat * 0.7);
+          e.gain.linearRampToValueAtTime(0, ct + beat);
+          o.connect(e).connect(mg); o.start(ct); o.stop(ct + beat);
+        });
+        const b = ctx.createOscillator(), be = ctx.createGain();
+        b.type = 'sine'; b.frequency.value = ch[0] / 2;
+        be.gain.setValueAtTime(0, ct);
+        be.gain.linearRampToValueAtTime(0.1, ct + 0.03);
+        be.gain.setValueAtTime(0.1, ct + beat * 0.5);
+        be.gain.linearRampToValueAtTime(0, ct + beat);
+        b.connect(be).connect(mg); b.start(ct); b.stop(ct + beat);
+      });
+    };
+    sched();
+    const iid = setInterval(function() {
+      if (!self._ctx || self._ctx.state === 'closed') { clearInterval(iid); return; }
+      sched();
+    }, loopLen * 1000);
+    this._bgmNodes.push({ masterGain: mg, intervalId: iid });
+  }
+
+  stopBgm(fadeMs) {
+    const fade = (fadeMs || 500) / 1000;
+    if (!this._ctx) return;
+    const t = this._ctx.currentTime;
+    for (const n of this._bgmNodes) {
+      if (n.intervalId) clearInterval(n.intervalId);
+      if (n.masterGain) n.masterGain.gain.linearRampToValueAtTime(0, t + fade);
+    }
+    this._bgmNodes = [];
+  }
+
+  stopAll() { this.stopBgm(200); }
+}
+
+const audio = new MoonAudio();
+
+// ── Phaser Helpers (canvas-only effects) ─────────────────────────────────────
+
+function spawnParticles(scene, x, y, color, count, life) {
+  for (let i = 0; i < count; i++) {
+    const angle = (Math.PI * 2 * i) / count + Math.random() * 0.3;
+    const speed = 80 + Math.random() * 120;
+    const sz = 3 + Math.random() * 4;
+    const p = scene.add.circle(x, y, sz, color, 1).setDepth(50);
+    scene.tweens.add({
+      targets: p, x: x + Math.cos(angle) * speed, y: y + Math.sin(angle) * speed,
+      alpha: 0, scaleX: 0.2, scaleY: 0.2, duration: life || 400,
+      ease: 'Quad.easeOut', onComplete: function() { p.destroy(); }
+    });
+  }
+}
+
+function showToast(scene, text, colorHex, x, y) {
+  const t = scene.add.text(x, y, text, {
+    fontFamily: 'Montserrat', fontSize: '28px', fontStyle: '900',
+    color: colorHex, stroke: '#ffffff', strokeThickness: 4
+  }).setOrigin(0.5).setDepth(60).setAlpha(0);
+  scene.tweens.add({
+    targets: t, y: y - 30, alpha: 1, duration: 200, ease: 'Back.easeOut',
+    onComplete: function() {
+      scene.time.delayedCall(600, function() {
+        scene.tweens.add({
+          targets: t, y: y - 50, alpha: 0, duration: 200, onComplete: function() { t.destroy(); }
+        });
+      });
+    }
+  });
+}
+
+function damageFlash(scene) {
+  const flash = scene.add.rectangle(W / 2, H / 2, W, H, 0xff4d6a, 0).setDepth(80);
+  scene.tweens.add({
+    targets: flash, alpha: 0.3, yoyo: true, duration: 80, onComplete: function() { flash.destroy(); }
+  });
+}
+
+function screenShake(scene, intensity) {
+  scene.cameras.main.shake(150, intensity || 0.008);
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+//  BOOT SCENE — Phaser is transparent; DOM shows shell UI
+// ══════════════════════════════════════════════════════════════════════════════
+class BootScene extends Phaser.Scene {
+  constructor() { super('BootScene'); }
+
+  create() {
+    // Show boot-specific DOM elements
+    setVisible('dialogue', true);
+    setVisible('score-display', false);
+    setVisible('timer-text', false);
+    setVisible('timing-bar-area', false);
+    setVisible('hint-text', false);
+    setVisible('combo-text', false);
+    setVisible('stars-row', false);
+    setVisible('result-info', false);
+
+    // Reset HP bars to full
+    updateHpBar('left', 1);
+    updateHpBar('right', 1);
+
+    // Circle content: game rules
+    setCircleContent(
+      '<div class="rule-title">GAME RULE</div>' +
+      '<div class="rule-desc">Parry = Slash<br>Dodge = Heavy<br>Block = Burst</div>'
+    );
+
+    // Dialogue text
+    $('dialogue').textContent = 'Boss will attack with SLASH, HEAVY, or BURST.';
+
+    // Buttons: START + UNLOCK
+    clearBtnArea();
+    $('btn-area').appendChild(makeCandyButton('START', 'full', 18, function() {
+      audio.unlock();
+      window.__game.scene.start('GameScene');
+    }));
+    $('btn-area').appendChild(makeCandyButton('UNLOCK S TIER  \uD83C\uDF19 50', 'full', 16, function() {
+      audio.unlock();
+      // Placeholder for unlock action
+    }));
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+//  GAME SCENE — Phaser handles particles/flash/shake; DOM handles UI
+// ══════════════════════════════════════════════════════════════════════════════
+class GameScene extends Phaser.Scene {
+  constructor() { super('GameScene'); }
+
+  init() {
+    this.score = 0;
+    this.timeLeft = ROUND_SECONDS;
+    this.isOver = false;
+    this.attackActive = false;
+    this.currentAttack = null;
+    this.windupMs = 0;
+    this.nextAttackMs = 700;
+    this.playerHp = 3;
+    this.bossHp = 100;
+    this.combo = 0;
+    this.maxCombo = 0;
+    this.totalHits = 0;
+    this.totalMiss = 0;
+    this.lastTickSec = -1;
+    this.audioStarted = false;
+    this.difficulty = 1;
+    this.attacks = [
+      { key: 'parry', label: 'SLASH', symbol: '\u2694', counter: 'PARRY', color: '#f97316', icon: '\u2694' },
+      { key: 'dodge', label: 'HEAVY', symbol: '\u26A1', counter: 'DODGE', color: '#3b82f6', icon: '\u26A1' },
+      { key: 'block', label: 'BURST', symbol: '\u26D4', counter: 'BLOCK', color: '#a855f7', icon: '\u26D4' }
+    ];
+  }
+
+  create() {
+    const self = this;
+
+    // Expose scene for DOM button callbacks
+    window.__activeGameScene = this;
+
+    // Show game-specific DOM elements
+    setVisible('dialogue', false);
+    setVisible('score-display', true);
+    setVisible('timing-bar-area', true);
+    setVisible('hint-text', true);
+    setVisible('combo-text', true);
+    setVisible('stars-row', false);
+    setVisible('result-info', false);
+
+    // Reset DOM state
+    $('score-value').textContent = '0';
+    $('score-delta').classList.remove('pop', 'plus', 'minus');
+    setVisible('timer-text', true);
+    $('timer-text').textContent = ROUND_SECONDS + 's';
+    $('timer-text').classList.remove('warn');
+    $('timing-bar-fill').style.width = '0%';
+    $('hint-text').textContent = 'Counter with the right action!';
+    $('hint-text').style.color = '#AAAAAA';
+    $('combo-text').textContent = '';
+
+    // Reset HP bars
+    updateHpBar('left', 1);
+    updateHpBar('right', 1);
+
+    // Circle: cue display
+    setCircleContent(
+      '<div class="cue-symbol" id="cue-symbol">...</div>' +
+      '<div class="cue-label" id="cue-label">Waiting for boss...</div>'
+    );
+
+    // Buttons: 3 action buttons in a row
+    clearBtnArea();
+    var row = document.createElement('div');
+    row.className = 'btn-row';
+    row.appendChild(makeCandyButton('PARRY', 'third', 15, function() { self.handleCounter('parry'); }));
+    row.appendChild(makeCandyButton('DODGE', 'third', 15, function() { self.handleCounter('dodge'); }));
+    row.appendChild(makeCandyButton('BLOCK', 'third', 15, function() { self.handleCounter('block'); }));
+    $('btn-area').appendChild(row);
+
+    // First interaction unlocks audio
+    this.input.once('pointerdown', function() {
+      audio.unlock();
+      audio.bgm('action');
+      self.audioStarted = true;
+    });
+  }
+
+  spawnAttack() {
+    const atk = this.attacks[Math.floor(Math.random() * this.attacks.length)];
+    this.currentAttack = atk;
+    this.attackActive = true;
+    const baseWindow = 900;
+    const minWindow = 420;
+    const windowMs = Math.max(minWindow, baseWindow - this.difficulty * 35);
+    this.windupMs = windowMs + Math.random() * 200;
+
+    // Update DOM cue
+    var cueEl = $('cue-symbol');
+    var labelEl = $('cue-label');
+    if (cueEl) {
+      cueEl.textContent = atk.symbol;
+      cueEl.style.color = atk.color;
+      cueEl.style.transform = 'scale(0.3)';
+      requestAnimationFrame(function() {
+        cueEl.style.transition = 'transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1)';
+        cueEl.style.transform = 'scale(1)';
+      });
+    }
+    if (labelEl) {
+      labelEl.textContent = 'Incoming: ' + atk.label + '!';
+      labelEl.style.color = atk.color;
+    }
+    $('hint-text').textContent = 'Counter \u2192 ' + atk.counter;
+    $('hint-text').style.color = atk.color;
+
+    audio.alert();
+  }
+
+  clearAttack(nextMs) {
+    this.attackActive = false;
+    this.currentAttack = null;
+    this.windupMs = 0;
+    this.nextAttackMs = nextMs;
+
+    // Reset DOM cue
+    var cueEl = $('cue-symbol');
+    var labelEl = $('cue-label');
+    if (cueEl) {
+      cueEl.textContent = '...';
+      cueEl.style.color = '#9E9E9E';
+      cueEl.style.transition = 'none';
+      cueEl.style.transform = 'scale(1)';
+    }
+    if (labelEl) {
+      labelEl.textContent = 'Waiting for boss...';
+      labelEl.style.color = '#fff';
+    }
+    $('timing-bar-fill').style.width = '0%';
+    $('hint-text').textContent = 'Get ready!';
+    $('hint-text').style.color = '#AAAAAA';
+  }
+
+  handleCounter(counter) {
+    if (this.isOver) return;
+    if (!this.audioStarted) { audio.unlock(); audio.bgm('action'); this.audioStarted = true; }
+
+    // The toast Y is at circle center (~420 in the 852-tall frame)
+    const toastY = 420;
+
+    if (!this.attackActive) {
+      this.combo = 0;
+      this.totalMiss += 1;
+      this.addScore(-5);
+      showToast(this, 'Too early! -5', '#FF4D6A', W / 2, toastY);
+      audio.fail();
+      screenShake(this, 0.005);
+      return;
+    }
+
+    if (counter === this.currentAttack.key) {
+      const comboBonus = Math.min(this.combo, 5) * 4;
+      const gain = 16 + comboBonus;
+      this.combo += 1;
+      this.maxCombo = Math.max(this.maxCombo, this.combo);
+      this.totalHits += 1;
+      this.addScore(gain);
+
+      const dmg = 8 + Math.min(this.combo, 6) * 2;
+      this.bossHp = clamp(this.bossHp - dmg, 0, 100);
+      this.updateHpBars();
+
+      this.difficulty = Math.min(12, this.difficulty + 0.4);
+
+      const isPerfect = this.windupMs > 300;
+      if (isPerfect) {
+        showToast(this, '\u2726 Perfect +' + gain, '#4FECA2', W / 2, toastY);
+        spawnParticles(this, W / 2, 420, 0xF5C842, 8, 400);
+      } else {
+        showToast(this, 'Counter +' + gain, '#EC4F99', W / 2, toastY);
+      }
+
+      audio.success();
+
+      // Update combo DOM
+      $('combo-text').textContent = 'Combo x' + this.combo;
+      $('combo-text').style.transform = 'scale(1.3)';
+      setTimeout(function() { $('combo-text').style.transform = 'scale(1)'; }, 120);
+
+      const nextDelay = Math.max(150, 300 - this.difficulty * 10 + Math.random() * 200);
+      this.clearAttack(nextDelay);
+
+      if (this.bossHp <= 0) {
+        this.addScore(80 + Math.round(this.timeLeft * 2));
+        this.finishGame('clear');
+      }
+      return;
+    }
+
+    // Wrong counter
+    this.combo = 0;
+    this.totalMiss += 1;
+    this.addScore(-10);
+    this.playerHp = clamp(this.playerHp - 1, 0, 3);
+    this.updateHpBars();
+    showToast(this, 'Wrong! -10', '#FF4D6A', W / 2, toastY);
+    audio.fail();
+    damageFlash(this);
+    screenShake(this, 0.012);
+    $('combo-text').textContent = '';
+    this.clearAttack(400 + Math.random() * 400);
+    if (this.playerHp <= 0) this.finishGame('fail');
+  }
+
+  updateHpBars() {
+    updateHpBar('left', this.playerHp / 3);
+    updateHpBar('right', this.bossHp / 100);
+  }
+
+  addScore(delta) {
+    this.score = Math.max(0, this.score + delta);
+    $('score-value').textContent = Math.round(this.score);
+    // Delta animation
+    const el = $('score-delta');
+    el.classList.remove('pop', 'plus', 'minus');
+    el.textContent = (delta >= 0 ? '+' : '') + delta;
+    el.classList.add(delta >= 0 ? 'plus' : 'minus');
+    void el.offsetWidth; // force reflow to restart animation
+    el.classList.add('pop');
+  }
+
+  finishGame(reason) {
+    if (this.isOver) return;
+    this.isOver = true;
+    window.__activeGameScene = null;
+    audio.stopBgm(600);
+    this.scene.start('ResultScene', {
+      score: Math.round(this.score),
+      maxCombo: this.maxCombo,
+      hits: this.totalHits,
+      misses: this.totalMiss,
+      reason: reason || 'time'
+    });
+  }
+
+  update(time, delta) {
+    if (this.isOver) return;
+
+    this.timeLeft = Math.max(0, this.timeLeft - delta / 1000);
+    const sec = Math.ceil(this.timeLeft);
+    $('timer-text').textContent = sec + 's';
+
+    if (this.timeLeft <= 10 && sec !== this.lastTickSec && sec > 0) {
+      this.lastTickSec = sec;
+      if (this.timeLeft <= 5) audio.heartbeat();
+      else audio.tick();
+    }
+
+    if (this.timeLeft <= 10) {
+      $('timer-text').classList.add('warn');
+    } else {
+      $('timer-text').classList.remove('warn');
+    }
+
+    if (!this.attackActive) {
+      this.nextAttackMs -= delta;
+      if (this.nextAttackMs <= 0) this.spawnAttack();
+    } else {
+      this.windupMs -= delta;
+      const ratio = clamp(this.windupMs / 1000, 0, 1);
+
+      // Update timing bar via DOM
+      var barFill = $('timing-bar-fill');
+      barFill.style.width = (ratio * 100) + '%';
+      if (ratio > 0.5) barFill.style.background = '#4FECA2';
+      else if (ratio > 0.25) barFill.style.background = '#F5C842';
+      else barFill.style.background = '#FF4D6A';
+
+      if (this.windupMs <= 0) {
+        this.totalMiss += 1;
+        this.combo = 0;
+        this.playerHp = clamp(this.playerHp - 1, 0, 3);
+        this.updateHpBars();
+        this.addScore(-8);
+        showToast(this, 'Too late! -8', '#FF4D6A', W / 2, 420);
+        audio.fail();
+        damageFlash(this);
+        screenShake(this, 0.01);
+        $('combo-text').textContent = '';
+        this.clearAttack(350 + Math.random() * 400);
+        if (this.playerHp <= 0) this.finishGame('fail');
+      }
+    }
+
+    if (this.timeLeft <= 0) this.finishGame('time');
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+//  RESULT SCENE — Grade letter in circle, stars, stats all DOM
+// ══════════════════════════════════════════════════════════════════════════════
+class ResultScene extends Phaser.Scene {
+  constructor() { super('ResultScene'); }
+
+  init(data) {
+    this.finalScore = data.score || 0;
+    this.maxCombo = data.maxCombo || 0;
+    this.hits = data.hits || 0;
+    this.misses = data.misses || 0;
+    this.reason = data.reason || 'time';
+  }
+
+  create() {
+    const rating = getRating(this.finalScore);
+    const modifier = getModifier(rating);
+    const modText = modifier > 0 ? '+' + modifier : String(modifier);
+    const self = this;
+
+    // Rating color map
+    const ratingHex = { S: '#F5C842', A: '#EC4F99', B: '#9B7DB8', C: '#7A7A8E' };
+    const ratingColorHex = ratingHex[rating];
+
+    // Show/hide DOM sections
+    setVisible('dialogue', false);
+    setVisible('score-display', false);
+    setVisible('timer-text', false);
+    setVisible('timing-bar-area', false);
+    setVisible('hint-text', false);
+    setVisible('combo-text', false);
+    setVisible('stars-row', true);
+    setVisible('result-info', true);
+
+    // Reset HP bars (show final state or full for display)
+    updateHpBar('left', 1);
+    updateHpBar('right', 1);
+
+    // Circle: grade letter + score
+    setCircleContent(
+      '<div class="grade-letter pop-in" style="color:' + ratingColorHex + '">' + rating + '</div>' +
+      '<div class="grade-score">Score ' + this.finalScore + '</div>'
+    );
+
+    // Stars
+    var starsRow = $('stars-row');
+    starsRow.innerHTML = '';
+    var starCount = { S: 4, A: 3, B: 2, C: 1 }[rating];
+    for (var i = 0; i < 4; i++) {
+      var star = document.createElement('span');
+      star.className = 'star ' + (i < starCount ? 'filled' : 'empty');
+      star.textContent = '\u2605';
+      star.style.animationDelay = (0.2 + i * 0.08) + 's';
+      starsRow.appendChild(star);
+    }
+
+    // Attribute modifier + stats
+    $('attr-mod').textContent = DISPLAY_ATTRIBUTE + ' ' + modText;
+    $('stat-combo').textContent = 'Combo: ' + this.maxCombo;
+    $('stat-hits').textContent = 'Hits: ' + this.hits + '/' + this.misses;
+
+    // Audio feedback
+    if (rating === 'S') {
+      spawnParticles(this, W / 2, 420, 0xF5C842, 16, 600);
+      audio.success();
+      setTimeout(function() { audio.success(); }, 100);
+    } else if (rating === 'A') {
+      audio.success();
+    }
+
+    // Buttons: CONTINUE + REPLAY
+    clearBtnArea();
+    $('btn-area').appendChild(makeCandyButton('CONTINUE', 'full', 18, function() {
+      notifyGameComplete({
+        rating: rating,
+        score: self.finalScore,
+        attribute: ATTRIBUTE,
+        modifier: modifier,
+        gameId: 'qte-boss-parry',
+        maxCombo: self.maxCombo,
+        hits: self.hits,
+        misses: self.misses
+      });
+      setTimeout(function() {
+        window.__game.scene.start('BootScene');
+      }, 600);
+    }));
+    $('btn-area').appendChild(makeCandyButton('REPLAY', 'full', 18, function() {
+      window.__game.scene.start('GameScene');
+    }));
+  }
+}
+
+// ── Initialize ───────────────────────────────────────────────────────────────
+initShellDOM();
+
+const DPR = Math.min(window.devicePixelRatio || 1, 3);
+
+const config = {
+  type: Phaser.CANVAS,
+  parent: 'phaser-container',
+  width: W,
+  height: H,
+  resolution: DPR,
+  transparent: true,
+  fps: { forceSetTimeOut: true },
+  scale: { mode: Phaser.Scale.NONE },
+  render: { antialias: true },
+  scene: [BootScene, GameScene, ResultScene]
+};
+
+window.__game = new Phaser.Game(config);
+
+// ── Responsive scaling for the entire shell ──────────────────────────────────
+function fitShell() {
+  var shell = $('game-shell');
+  var sw = window.innerWidth;
+  var sh = window.innerHeight;
+  var scaleX = sw / W;
+  var scaleY = sh / H;
+  var scale = Math.min(scaleX, scaleY, 1);
+  shell.style.transform = 'scale(' + scale + ')';
+  shell.style.transformOrigin = 'top center';
+  if (scaleY < scaleX) {
+    shell.style.marginTop = '0px';
+  } else {
+    shell.style.marginTop = Math.max(0, (sh - H * scale) / 2) + 'px';
+  }
+}
+window.addEventListener('resize', fitShell);
+fitShell();
+</script>
+</body>
+</html>

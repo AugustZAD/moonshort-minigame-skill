@@ -7,6 +7,8 @@ description: >
   host bridge payload, or mini-game UI. Also use it when the user mentions a gameplay mechanic,
   one-minute mini-game, story check, QTE, puzzle, rhythm, memory game, sensor-based game,
   settlement panel, or WebView compatibility question in the Moonshort mini-game ecosystem.
+  Also use when converting games to hybrid DOM+Phaser V2 architecture, applying atmosphere
+  color themes, redesigning game-specific UI layouts, or batch-converting templates.
 ---
 
 # Moonshort MiniGame Skill
@@ -536,6 +538,174 @@ await page.screenshot({ path: 'screenshot.png' });
   - modifier matches the fixed `S / A / B / C` lookup
 - For large packs, use a generic CTA verification flow for standard `ResultScene` games and a special-case flow for any game with a different result scene structure.
 - After UI moves, re-check the exact pages that were touched with a real browser view.
+
+## Template V2: Hybrid DOM+Phaser 架构
+
+### 为什么要 V2
+
+原版模板全部用 Phaser Graphics/Text 渲染 Shell UI（标题栏、HP 条、按钮等）。问题：
+- **高 DPI 屏幕文字模糊** — Phaser canvas 文字渲染质量远不如 CSS
+- **UI 样式受限** — 渐变、圆角、阴影等用 Graphics 很难精确复现设计稿
+- **重复代码多** — 每个游戏 ~2000 行中 ~800 行是相同的 Shell 绘制
+
+V2 架构：**Shell UI 用 HTML/CSS DOM，Phaser 只做游戏对象 + 粒子特效**。
+
+### 架构规则
+
+```
+#game-shell (393×852, position:relative)
+  ├── #phaser-container (z-index:1, transparent canvas — 粒子/特效/游戏对象)
+  ├── .title-bar (z-index:10, DOM — 标题 + 扇形底边)
+  ├── [游戏特有区域] (z-index:5~11, DOM/Phaser 混合)
+  ├── .score-display (z-index:11, DOM — 分数 + 加减动画)
+  ├── .timer-text (z-index:11, DOM)
+  └── .btn-area (z-index:10, DOM — 糖果按钮)
+```
+
+**Phaser 配置**:
+```javascript
+const DPR = Math.min(window.devicePixelRatio || 1, 3);
+const config = {
+  type: Phaser.CANVAS,        // 不用 AUTO/WEBGL
+  parent: 'phaser-container',
+  width: 393, height: 852,
+  resolution: DPR,             // 必须设置！
+  transparent: true,           // 透明背景
+  scale: { mode: Phaser.Scale.NONE },
+  scene: [BootScene, GameScene, ResultScene]
+};
+```
+
+**fitShell() 缩放**：整个 `#game-shell` 用 CSS transform 缩放适配屏幕。
+
+### 氛围配色系统（5 套）
+
+游戏通过 `?theme=X` 或 `CTX.theme` 选择配色，不是每个游戏独立配色。
+
+| 氛围 | ID | 背景色 | 主色 | 适用场景 |
+|------|-----|--------|------|---------|
+| 🔥热血 | combat | #1A1221 | #EC4F99 | 战斗、追逐、对抗 |
+| 🌊神秘 | mystery | #0F1729 | #3B82F6 | 探索、解谜、潜行 |
+| 🌿清新 | nature | #0F1F16 | #10B981 | 田园、策略、休闲 |
+| 💜暗黑 | dark | #110E1A | #8B5CF6 | 抵抗、压力、意志 |
+| 🌸甜美 | sweet | #1A1221 | #F472B6 | 匹配、节奏、社交 |
+
+**实现方式**: JS `THEMES` 对象 + CSS 变量：
+```javascript
+const THEMES = {
+  combat:  { bg:'#1A1221', primary:'#EC4F99', primaryLight:'#F9A8D4', circleTail:'#FFE0F8', playerHp:'#4FECA2', opponentHp:'#EC4F99', gold:'#F5C842' },
+  mystery: { bg:'#0F1729', primary:'#3B82F6', primaryLight:'#93C5FD', circleTail:'#DBEAFE', ... },
+  // ...
+};
+const T = THEMES[CTX.theme || params.get('theme') || 'combat'];
+// 写入 CSS 变量
+Object.entries({ '--bg':T.bg, '--primary':T.primary, ... })
+  .forEach(([k,v]) => document.documentElement.style.setProperty(k,v));
+```
+
+CSS 中一律用 `var(--primary)` 等变量，不硬编码颜色。
+
+### 布局分类：按游戏玩法设计 UI
+
+**关键原则：UI 服务于玩法。绝对不要给所有游戏套同一个通用布局。**
+
+每个游戏的 UI 应该围绕其核心玩法来设计：
+
+| 游戏类型 | UI 设计思路 | 示例 |
+|---------|-----------|------|
+| VS 对战 | 头像 + HP 条 + 对话气泡 + 攻击提示圈 | qte-boss-parry |
+| 蓄力释放 | 环形蓄力仪表盘 + 目标区高亮 | qte-hold-release |
+| 抵抗压力 | 脉冲核心 + 意志/压力双条 | will-surge |
+| 射击瞄准 | 全屏射击区 + 瞄准线 + 目标 | cannon-aim |
+| 车道闪避 | 三车道全屏 + 生命心 | lane-dash |
+| 红绿灯 | DOM 信号灯 + 跑道进度条 | red-light-green-light |
+| 颜色匹配 | 大色卡展示 + 答案网格 | color-match |
+| 传送分拣 | 三列传送带 + 分类箱 | conveyor-sort |
+| 钓鱼 | 垂直钓鱼仪表 + 鱼区 + 浮漂 | stardew-fishing |
+| 迷宫 | 迷宫网格全屏 + D-Pad | maze-escape |
+| 聚光搜索 | 暗场全屏 + 聚光灯 | spotlight-seek |
+| 停车 | 俯视停车场 + 车位高亮 | parking-rush |
+
+**分析新游戏时的思考流程**:
+1. 核心玩法是什么？（点击位置、按住、拖拽、方向键？）
+2. 游戏内容需要多大面积？（迷宫/射击场需要大空间 vs QTE 只需要提示区）
+3. 玩家的操作方式？（直接点击游戏区 vs 按钮控制）
+4. 有没有对抗方？（有 → 双方 HP/状态条；无 → 简洁信息条）
+
+### 交互设计原则
+
+**直接交互优先于底部按钮**:
+- 可点击的游戏对象（车位、网格、目标）→ 用 Phaser `setInteractive()` 透明 hitArea
+- 方向控制类 → 底部 D-pad 按钮 + 键盘 + 触屏左右半区
+- 按住/释放类 → 底部大按钮合适（钓鱼、红绿灯、蓄力）
+- 选择类 → 答案按钮在游戏区附近（不一定在底部）
+
+**反面案例**：停车游戏只有底部 LEFT/CENTER/RIGHT 按钮 → 应该能直接点击车位
+
+### 共享 DOM 组件
+
+所有 V2 游戏共享以下 DOM 辅助函数（从参考实现 `qte-boss-parry/index-v2.html` 复制）：
+
+- `$(id)` — getElementById 简写
+- `setVisible(id, bool)` — 显示/隐藏
+- `makeCandyButton(label, class, fontSize, onClick)` — 4 层糖果按钮
+- `clearBtnArea()` — 清空按钮区
+- `fitShell()` — 响应式缩放
+- `MoonAudio` 类 — 合成器音效
+- `spawnParticles()` / `showToast()` / `damageFlash()` / `screenShake()` — Phaser 特效
+
+**糖果按钮 CSS**: 4 层结构 — base(`var(--primary)`) + glass(`rgba(255,255,255,0.3)`) + highlight(顶部 20px) + glow(inset shadow)。圆角 24px，按下位移 3px。
+
+**分数 delta 动画**: `@keyframes deltaPop` — +N 绿色 / -N 主色 上浮淡出。
+
+### 转换流程（从 V1 到 V2）
+
+1. **读取原始 `index.html`**，理解游戏机制和 UI 需求
+2. **确定游戏特有 UI 布局**（参考上方布局分类表，为玩法量身设计）
+3. **选择氛围配色**（combat/mystery/nature/dark/sweet）
+4. **构建 DOM Shell**：标题栏 + 游戏特有区域 + 分数 + 按钮
+5. **迁移 Phaser 场景逻辑**：
+   - 删除所有 Shell Graphics 绘制（标题栏、HP 条、按钮等）
+   - 删除所有 Phaser Text 用于 Shell 展示的部分（改用 DOM）
+   - 保留游戏核心机制（物理、碰撞、时序、计分、难度）
+   - 保留 Phaser 粒子效果和动画
+   - 添加 DOM 更新调用
+6. **验证**：START → 游戏 → 评级 → CONTINUE 完整流程
+
+### V2 常见 Bug 和避坑
+
+| Bug | 原因 | 修复 |
+|-----|------|------|
+| 页面只有标题栏，其余空白 | `document.styleSheets[0].insertRule()` 拿到 Google Fonts 跨域样式表 → SecurityError → Phaser 永不初始化 | **永远不用 `styleSheets[0]`**。用 `document.createElement('style')` + `appendChild` |
+| Phaser 文字模糊 | 缺少 `resolution: DPR` | config 必须设 `resolution: Math.min(devicePixelRatio, 3)` |
+| 中文字符不显示 | Montserrat 不支持中文 | Phaser text 中文用系统字体 fallback；或 DOM 显示中文 |
+| DOM 按钮点不了 | Phaser canvas 覆盖在上面 | canvas `z-index:1`，按钮 `z-index:10` |
+| 糖果按钮颜色不跟主题 | 按钮 border/base 硬编码颜色 | 用 `var(--primary)` 或 JS 动态设置 |
+| fitShell 后 Phaser 偏移 | canvas 大小与 shell 不匹配 | `Phaser.Scale.NONE` + canvas CSS 设为 393×852 |
+| 游戏可玩但体验差（只能点底部按钮） | 交互区域与游戏内容分离 | 在 Phaser 游戏区域加透明 hitArea 支持直接点击 |
+| BootScene 文字/图形残留在 GameScene 背后 | Phaser 对象跨场景残留 | **BootScene 禁止用 `this.add.text()`**——所有说明文字都用 DOM boot-card。每个 Scene 的 `create()` 第一行加 `this.children.removeAll(true)` |
+| DOM 元素遮挡 Phaser 游戏内文字 | DOM z-index > canvas z-index:1 | DOM hint/label 不要和 Phaser 游戏区重叠；需要在 Phaser 区域显示的文字用 Phaser text |
+| HTML 中 `\u26A1` 显示为乱码 | JS unicode 转义在 HTML 中是字面文本 | HTML 用实际字符（⚡）或 HTML 实体（`&#9889;`），不要用 `\uXXXX` |
+
+### V2 文件约定
+
+```
+games/<game-id>/
+  index.html        # V1 原版（纯 Phaser，保持不动）
+  index-v2.html     # V2 混合架构版本
+```
+
+- V2 文件是独立的，不依赖 V1
+- 字体: 只用 Montserrat (700, 800, 900)
+- 单文件自包含，无构建步骤
+- 参考实现: `games/qte-boss-parry/index-v2.html`（Layout A — VS 对战）
+
+### 批量转换策略
+
+转换多个游戏时，使用并发子代理（每个处理 2-3 个游戏）。分组策略：
+- 同类游戏放一组（如所有 VS 对战类一组）
+- 每个子代理需要读取参考实现 + 原始游戏文件
+- 每个子代理独立输出 `index-v2.html`
 
 ## Device APIs
 Camera, microphone, and gyroscope integration rules live in:
