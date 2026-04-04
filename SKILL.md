@@ -997,21 +997,26 @@ Canvas/Phaser
    - 添加 DOM 更新调用
 6. **验证**：START → 游戏 → 评级 → CONTINUE 完整流程
 
-### V2 强制规则（每个游戏必须遵守）
+### V2/V3 强制规则（每个游戏必须遵守）
 
 1. **永远不用 `document.styleSheets[0]`** — Google Fonts 跨域样式表触发 SecurityError，整个脚本崩溃。动态样式一律用 `document.createElement('style')` + `document.head.appendChild(s)`。
 2. **BootScene 禁止用 `this.add.text()` 显示说明文字** — Phaser 对象在场景切换后残留。所有引导文字/规则说明都用 DOM `boot-card` div，GameScene 启动时 `setVisible('boot-card', false)` 隐藏。
-3. **每个 Scene 的 `create()` 第一行加 `this.children.removeAll(true)`** — 防止跨场景对象残留。
+3. **每个 Scene 的 `create()` 前两行必须是 `this.children.removeAll(true)` + `this.cameras.main.resetFX()`** — 防止跨场景对象残留和 camera shake/flash 效果残留。缺少 `resetFX()` 会导致 REPLAY 后屏幕变暗。
 4. **HTML 中不要用 JS unicode 转义 `\uXXXX`** — 在 HTML 中是字面文本。用实际字符（⚡）或 HTML 实体（`&#9889;`）。
-5. **可点击游戏对象必须加 Phaser 透明 hitArea** — DOM 按钮在 z-index:10 盖住 canvas，玩家无法直接点击游戏区。解法：
+5. **JS 中的 surrogate pair `\uD83D\uXXXX` 也要用实际 emoji** — 虽然 JS 引擎能解析，但在 innerHTML/textContent 混合场景中可能乱码。直接写 🐟🌟🔥 等实际字符。
+6. **可点击游戏对象必须加 Phaser 透明 hitArea** — DOM 按钮在 z-index:10 盖住 canvas，玩家无法直接点击游戏区。解法：
    ```javascript
-   // 在 Phaser 游戏区添加透明可点击区域
    this.add.rectangle(x, y, w, h, 0xffffff, 0.001)
      .setInteractive({ useHandCursor: true })
      .setDepth(20)
      .on('pointerdown', handler);
    ```
-6. **DOM 元素不要和 Phaser 游戏区文字重叠** — DOM z-index > canvas z-index:1，DOM 会遮挡 Phaser text。需要在 Phaser 区域显示的文字用 Phaser text，不用 DOM。
+7. **DOM 元素不要和 Phaser 游戏区文字重叠** — DOM z-index > canvas z-index:1，DOM 会遮挡 Phaser text。需要在 Phaser 区域显示的文字用 Phaser text，不用 DOM。
+8. **REPLAY 按钮必须回 BootScene，不能直接跳 GameScene** — 直接跳 GameScene 会导致 DOM 状态不重置（HP 条、分数、星星残留），场景切换异常。始终走 BootScene → GameScene 完整流程。
+9. **每个游戏 BootScene 必须有玩法介绍** — 用 boot-card/rules-card/circle-content/dialogue 显示规则说明。玩家在 START 前必须能看到怎么玩。
+10. **每个游戏 BootScene 必须有 UNLOCK S TIER 按钮** — 金色 `.btn-candy.secondary` 样式，点击后跳转 ResultScene 展示 S 级评分预览（传入 score: 9999）。
+11. **所有按钮样式必须统一为 candy material** — 包括游戏内特殊按钮（方向键、FIRE、REEL 等）。使用深色渐变底 `color-mix(in srgb, var(--primary), #000 40%)`，强高光条，glass 层，text-shadow。不同按钮可以用不同颜色但必须保持相同的材质感。
+12. **删除未使用的 `PRIMARY_COLOR` 常量** — V3 使用 THEMES + `resolveTheme()` 驱动所有颜色，`PRIMARY_COLOR` 是 V1 遗留死代码。
 
 ### V2 常见 Bug 和避坑
 
@@ -1027,26 +1032,62 @@ Canvas/Phaser
 | BootScene 文字/图形残留在 GameScene 背后 | Phaser 对象跨场景残留 | **BootScene 禁止用 `this.add.text()`**——所有说明文字都用 DOM boot-card。每个 Scene 的 `create()` 第一行加 `this.children.removeAll(true)` |
 | DOM 元素遮挡 Phaser 游戏内文字 | DOM z-index > canvas z-index:1 | DOM hint/label 不要和 Phaser 游戏区重叠；需要在 Phaser 区域显示的文字用 Phaser text |
 | HTML 中 `\u26A1` 显示为乱码 | JS unicode 转义在 HTML 中是字面文本 | HTML 用实际字符（⚡）或 HTML 实体（`&#9889;`），不要用 `\uXXXX` |
+| Surrogate pair `\uD83D\uDC1F` 在某些环境乱码 | JS surrogate pair 在 innerHTML/WebView 中不可靠 | 直接用实际 emoji 字符 🐟🌟🔥，不要用 `\uD83D\uXXXX` 转义 |
+| REPLAY 后屏幕变暗 | REPLAY 直接跳 GameScene，DOM 状态未重置 + camera effects 残留 | **REPLAY 必须回 BootScene**，且每个 Scene `create()` 加 `this.cameras.main.resetFX()` |
+| 按钮颜色太平、不够亮 | `.base` 用 `var(--primary)` 纯色或 `var(--primary-10)` 渐变太淡 | 用 `color-mix(in srgb, var(--primary), #000 40%)` 做底部深色渐变 + 强高光条 |
+| 游戏特有按钮风格不一致 | 方向键/FIRE/REEL 等用自定义 CSS 没有 candy material | 所有按钮统一用相同的渐变/阴影/高光模式，只是颜色不同 |
+| 开局没有玩法介绍 | BootScene 缺少规则说明 | 每个游戏必须在 START 前显示玩法规则（boot-card/circle-content/dialogue） |
+| `PRIMARY_COLOR` 死代码 | V1 遗留常量，V3 不使用 | 删除，用 `window.__V3_THEME__` 替代 |
 
-### V2 文件约定
+### V2/V3 文件约定
 
 ```
 games/<game-id>/
   index.html        # V1 原版（纯 Phaser，保持不动）
   index-v2.html     # V2 混合架构版本
+  index-v3.html     # V3 视觉升级版本（7 主题 + 动态取色 + candy UI）
 ```
 
-- V2 文件是独立的，不依赖 V1
-- 字体: 只用 Montserrat (700, 800, 900)
+- 每个版本独立自包含，不依赖其他版本
+- 字体: 只用 Montserrat (700, 900)
 - 单文件自包含，无构建步骤
-- 参考实现: `games/qte-boss-parry/index-v2.html`（Layout A — VS 对战）
+- V2 参考实现: `games/qte-boss-parry/index-v2.html`（Layout A）
+- V3 参考实现: `games/qte-boss-parry/index-v3.html`（Layout A 标杆）、`games/cannon-aim/index-v3.html`（Layout B 标杆）
+- V3 共享代码参考: `scripts/v3-shared-blocks.js`（THEMES + applyTheme + extractPalette 全链）
+- V3 质检脚本: `scripts/verify-v3.sh`
 
 ### 批量转换策略
 
 转换多个游戏时，使用并发子代理（每个处理 2-3 个游戏）。分组策略：
 - 同类游戏放一组（如所有 VS 对战类一组）
 - 每个子代理需要读取参考实现 + 原始游戏文件
-- 每个子代理独立输出 `index-v2.html`
+- 每个子代理独立输出对应版本文件
+
+**V3 先标杆后批量经验**：
+1. 先做 2 个标杆（Layout A + Layout B），经过 spec review 验证
+2. 标杆通过后，4 组并发子代理批量转换剩余 10 个游戏
+3. 批量完成后运行 `scripts/verify-v3.sh` 全量质检
+4. 常见需要额外修复的问题：死代码 `PRIMARY_COLOR`、surrogate pair 编码、按钮风格不一致、缺少玩法介绍
+
+**V3 candy 按钮 CSS 标准**（所有按钮必须遵循）：
+```css
+.btn-candy .base {
+  background: linear-gradient(180deg, var(--primary) 0%,
+    color-mix(in srgb, var(--primary), #000 40%) 100%);
+}
+.btn-candy .highlight {
+  left: 8px; right: 8px; top: 3px; height: 24px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.45), rgba(255,255,255,0.05));
+}
+.btn-candy .glass {
+  background: linear-gradient(180deg, rgba(255,255,255,0.18), rgba(255,255,255,0) 50%);
+}
+.btn-candy .label { text-shadow: 0 1px 2px rgba(0,0,0,0.3); }
+.btn-candy.secondary .base {
+  background: linear-gradient(180deg, #F5C842, #B8860B);
+}
+```
+游戏特有按钮（.btn-lane, .reel-btn, .fire-btn 等）必须使用相同的渐变/阴影/高光模式。
 
 ## Device APIs
 Camera, microphone, and gyroscope integration rules live in:
