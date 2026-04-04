@@ -368,7 +368,7 @@ var COPY = Object.assign({
 
 var W = 393, H = 852;
 var ROUND_SECONDS = 28;
-var RATING_THRESHOLDS = { S: 210, A: 130, B: 70, C: 0 };
+var RATING_THRESHOLDS = { S: 210, A: 130, B: 70, C: 40 };
 var MODIFIER_BY_RATING = { S: 3, A: 1, B: 0, C: -1 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -611,6 +611,7 @@ class BootScene extends Phaser.Scene {
 
   create() {
     this.children.removeAll(true);
+    this.cameras.main.resetFX();
     var T = window.__V3_THEME__;
 
     setVisible('dialogue', true);
@@ -633,10 +634,11 @@ class BootScene extends Phaser.Scene {
 
     clearBtnArea();
     $('btn-area').appendChild(makeCandyButton('START', 'full', 18, function() {
-      audio.unlock(); window.__game.scene.start('GameScene');
+      audio.unlock(); setVisible('boot-card', false); setVisible('dialogue', false); window.__game.scene.start('GameScene');
     }));
     $('btn-area').appendChild(makeCandyButton('UNLOCK S TIER  🌙 50', 'full secondary', 16, function() {
       audio.unlock();
+      setVisible('boot-card', false); setVisible('dialogue', false);
       window.__game.scene.start('ResultScene', { score: 9999, surgesDefeated: 99, willFinal: 100 });
     }));
   }
@@ -808,7 +810,7 @@ class GameScene extends Phaser.Scene {
 
     if (this.surgeActive) {
       this.surgeTimer -= dt;
-      this.threat += (0.50 + this.difficulty * 0.02) * dt;
+      this.threat += (0.15 + this.difficulty * 0.02) * dt;
       if (this.surgeTimer <= 0) {
         this.surgeActive = false;
         if (this.meter >= this.threat - 0.10) {
@@ -901,6 +903,7 @@ class ResultScene extends Phaser.Scene {
     this.children.removeAll(true);
     this.cameras.main.resetFX();
     var T = window.__V3_THEME__;
+    this.add.rectangle(W / 2, H / 2, W, H, hexToInt(T.bg), 1).setDepth(0);
     var rating = getRating(this.finalScore), modifier = getModifier(rating);
     var modText = modifier > 0 ? '+' + modifier : String(modifier);
     var self = this;

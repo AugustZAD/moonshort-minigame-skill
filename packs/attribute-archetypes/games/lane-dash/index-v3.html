@@ -81,7 +81,7 @@
     display: flex; align-items: center; justify-content: space-between;
     padding: 0 16px; z-index: 10;
   }
-  .status-bar .lives { font-weight: 900; font-size: 18px; color: #FF4D6A; letter-spacing: 2px; }
+  .status-bar .lives { font-weight: 900; font-size: 18px; color: var(--danger, #FF4D6A); letter-spacing: 2px; }
   .status-bar .score-wrap { display: flex; align-items: center; }
   .status-bar .score-label { font-weight: 700; font-size: 12px; color: rgba(255,255,255,0.45); letter-spacing: 1px; text-transform: uppercase; }
   .status-bar .score-val { font-weight: 900; font-size: 16px; color: #fff; margin-left: 6px; }
@@ -450,9 +450,10 @@ class BootScene extends Phaser.Scene {
     for (var dy = LANE_TOP; dy < LANE_BOTTOM; dy += 24) { gfx.lineBetween(131, dy, 131, dy + 12); gfx.lineBetween(262, dy, 262, dy + 12); }
     gfx.lineStyle(3, 0xffffff, 0.06); gfx.lineBetween(0, LANE_TOP, W, LANE_TOP); gfx.lineBetween(0, LANE_BOTTOM, W, LANE_BOTTOM);
     clearBtnArea();
-    $('btn-area').appendChild(makeCandyButton('START', 'full', 20, function() { audio.unlock(); window.__game.scene.start('GameScene'); }));
+    $('btn-area').appendChild(makeCandyButton('START', 'full', 20, function() { audio.unlock(); setVisible('boot-card',false); window.__game.scene.start('GameScene'); }));
     $('btn-area').appendChild(makeCandyButton('UNLOCK S TIER  🌙 50', 'full secondary', 16, function() {
       audio.unlock();
+      setVisible('boot-card',false);
       window.__game.scene.start('ResultScene', { score: 9999, maxCombo: 99, hits: 99, misses: 0 });
     }));
   }
@@ -486,7 +487,7 @@ class GameScene extends Phaser.Scene {
   moveLeft() { if (this.isOver || this.player.lane <= 0) return; this.player.lane -= 1; this.player.x = LANES[this.player.lane]; this.drawPlayer(hexToInt(window.__V3_THEME__.primary)); audio.swoosh(); }
   moveRight() { if (this.isOver || this.player.lane >= 2) return; this.player.lane += 1; this.player.x = LANES[this.player.lane]; this.drawPlayer(hexToInt(window.__V3_THEME__.primary)); audio.swoosh(); }
   updateLives() { var h = ''; for (var i = 0; i < 3; i++) h += (i < this.lives ? '\u2764' : '\u2661'); $('lives-display').innerHTML = h; }
-  addScore(d) { this.score = Math.max(0, this.score + d); $('score-value').textContent = Math.round(this.score); deltaPop(Math.round(d)); }
+  addScore(d) { this.score = Math.max(0, this.score + d); $('score-value').textContent = Math.round(this.score); var rd = Math.round(d); if (rd !== 0) deltaPop(rd); }
   spawnHazard() { var lane = Math.floor(Math.random() * 3); var x = LANES[lane]; var hw = 40, hh = 64; var baseSpeed = 240 + this.difficulty * 12; var vy = baseSpeed + Math.random() * 130; this.hazards.push({ lane: lane, x: x, y: LANE_TOP - hh, w: hw, h: hh, vy: vy, scored: false }); audio.alert(); }
   collides(a, b) { return Math.abs(a.x - b.x) * 2 < (a.w + b.w) && Math.abs(a.y - b.y) * 2 < (a.h + b.h); }
   finishGame(reason) { if (this.isOver) return; this.isOver = true; audio.stopBgm(600); this.scene.start('ResultScene', { score: Math.round(this.score), maxCombo: this.maxCombo, hits: this.totalHits, misses: this.totalMiss, reason: reason || 'time' }); }
@@ -535,7 +536,7 @@ class ResultScene extends Phaser.Scene {
     for (var i = 0; i < 4; i++) { var star = document.createElement('span'); star.className = 'star ' + (i < sc ? 'filled' : 'empty'); star.textContent = '\u2605'; star.style.animationDelay = (0.2 + i * 0.08) + 's'; sr.appendChild(star); }
     $('attr-mod').textContent = DISPLAY_ATTRIBUTE + ' ' + modText; $('stat-combo').textContent = 'Combo ' + this.maxCombo; $('stat-hits').textContent = 'Dodged ' + this.hits + ' / Hit ' + this.misses;
     if (rating === 'S') { spawnParticles(this, W / 2, 350, hexToInt(T.gold), 16, 600); audio.success(); setTimeout(function() { audio.success(); }, 100); } else if (rating === 'A') { audio.success(); }
-    this.add.rectangle(W / 2, H / 2, W, H, hexToInt(T.bg), 0.7).setDepth(0);
+    this.add.rectangle(W / 2, H / 2, W, H, hexToInt(T.bg), 1).setDepth(0);
     clearBtnArea();
     $('btn-area').appendChild(makeCandyButton('CONTINUE', 'full', 18, function() { notifyGameComplete({ rating: rating, score: self.finalScore, attribute: ATTRIBUTE, modifier: modifier, gameId: 'lane-dash', maxCombo: self.maxCombo, hits: self.hits, misses: self.misses }); setTimeout(function() { window.__game.scene.start('BootScene'); }, 600); }));
     $('btn-area').appendChild(makeCandyButton('REPLAY', 'full', 18, function() { window.__game.scene.start('BootScene'); }));

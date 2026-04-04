@@ -798,10 +798,12 @@ var BootScene = new Phaser.Class({
     clearBtnArea();
     $('btn-area').appendChild(makeCandyButton('START', 'full', 18, function() {
       audio.unlock();
+      setVisible('color-card-wrap', false); setVisible('mode-hint', false); setVisible('card-question', false);
       window.__game.scene.start('GameScene');
     }));
     $('btn-area').appendChild(makeCandyButton('UNLOCK S TIER  🌙 50', 'full secondary', 16, function() {
       audio.unlock();
+      setVisible('color-card-wrap', false); setVisible('mode-hint', false); setVisible('card-question', false);
       window.__game.scene.start('ResultScene', { score: 9999, maxCombo: 99, hits: 99, misses: 0 });
     }));
   }
@@ -1050,6 +1052,7 @@ var ResultScene = new Phaser.Class({
     this.cameras.main.resetFX();
     var self = this;
     var T = window.__V3_THEME__;
+    this.add.rectangle(W / 2, H / 2, W, H, hexToInt(T.bg), 1).setDepth(0);
     var rating = getRating(this.finalScore);
     var modifier = getModifier(rating);
     var modText = modifier > 0 ? '+' + modifier : String(modifier);

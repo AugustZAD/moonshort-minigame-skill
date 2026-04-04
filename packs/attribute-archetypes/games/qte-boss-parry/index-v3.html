@@ -1002,6 +1002,9 @@ class BootScene extends Phaser.Scene {
   constructor() { super('BootScene'); }
 
   create() {
+    this.children.removeAll(true);
+    this.cameras.main.resetFX();
+
     setVisible('dialogue', true);
     setVisible('score-display', false);
     setVisible('timer-text', false);
@@ -1024,10 +1027,12 @@ class BootScene extends Phaser.Scene {
     clearBtnArea();
     $('btn-area').appendChild(makeCandyButton('START', 'full', 18, function() {
       audio.unlock();
+      setVisible('dialogue', false);
       window.__game.scene.start('GameScene');
     }));
     $('btn-area').appendChild(makeCandyButton('UNLOCK S TIER  🌙 50', 'full secondary', 16, function() {
       audio.unlock();
+      setVisible('dialogue', false);
       window.__game.scene.start('ResultScene', { score: 9999, maxCombo: 99, hits: 99, misses: 0, reason: "unlock-preview" });
     }));
   }
@@ -1056,10 +1061,11 @@ class GameScene extends Phaser.Scene {
     this.lastTickSec = -1;
     this.audioStarted = false;
     this.difficulty = 1;
+    var T = window.__V3_THEME__;
     this.attacks = [
-      { key: 'parry', label: 'SLASH', symbol: '\u2694', counter: 'PARRY', color: '#f97316', icon: '\u2694' },
-      { key: 'dodge', label: 'HEAVY', symbol: '\u26A1', counter: 'DODGE', color: '#3b82f6', icon: '\u26A1' },
-      { key: 'block', label: 'BURST', symbol: '\u26D4', counter: 'BLOCK', color: '#a855f7', icon: '\u26D4' }
+      { key: 'parry', label: 'SLASH', symbol: '\u2694', counter: 'PARRY', color: T.gold, icon: '\u2694' },
+      { key: 'dodge', label: 'HEAVY', symbol: '\u26A1', counter: 'DODGE', color: T.primaryLight, icon: '\u26A1' },
+      { key: 'block', label: 'BURST', symbol: '\u26D4', counter: 'BLOCK', color: T.primary, icon: '\u26D4' }
     ];
   }
 
@@ -1336,6 +1342,7 @@ class ResultScene extends Phaser.Scene {
     this.cameras.main.resetFX();
 
     var T = window.__V3_THEME__;
+    this.add.rectangle(W / 2, H / 2, W, H, hexToInt(T.bg), 1).setDepth(0);
     var rating = getRating(this.finalScore);
     var modifier = getModifier(rating);
     var modText = modifier > 0 ? '+' + modifier : String(modifier);

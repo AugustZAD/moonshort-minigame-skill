@@ -604,9 +604,10 @@ class BootScene extends Phaser.Scene {
     $('boot-subtitle').textContent = DISPLAY_ATTRIBUTE + ' Challenge';
 
     clearBtnArea();
-    $('btn-area').appendChild(makeCandyButton('START', 'full', 20, function() { audio.unlock(); window.__game.scene.start('GameScene'); }));
+    $('btn-area').appendChild(makeCandyButton('START', 'full', 20, function() { audio.unlock(); setVisible('boot-card', false); setVisible('btn-area', false); window.__game.scene.start('GameScene'); }));
     $('btn-area').appendChild(makeCandyButton('UNLOCK S TIER  🌙 50', 'full secondary', 16, function() {
       audio.unlock();
+      setVisible('boot-card', false); setVisible('btn-area', false);
       window.__game.scene.start('ResultScene', { score: 9999, maxCombo: 99, hits: 99, misses: 0 });
     }));
   }
@@ -805,6 +806,7 @@ class ResultScene extends Phaser.Scene {
     this.children.removeAll(true);
     this.cameras.main.resetFX();
     var T = window.__V3_THEME__;
+    this.add.rectangle(W / 2, H / 2, W, H, hexToInt(T.bg), 1).setDepth(0);
     var rating = getRating(this.finalScore), modifier = getModifier(rating), modText = modifier > 0 ? '+' + modifier : String(modifier);
     var rHex = { S: T.gold, A: T.primary, B: T.primaryLight, C: T.strokeDark }, rcHex = rHex[rating];
 
@@ -835,6 +837,9 @@ class ResultScene extends Phaser.Scene {
     $('btn-area').appendChild(makeCandyButton('CONTINUE', 'full', 18, function() {
       notifyGameComplete({ rating: rating, score: self.finalScore, attribute: ATTRIBUTE, modifier: modifier, gameId: 'spotlight-seek', maxCombo: self.maxCombo, hits: self.hits, misses: self.misses });
       self.time.delayedCall(600, function() { self.scene.start('BootScene'); });
+    }));
+    $('btn-area').appendChild(makeCandyButton('REPLAY', 'full', 18, function() {
+      window.__game.scene.start('BootScene');
     }));
   }
 }

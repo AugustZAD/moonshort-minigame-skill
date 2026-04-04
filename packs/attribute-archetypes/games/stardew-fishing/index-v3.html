@@ -141,6 +141,7 @@
   }
   .reel-btn .glass { position: absolute; inset: 0; background: rgba(255,255,255,0.25); border-radius: 22px; }
   .reel-btn .highlight { position: absolute; left: 0; right: 0; top: 2px; height: 22px; background: rgba(255,255,255,0.3); border-radius: 20px 20px 0 0; }
+  .reel-btn .glow { position: absolute; inset: 0; box-shadow: inset 0 1px 0 0 rgba(255,255,255,0.3); border-radius: 22px; pointer-events: none; }
   .reel-btn .reel-label {
     position: absolute; inset: 0;
     display: flex; align-items: center; justify-content: center;
@@ -260,6 +261,7 @@
     <div class="base"></div>
     <div class="glass"></div>
     <div class="highlight"></div>
+    <div class="glow"></div>
     <div class="reel-label">HOLD TO REEL</div>
   </div>
 
@@ -392,9 +394,10 @@ var BootScene = new Phaser.Class({
     setVisible('boot-card', true);
     $('boot-subtitle').textContent = DISPLAY_ATTRIBUTE + ' Challenge';
     clearBtnArea();
-    $('btn-area').appendChild(makeCandyButton('START', 'full', 18, function() { audio.unlock(); window.__game.scene.start('GameScene'); }));
+    $('btn-area').appendChild(makeCandyButton('START', 'full', 18, function() { audio.unlock(); setVisible('boot-card', false); setVisible('catch-row', false); setVisible('water-surface', false); window.__game.scene.start('GameScene'); }));
     $('btn-area').appendChild(makeCandyButton('UNLOCK S TIER  🌙 50', 'full secondary', 16, function() {
       audio.unlock();
+      setVisible('boot-card', false); setVisible('catch-row', false); setVisible('water-surface', false);
       window.__game.scene.start('ResultScene', { score: 9999, maxCombo: 99, hits: 99, misses: 0, fishCaught: 99 });
     }));
   }
@@ -412,7 +415,7 @@ var GameScene = new Phaser.Class({
     this.holding = false; this.catchProgress = 0;
     this.combo = 0; this.maxCombo = 0; this.totalHits = 0; this.totalMiss = 0;
     this.lastTickSec = -1; this.audioStarted = false; this.difficulty = 1; this.fishCaught = 0;
-    this.wasNear = false; this.nearStreakMs = 0;
+    this.wasNear = false; this.nearStreakMs = 0; this.comboAwarded = false;
   },
   create: function() {
     this.children.removeAll(true);
@@ -498,13 +501,13 @@ var GameScene = new Phaser.Class({
       var gainRate = Math.max(0.5, 0.85 - this.difficulty * 0.025);
       this.catchProgress = clamp(this.catchProgress + dt * gainRate, 0, 1);
       this.addScore(dt * (6 + this.difficulty)); this.totalHits += dt * 0.4; this.nearStreakMs += delta;
-      if (this.nearStreakMs > 2000 && !this.wasNear) { this.combo += 1; this.maxCombo = Math.max(this.maxCombo, this.combo); $('combo-text').textContent = 'Streak x' + this.combo; }
+      if (this.nearStreakMs > 2000 && !this.comboAwarded) { this.combo += 1; this.maxCombo = Math.max(this.maxCombo, this.combo); $('combo-text').textContent = 'Streak x' + this.combo; this.comboAwarded = true; }
       $('status-text').textContent = 'Hook on fish!'; $('status-text').style.color = T.playerHp;
       this.hookGfx.fillStyle(hexToInt(T.playerHp), 0.3); this.hookGfx.fillRoundedRect(tx + 6, this.hookY - hookH/2, tw - 12, hookH, 8);
     } else {
       var drainRate = 0.42 + this.difficulty * 0.03;
       this.catchProgress = clamp(this.catchProgress - dt * drainRate, 0, 1);
-      this.totalMiss += dt * 0.2; this.nearStreakMs = 0;
+      this.totalMiss += dt * 0.2; this.nearStreakMs = 0; this.comboAwarded = false;
       $('status-text').textContent = 'Track the fish!'; $('status-text').style.color = 'rgba(255,255,255,0.45)';
       if (this.catchProgress <= 0.05 && this.wasNear) { damageFlash(this); audio.fail(); this.combo = 0; $('combo-text').textContent = ''; }
     }

@@ -100,7 +100,7 @@
   .lane-btns { position: absolute; bottom: 20px; left: 0; width: 100%; z-index: 10; display: flex; justify-content: center; gap: 10px; }
   .btn-lane { width: 110px; height: 56px; border-radius: 18px; border: 2px solid rgba(255,255,255,0.25); box-shadow: 0 4px 0 0 var(--black-25), inset 0 0 4px 4px var(--white-50); overflow: hidden; cursor: pointer; position: relative; -webkit-tap-highlight-color: transparent; user-select: none; }
   .btn-lane .base { position: absolute; inset: 0; background: linear-gradient(180deg, var(--primary) 0%, color-mix(in srgb, var(--primary), #000 40%) 100%); border-radius: 16px; }
-  .btn-lane .glass { position: absolute; inset: 0; background: rgba(255,255,255,0.25); border-radius: 16px; }
+  .btn-lane .glass { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0) 50%); border-radius: 16px; }
   .btn-lane .highlight { position: absolute; left: 0; right: 0; top: 2px; height: 14px; background: rgba(255,255,255,0.3); border-radius: 16px 16px 0 0; }
   .btn-lane .glow { position: absolute; inset: 0; box-shadow: inset 0 0 4px 4px var(--white-50); border-radius: 16px; pointer-events: none; }
   .btn-lane .label { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 16px; color: #fff; z-index: 1; text-shadow: 0 1px 3px rgba(0,0,0,0.3); }
@@ -221,11 +221,11 @@ class BootScene extends Phaser.Scene{
     var gfx=this.add.graphics().setDepth(2).setAlpha(0.5);
     gfx.fillStyle(hexToInt(darken(T.bg,-0.3)),0.6);gfx.fillRect(20,LOT_TOP,W-40,LOT_H);
     gfx.lineStyle(2,priI,0.3);for(var i=0;i<3;i++){gfx.strokeRect(LANE_XS[i]-48,LOT_TOP+40,96,200);}
-    this.add.text(LANE_XS[1],LOT_TOP+140,'P',{fontFamily:'Montserrat',fontSize:'64px',fontStyle:'900',color:T.primary}).setOrigin(0.5).setDepth(3).setAlpha(0.3);
     setVisible('boot-card',true);$('boot-subtitle').textContent=DISPLAY_ATTRIBUTE+' Challenge';
-    clearBtnArea();$('btn-area').appendChild(makeCandyButton('START','full',20,function(){audio.unlock();window.__game.scene.start('GameScene');}));
+    clearBtnArea();$('btn-area').appendChild(makeCandyButton('START','full',20,function(){audio.unlock();setVisible('boot-card',false);setVisible('btn-area',false);window.__game.scene.start('GameScene');}));
     $('btn-area').appendChild(makeCandyButton('UNLOCK S TIER  🌙 50', 'full secondary', 16, function() {
       audio.unlock();
+      setVisible('boot-card',false);setVisible('btn-area',false);
       window.__game.scene.start('ResultScene', { score: 9999, maxCombo: 99, hits: 99, misses: 0 });
     }));
   }
@@ -249,6 +249,7 @@ class GameScene extends Phaser.Scene{
     this.lotGfx.lineStyle(1,0xffffff,0.1);for(var i=0;i<4;i++){var lx=20+(W-40)/3*i;for(var dy=LOT_TOP+10;dy<LOT_TOP+LOT_H;dy+=20){this.lotGfx.strokeRect(lx,dy,0,10);}}
     this.laneHits=[];
     for(var i=0;i<3;i++){(function(idx){var hit=self.add.rectangle(LANE_XS[idx],LOT_TOP+160,96,200,0,0).setOrigin(0.5).setInteractive({useHandCursor:true}).setDepth(20).setAlpha(0.001);hit.on('pointerdown',function(){audio.tap();self.pickLane(idx);});self.laneHits.push(hit);$('lane-'+idx).onpointerdown=function(e){e.preventDefault();audio.tap();};$('lane-'+idx).onpointerup=function(e){e.preventDefault();self.pickLane(idx);};})(i);}
+    this.freeLabelObj=this.add.text(0,LOT_TOP+160,'P',{fontFamily:'Montserrat',fontSize:'48px',fontStyle:'900',color:T.playerHp}).setOrigin(0.5).setDepth(8).setAlpha(0.7);
     this.input.once('pointerdown',function(){audio.unlock();audio.bgm('action');self.audioStarted=true;});
     this.setRound(true);
   }
@@ -259,8 +260,7 @@ class GameScene extends Phaser.Scene{
     this.laneGfx.lineStyle(2,free?succI:0xffffff,free?0.8:0.15);this.laneGfx.strokeRect(cx-48,LOT_TOP+60,96,200);
     this.laneGfx.fillStyle(col,alpha);this.laneGfx.fillRect(cx-46,LOT_TOP+62,92,196);
     if(!free){this.laneGfx.fillStyle(0xffffff,0.15);this.laneGfx.fillRoundedRect(cx-28,LOT_TOP+100,56,120,8);this.laneGfx.fillStyle(hexToInt(T.bg),0.5);this.laneGfx.fillRoundedRect(cx-20,LOT_TOP+115,40,30,4);this.laneGfx.fillStyle(0xffffff,0.08);this.laneGfx.fillRoundedRect(cx-24,LOT_TOP+105,48,20,4);}}
-    if(this.freeLabelObj)this.freeLabelObj.destroy();
-    this.freeLabelObj=this.add.text(LANE_XS[this.freeIndex],LOT_TOP+160,'P',{fontFamily:'Montserrat',fontSize:'48px',fontStyle:'900',color:T.playerHp}).setOrigin(0.5).setDepth(8).setAlpha(0.7);
+    this.freeLabelObj.setX(LANE_XS[this.freeIndex]);
     for(var i=0;i<3;i++){var lb=$('lane-'+i);if(i===this.freeIndex){lb.querySelector('.base').style.background='linear-gradient(180deg,'+hexToRgba(T.playerHp,0.1)+','+T.playerHp+')';lb.style.borderColor='#fff';}else{lb.querySelector('.base').style.background='';lb.style.borderColor='#fff';}}
   }
   setRound(resetFree){if(resetFree||this.freeIndex<0){this.freeIndex=Math.floor(Math.random()*3);}var baseMs=900,minMs=350;this.roundMaxMs=Math.max(minMs,baseMs-this.difficulty*40);this.roundMs=this.roundMaxMs;this.drawLanes();}
@@ -294,6 +294,7 @@ class ResultScene extends Phaser.Scene{
   init(data){this.finalScore=data.score||0;this.maxCombo=data.maxCombo||0;this.hits=data.hits||0;this.misses=data.misses||0;}
   create(){
     this.children.removeAll(true);this.cameras.main.resetFX();var T=window.__V3_THEME__;
+    this.add.rectangle(W/2,H/2,W,H,hexToInt(T.bg),1).setDepth(0);
     var rating=getRating(this.finalScore),modifier=getModifier(rating),modText=modifier>0?'+'+modifier:String(modifier);
     var GC={S:T.gold,A:T.primary,B:T.primaryLight,C:'#888'};
     setVisible('boot-card',false);setVisible('level-info',false);setVisible('streak-text',false);setVisible('combo-text',false);
@@ -310,6 +311,7 @@ class ResultScene extends Phaser.Scene{
     $('result-info').style.top='490px';$('attr-mod').textContent='';$('stat-combo').textContent='Combo: '+this.maxCombo;$('stat-hits').textContent='Parked: '+this.hits+' / Miss: '+this.misses;
     var self=this;clearBtnArea();
     $('btn-area').appendChild(makeCandyButton('CONTINUE','full',18,function(){notifyGameComplete({rating:rating,score:self.finalScore,attribute:ATTRIBUTE,modifier:modifier,gameId:'parking-rush',maxCombo:self.maxCombo,hits:self.hits,misses:self.misses});self.time.delayedCall(600,function(){self.scene.start('BootScene');});}));
+    $('btn-area').appendChild(makeCandyButton('REPLAY','full',18,function(){window.__game.scene.start('BootScene');}));
   }
 }
 

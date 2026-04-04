@@ -350,9 +350,10 @@ class BootScene extends Phaser.Scene {
     setVisible('progress-track', false); setVisible('stamina-area', false); setVisible('combo-text', false); setVisible('switch-bar-area', false);
     setVisible('grade-overlay', false); setVisible('stars-row', false); setVisible('result-info', false);
     setTrafficLight('none');
-    clearBtnArea(); $('btn-area').appendChild(makeCandyButton('START', 'full', 20, function() { audio.unlock(); window.__game.scene.start('GameScene'); }));
+    clearBtnArea(); $('btn-area').appendChild(makeCandyButton('START', 'full', 20, function() { audio.unlock(); setVisible('rules-card', false); setVisible('traffic-light', false); window.__game.scene.start('GameScene'); }));
     $('btn-area').appendChild(makeCandyButton('UNLOCK S TIER  🌙 50', 'full secondary', 16, function() {
       audio.unlock();
+      setVisible('rules-card', false); setVisible('traffic-light', false);
       window.__game.scene.start('ResultScene', { score: 9999, maxCombo: 99, hits: 99, misses: 0, distance: 999 });
     }));
   }
@@ -387,7 +388,7 @@ class GameScene extends Phaser.Scene {
     var T = window.__V3_THEME__;
     var ds = Math.min(this.difficulty, 10);
     if (this.light === 'green') { this.light = 'red'; setTrafficLight('red'); var rt = Math.max(800, this.redDurationBase - ds * 50) + Math.random() * 600; this.switchTimer = rt; this.switchTimerMax = rt; audio.alert(); }
-    else { this.light = 'green'; setTrafficLight('green'); var gt = Math.max(1200, this.greenDurationBase - ds * 60) + Math.random() * 800; this.switchTimer = gt; this.switchTimerMax = gt; audio.swoosh(); }
+    else { this.light = 'green'; this.penaltyStack = 0; setTrafficLight('green'); var gt = Math.max(1200, this.greenDurationBase - ds * 60) + Math.random() * 800; this.switchTimer = gt; this.switchTimerMax = gt; audio.swoosh(); }
   }
   addScore(d) { this.score = Math.max(0, this.score + d); $('score-value').textContent = Math.round(this.score); deltaPop(d); }
   finishGame(reason) { if (this.isOver) return; this.isOver = true; audio.stopBgm(600); this.scene.start('ResultScene', { score: Math.round(this.score), maxCombo: this.maxCombo, hits: Math.round(this.totalHits), misses: this.totalMiss, distance: Math.floor(this.distance), reason: reason || 'time' }); }
@@ -411,7 +412,6 @@ class GameScene extends Phaser.Scene {
       this.addScore(-penalty); showToast(this, 'Moved on RED! -' + penalty, '#FF4D6A', W / 2, 480); audio.fail(); damageFlash(this); screenShake(this, 0.012);
       this.running = false; this._holding = false; if (this._runBtn) this._runBtn.classList.remove('holding');
     }
-    if (this.light === 'green') this.penaltyStack = 0;
     updateStamina(this.stamina / this.maxStamina); updateProgress(this.distance, 100);
     if (this.timeLeft <= 0) this.finishGame('time');
   }
@@ -426,17 +426,16 @@ class ResultScene extends Phaser.Scene {
     this.cameras.main.resetFX();
     var self = this; var T = window.__V3_THEME__;
     var rating = getRating(this.finalScore); var modifier = getModifier(rating); var modText = modifier > 0 ? '+' + modifier : String(modifier);
-    setVisible('info-strip', false); setVisible('traffic-light', true); setVisible('light-label', true);
+    setVisible('info-strip', false); setVisible('traffic-light', false); setVisible('light-label', false);
     setVisible('progress-track', false); setVisible('stamina-area', false); setVisible('combo-text', false); setVisible('switch-bar-area', false);
     setVisible('rules-card', false); setVisible('grade-overlay', true); setVisible('stars-row', true); setVisible('result-info', true);
-    setTrafficLight('green'); $('light-label').textContent = 'FINISH!'; $('light-label').style.color = '#4FECA2';
     var rH = { S: T.gold, A: T.primary, B: '#9B7DB8', C: '#7A7A8E' };
     $('grade-letter').textContent = rating; $('grade-letter').style.color = rH[rating]; $('grade-score').textContent = 'Score ' + this.finalScore + ' | ' + this.distance + 'm';
     var sc = { S: 4, A: 3, B: 2, C: 1 }[rating]; var sr = $('stars-row'); sr.innerHTML = '';
     for (var i = 0; i < 4; i++) { var star = document.createElement('span'); star.className = 'star ' + (i < sc ? 'filled' : 'empty'); star.textContent = '\u2605'; star.style.animationDelay = (0.2 + i * 0.08) + 's'; sr.appendChild(star); }
     $('attr-mod').textContent = DISPLAY_ATTRIBUTE + ' ' + modText; $('stat-combo').textContent = 'Combo ' + this.maxCombo; $('stat-hits').textContent = 'Penalties ' + this.misses;
     if (rating === 'S') { spawnParticles(this, W / 2, 330, hexToInt(T.gold), 16, 600); audio.success(); setTimeout(function() { audio.success(); }, 100); } else if (rating === 'A') { audio.success(); }
-    this.add.rectangle(W / 2, H / 2, W, H, hexToInt(T.bg), 0.7).setDepth(0);
+    this.add.rectangle(W / 2, H / 2, W, H, hexToInt(T.bg), 1).setDepth(0);
     clearBtnArea();
     $('btn-area').appendChild(makeCandyButton('CONTINUE', 'full', 18, function() { notifyGameComplete({ rating: rating, score: self.finalScore, attribute: ATTRIBUTE, modifier: modifier, gameId: 'red-light-green-light', maxCombo: self.maxCombo, hits: self.hits, misses: self.misses }); setTimeout(function() { window.__game.scene.start('BootScene'); }, 600); }));
     $('btn-area').appendChild(makeCandyButton('REPLAY', 'full', 18, function() { window.__game.scene.start('BootScene'); }));
