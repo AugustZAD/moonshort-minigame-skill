@@ -578,9 +578,22 @@ const config = {
 
 **fitShell() 缩放**：整个 `#game-shell` 用 CSS transform 缩放适配屏幕。
 
-### 氛围配色系统（5 套）
+### 配色系统（静态预设 + 动态提取）
 
-游戏通过 `?theme=X` 或 `CTX.theme` 选择配色，不是每个游戏独立配色。
+游戏有两种配色来源，运行时自动选择：
+
+```
+游戏启动
+  ├── 有 CTX.coverImage（Episode 剧情嵌入）?
+  │   ├── YES → 加载封面图 → extractPalette() → 动态 5 色调色板
+  │   │         质检不通过? → fallback 到 CTX.theme 或 'combat' 静态预设
+  │   └── NO  → 用 THEMES[CTX.theme || 'combat'] 静态预设
+  └── 两条路径最终都写入同一套 CSS 变量 (--primary, --bg, --primary-10, etc.)
+```
+
+#### 方式 A：静态预设（5 套 THEMES）
+
+通用场景、独立游戏。通过 `?theme=X` 或 `CTX.theme` 选择。
 
 | 氛围 | ID | 背景色 | 主色 | 适用场景 |
 |------|-----|--------|------|---------|
@@ -590,7 +603,6 @@ const config = {
 | 💜暗黑 | dark | #110E1A | #8B5CF6 | 抵抗、压力、意志 |
 | 🌸甜美 | sweet | #1A1221 | #F472B6 | 匹配、节奏、社交 |
 
-**实现方式**: JS `THEMES` 对象 + CSS 变量：
 ```javascript
 const THEMES = {
   combat:  { bg:'#1A1221', primary:'#EC4F99', primaryLight:'#F9A8D4', circleTail:'#FFE0F8', playerHp:'#4FECA2', opponentHp:'#EC4F99', gold:'#F5C842' },
@@ -604,6 +616,72 @@ Object.entries({ '--bg':T.bg, '--primary':T.primary, ... })
 ```
 
 CSS 中一律用 `var(--primary)` 等变量，不硬编码颜色。
+
+#### 方式 B：动态提取（从封面图取色）
+
+Episode 剧情嵌入场景。封面图的颜色自动成为游戏配色，视觉完美匹配故事氛围。
+
+**算法核心**（完整实现见 `design-system/ui-visual-language.md` §3.6）：
+```
+封面图 → 缩小到 80×80 → K-Means k=12 → 分三区（lights/darks/mids）
+→ 对 mids 按「年轻感评分」排序（粉/紫最高分，土黄减分）
+→ 贪心多样性选 3 色（色相差 >50° 且亮度差 >0.25）
+→ 饱和度提升 clamp(S, 0.74, 0.92)
+→ 输出 { primary, accent, secondary, surface, text, bgDark }
+```
+
+**年轻感评分** — 保证提取的颜色符合「糖果霓虹」美学：
+```javascript
+vibeScore = Math.pow(s + 0.05, 0.55) * bell(l, 0.57, 0.21) * hueBonus(h);
+// hueBonus: 粉红/品红 1.28, 紫 1.22, 薄荷/青 1.20, 蓝 1.15, 黄/黄绿 0.65
+```
+
+**Fallback 瀑布**（单色封面兜底）：
+1. 标准贪心从 mids 选色
+2. 不足 2 色 → 从 darks 中 S>0.30 的提亮（L +0.30）
+3. 仍不足 → 数学生成互补色（色相旋转 150°），标记 `generated: true`
+
+**质检标准**（硬错误自动修正，不通过则 fallback 到静态 THEME）：
+```
+硬错误：primary.L <40% 或 >75%，primary.S <60%，surface.L <80%，text.L >30%
+软警告：accent.fromDark=true，accent.generated=true，hue diff <60°
+```
+
+**集成代码**：
+```javascript
+// 在游戏启动逻辑中：
+async function resolveTheme() {
+  if (CTX.coverImage) {
+    try {
+      const img = new Image(); img.crossOrigin = 'anonymous';
+      img.src = CTX.coverImage;
+      await img.decode();
+      const canvas = document.createElement('canvas');
+      canvas.width = canvas.height = 80;
+      canvas.getContext('2d').drawImage(img, 0, 0, 80, 80);
+      const palette = extractPalette(canvas.getContext('2d').getImageData(0,0,80,80));
+      if (palette) return {
+        bg: palette.bgDark, primary: palette.primary,
+        primaryLight: palette.surface, playerHp: palette.accent,
+        opponentHp: palette.primary, gold: '#F5C842'
+      };
+    } catch(e) { console.warn('Dynamic palette failed, falling back to static theme'); }
+  }
+  return THEMES[CTX.theme || 'combat'];
+}
+```
+
+**调色板应用顺序**（动态取色后替换颜色时必须遵守）：
+```
+Step 1  插入 CSS 结构块（在颜色替换之前）
+Step 2  替换完整渐变字符串（conic-gradient/linear-gradient 整段）
+Step 3  替换单个 hex 颜色
+Step 4  替换 rgba() 颜色
+Step 5  嵌入封面图（如需要 Layer 1 封面背景）
+Step 6  替换 JS 中的颜色引用
+Step 7  验证：扫描残留旧 hex
+```
+> 详见 `design-system/ui-visual-language.md` §3.9。关键：**渐变字符串必须在单色 hex 之前替换**，否则渐变中的中间派生色会残留。
 
 ### 布局分类：按游戏玩法设计 UI
 
@@ -653,10 +731,257 @@ CSS 中一律用 `var(--primary)` 等变量，不硬编码颜色。
 - `fitShell()` — 响应式缩放
 - `MoonAudio` 类 — 合成器音效
 - `spawnParticles()` / `showToast()` / `damageFlash()` / `screenShake()` — Phaser 特效
+- **boot-card** — BootScene 引导说明用 DOM div（不用 Phaser text），GameScene 时隐藏：
+  ```html
+  <div id="boot-card" style="position:absolute;top:200px;left:50%;transform:translateX(-50%);
+    z-index:11;text-align:center;color:#fff;font-family:Montserrat;">
+    <h2>游戏标题</h2><p>规则说明...</p>
+  </div>
+  ```
 
 **糖果按钮 CSS**: 4 层结构 — base(`var(--primary)`) + glass(`rgba(255,255,255,0.3)`) + highlight(顶部 20px) + glow(inset shadow)。圆角 24px，按下位移 3px。
 
 **分数 delta 动画**: `@keyframes deltaPop` — +N 绿色 / -N 主色 上浮淡出。
+
+### V2 视觉规范
+
+> 世界观：**「黑色宇宙里的糖果霓虹」** — 极暗底色 × 极鲜艳前景。
+> 背景永远是深暗带色相的（禁止纯黑 #000/#111），色彩像糖果在夜市发光。
+
+#### CSS Token 透明度变体
+
+除了 `--primary`、`--bg` 等实色变量外，每套 THEME 还需生成透明度变体，用于渐变和玻璃效果：
+
+```css
+:root {
+  /* 核心色（由 THEMES 对象写入） */
+  --bg: ...; --primary: ...; --primary-light: ...;
+  --player-hp: ...; --opponent-hp: ...; --gold: ...;
+
+  /* 透明度变体（从 --primary 派生，启动时 JS 计算写入） */
+  --primary-10: rgba(R,G,B, 0.10);
+  --primary-20: rgba(R,G,B, 0.20);
+  --primary-30: rgba(R,G,B, 0.30);
+  --primary-50: rgba(R,G,B, 0.50);
+
+  /* 固定色（不随主题变化） */
+  --white: #FFFFFF;
+  --white-20: rgba(255,255,255,.20);
+  --white-30: rgba(255,255,255,.30);
+  --white-50: rgba(255,255,255,.50);
+  --black-15: rgba(0,0,0,.15);
+  --black-25: rgba(0,0,0,.25);
+}
+```
+
+JS 计算透明度变体的方法：
+```javascript
+function hexToRgba(hex, alpha) {
+  const r = parseInt(hex.slice(1,3),16);
+  const g = parseInt(hex.slice(3,5),16);
+  const b = parseInt(hex.slice(5,7),16);
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+// 启动时：
+const T = THEMES[themeName];
+const root = document.documentElement.style;
+root.setProperty('--primary-10', hexToRgba(T.primary, 0.10));
+root.setProperty('--primary-20', hexToRgba(T.primary, 0.20));
+root.setProperty('--primary-30', hexToRgba(T.primary, 0.30));
+root.setProperty('--primary-50', hexToRgba(T.primary, 0.50));
+```
+
+**规则**: 组件中不允许硬编码 hex 值，只用 CSS 变量 token。
+
+#### 渐变食谱（6 套标准配方）
+
+渐变方向规则：按钮/HP 条/竖向元素 → **180deg**（顶淡底浓，模拟顶部光源）；圆形内区 → **radial**；圆形外环 → **conic**。
+
+```css
+/* G-01  主色渐变填充（CTA 按钮、卡片 hero 区） */
+background: linear-gradient(180deg, var(--primary-10) 0%, var(--primary) 100%);
+border: 2px solid #FFF;  /* 渐变背景配白边 */
+
+/* G-02  HP / Progress Bar（垂直，上淡下浓） */
+background: linear-gradient(180deg, rgba(accent, .10) 0%, var(--player-hp) 100%);
+
+/* G-03  圆形内区（Portal、选择圈） */
+background: radial-gradient(circle at 50% 50%, #FFFFFF 46%, var(--primary-light) 100%);
+
+/* G-04  圆形外环 */
+background: conic-gradient(from 270deg, var(--primary), #FFFFFF 360deg);
+
+/* G-05  玻璃面板（半透明卡片、对话气泡底） */
+background: linear-gradient(180deg, rgba(255,255,255,.06) 0%, var(--primary-10) 100%);
+border: 1.5px solid var(--white-20);
+
+/* G-06  渐变描边（头像环、特殊装饰圈） */
+/* 用 ::before 伪元素 + gradient（CSS border 无法做渐变） */
+background: linear-gradient(180deg, var(--primary) 0%, var(--primary-light) 100%);
+```
+
+**边框搭配规则**：渐变背景 → 白边 2px；实色背景 → 主色边 2px；玻璃面板 → `rgba(255,255,255,.20)` 边 1.5px。
+
+#### 阴影系统
+
+**MUST: 游戏按钮的外阴影 blur 必须为 0（硬边）。硬边 = 游戏感，模糊阴影 = Web 感。**
+
+```css
+/* S-01  3D 可点击按钮（标准） */
+box-shadow:
+  0 4px 0 0 var(--black-15),         /* 底部硬边：立体感 */
+  inset 0 0 4px 4px var(--white-50); /* 内白光：光泽感 */
+
+/* S-02  按下态（active） — 配合 translateY(4px) */
+box-shadow:
+  0 1px 0 0 var(--black-15),
+  inset 0 0 4px 4px var(--white-50);
+
+/* S-03  外发光（激活/选中/呼吸动画） */
+box-shadow: 0 0 20px 2px var(--primary-30);
+
+/* S-04  圆形内深度 */
+box-shadow: inset 0 4px 16px rgba(0,0,0,.12);
+
+/* S-05  对话气泡 — 用 filter 让箭头也投影 */
+filter: drop-shadow(0 2px 4px rgba(0,0,0,.15));
+```
+
+#### 动效 Token
+
+```css
+:root {
+  /* 缓动函数 */
+  --ease-spring: cubic-bezier(.34, 1.56, .64, 1);  /* 弹性：元素出现、按钮弹回 */
+  --ease-out:    cubic-bezier(.25, 1, .5, 1);        /* 标准缓出：面板滑入 */
+  --ease-in:     cubic-bezier(.5, 0, 1, .75);        /* 缓入：元素消失 */
+
+  /* 时长 */
+  --duration-fast:   150ms;  /* 微交互（按钮按下反馈） */
+  --duration-normal: 280ms;  /* 标准（HP 条变化） */
+  --duration-slow:   450ms;  /* 页面级（面板进出） */
+}
+```
+
+**必选动效（MUST）**：
+- 按钮 active：`transform: translateY(4px)` + shadow 收缩，时长 `--duration-fast`
+- HP 条变化：`transition: width var(--duration-normal) var(--ease-spring)`（弹性有生命感）
+- 元素出现：`@keyframes pop-in { from { opacity:0; transform:scale(.85) } to { opacity:1; transform:scale(1) } }`
+
+**推荐动效（SHOULD）**：
+- 圆形游戏区呼吸光晕：`@keyframes glow-pulse` 周期 3s
+- 评分文字出现：scale 0→1，`--ease-spring`
+- 星星展开：依次 delay 80ms/颗
+- 分数上浮：`@keyframes float-up { 0% { opacity:0; translateY(0) } 30% { opacity:1 } 100% { opacity:0; translateY(-40px) } }`
+
+#### 间距系统（4px 网格）
+
+**MUST: 所有间距以 4px 为倍数。**
+
+```
+4px   xs   图标与文字间距、组件内紧凑间距
+8px   sm   组件内标准间距
+12px  md   卡片内边距（padding）
+16px  —    内容区边距
+20px  lg   页面水平边距
+24px  xl   组件组之间
+32px  2xl  卡片内大间距
+48px  3xl  区块间距
+```
+
+#### 字体与描边
+
+```
+主字体：Montserrat（游戏 UI 全局）
+字重：只用 700 / 900（标题 900，正文/按钮 700）
+字号：12–64px，只用 4px 倍数规格（12/14/16/18/20/24/28/32/40/48/64）
+低于 12px 不可读，高于 64px 失控。
+```
+
+**文字描边**: MUST 用 `text-shadow` 8方向模拟外描边，禁止用 `-webkit-text-stroke`（向内外各扩展，粗细不均）。
+
+```css
+/* 白字 + primary 色描边（标题栏标准做法） */
+text-shadow:
+  -3px -3px 0 var(--primary), 3px -3px 0 var(--primary),
+  -3px  3px 0 var(--primary), 3px  3px 0 var(--primary),
+   0   -3px 0 var(--primary), 0    3px 0 var(--primary),
+  -3px    0 0 var(--primary), 3px    0 0 var(--primary);
+```
+
+#### Phaser Canvas 绘制原则
+
+对 Phaser 游戏区内直接绘制的元素（游戏对象、目标、特效），遵循：
+
+**游戏对象 / 目标球**：双层光晕 + 高光
+```javascript
+// 外圈光晕：主色, alpha 0.10, radius + 14
+graphics.fillStyle(primaryHex, 0.10);
+graphics.fillCircle(x, y, radius + 14);
+// 内圈光晕：主色, alpha 0.28, radius + 6
+graphics.fillStyle(primaryHex, 0.28);
+graphics.fillCircle(x, y, radius + 6);
+// 实体
+graphics.fillStyle(primaryHex, 1.0);
+graphics.fillCircle(x, y, radius);
+// 高光：白色, alpha 0.65, 左上角 ≈ 35% radius
+graphics.fillStyle(0xffffff, 0.65);
+graphics.fillCircle(x - radius*0.3, y - radius*0.3, radius * 0.35);
+```
+
+**射线 / 炮管类元素**：双层叠加模拟高光
+```
+底层：较深颜色，线宽 14px
+顶层：primary 色，线宽 5px，alpha 0.8
+```
+
+**背景点阵**（如需要装饰性背景）：
+```
+primary 色，alpha 0.10，间距 28×30px，错位排列
+白色小点（占 1/3），alpha 0.04，尺寸 1.5px
+```
+
+**粒子效果标准参数**：
+```
+count: 8–16 颗
+速度: 80–200px，随机方向
+尺寸: 3–7px 渐变到 0.2
+时长: 400–600ms, ease: Quad.easeOut
+```
+
+#### V2 UI 质检 Checklist
+
+在每个 V2 游戏输出前，对照确认：
+
+```
+颜色
+□ 背景是带色相的极深色（非纯黑 #000/#111）？
+□ 所有颜色来自 CSS 变量 token，没有硬编码 hex？
+□ 按钮/HP 条使用了渐变配方（非纯色填充）？
+□ primary 饱和度足够（视觉鲜艳）？
+
+间距
+□ 所有间距是 4px 倍数？
+□ 字号在 12–64px 之间，只用 4px 倍数规格？
+□ 字重只用 700/900？
+
+视觉
+□ 按钮外阴影 blur=0（硬边游戏感）？
+□ 渐变背景配白边，实色背景配主色边？
+□ 对话气泡用 filter:drop-shadow（箭头也投影）？
+□ 文字描边用 text-shadow 8方向（非 -webkit-text-stroke）？
+
+动效
+□ 按钮 active 有 translateY(4px) + shadow 收缩？
+□ HP 条变化有 ease-spring 过渡？
+□ 使用了 duration/ease token，没有硬编码 ms 值？
+□ 元素出现有 pop-in 动画？
+
+Canvas/Phaser
+□ 游戏对象有双层光晕（外圈 + 内圈）？
+□ 高光点在左上角 ~35% 位置？
+□ 粒子参数在标准范围内？
+```
 
 ### 转换流程（从 V1 到 V2）
 
@@ -671,6 +996,22 @@ CSS 中一律用 `var(--primary)` 等变量，不硬编码颜色。
    - 保留 Phaser 粒子效果和动画
    - 添加 DOM 更新调用
 6. **验证**：START → 游戏 → 评级 → CONTINUE 完整流程
+
+### V2 强制规则（每个游戏必须遵守）
+
+1. **永远不用 `document.styleSheets[0]`** — Google Fonts 跨域样式表触发 SecurityError，整个脚本崩溃。动态样式一律用 `document.createElement('style')` + `document.head.appendChild(s)`。
+2. **BootScene 禁止用 `this.add.text()` 显示说明文字** — Phaser 对象在场景切换后残留。所有引导文字/规则说明都用 DOM `boot-card` div，GameScene 启动时 `setVisible('boot-card', false)` 隐藏。
+3. **每个 Scene 的 `create()` 第一行加 `this.children.removeAll(true)`** — 防止跨场景对象残留。
+4. **HTML 中不要用 JS unicode 转义 `\uXXXX`** — 在 HTML 中是字面文本。用实际字符（⚡）或 HTML 实体（`&#9889;`）。
+5. **可点击游戏对象必须加 Phaser 透明 hitArea** — DOM 按钮在 z-index:10 盖住 canvas，玩家无法直接点击游戏区。解法：
+   ```javascript
+   // 在 Phaser 游戏区添加透明可点击区域
+   this.add.rectangle(x, y, w, h, 0xffffff, 0.001)
+     .setInteractive({ useHandCursor: true })
+     .setDepth(20)
+     .on('pointerdown', handler);
+   ```
+6. **DOM 元素不要和 Phaser 游戏区文字重叠** — DOM z-index > canvas z-index:1，DOM 会遮挡 Phaser text。需要在 Phaser 区域显示的文字用 Phaser text，不用 DOM。
 
 ### V2 常见 Bug 和避坑
 
@@ -738,6 +1079,7 @@ Texture sourcing, Kenney-style asset strategy, and font guidance live in:
 | `qa/compatibility-checklist.md` | Pre-release gate |
 | `examples/platform-runner/index.html` | Runner mechanic reference |
 | `examples/merge-2048/index.html` | Merge and special result scene reference |
+| `design-system/ui-visual-language.md` | V2 视觉规范完整参考（动态取色算法、渐变/阴影/动效/Canvas 绘制细节） |
 
 ## Done Checklist
 - [ ] Task logged in `roadmap.md` before implementation.
