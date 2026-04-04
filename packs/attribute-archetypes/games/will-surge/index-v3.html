@@ -100,41 +100,40 @@
   .name.left { left: 24px; }
   .name.right { right: 24px; }
 
-  /* ── Meter bars (WILLPOWER left, PRESSURE right) ── */
-  .meter-bar {
-    position: absolute; top: 206px; width: 163px; height: 24px;
-    border-radius: 100px; border: 2px solid #fff;
-    overflow: hidden; z-index: 11;
+  /* ── Tug-of-war bar ── */
+  .tug-bar-area {
+    position: absolute; top: 206px; left: 20px; right: 20px; height: 50px; z-index: 11;
   }
-  .meter-bar.left { left: 24px; }
-  .meter-bar.right { right: 24px; }
-  .meter-fill {
-    position: absolute; top: 0; bottom: 0; transition: width var(--duration-fast) var(--ease-spring);
+  .tug-label-left, .tug-label-right {
+    position: absolute; top: 0; font-weight: 900; font-size: 11px; letter-spacing: 1px;
   }
-  .meter-bar.left .meter-fill {
-    left: 0;
-    background: linear-gradient(to right, var(--primary-20), var(--player-hp));
-    border-radius: 100px 0 0 100px;
+  .tug-label-left { left: 0; color: var(--player-hp); }
+  .tug-label-right { right: 0; color: var(--opponent-hp); }
+  .tug-track {
+    position: absolute; top: 18px; left: 0; right: 0; height: 24px;
+    background: var(--white-20); border-radius: 12px; overflow: hidden;
+    display: flex;
   }
-  .meter-bar.right .meter-fill {
-    right: 0;
-    background: linear-gradient(to left, var(--primary-20), var(--opponent-hp));
-    border-radius: 0 100px 100px 0;
+  .tug-fill-will {
+    height: 100%; background: linear-gradient(90deg, var(--player-hp), color-mix(in srgb, var(--player-hp), #fff 30%));
+    transition: width 0.1s var(--ease-spring);
   }
-  .meter-bar .pct {
-    position: absolute; top: 0; bottom: 0;
+  .tug-fill-pressure {
+    height: 100%; flex: 1;
+    background: linear-gradient(90deg, color-mix(in srgb, var(--opponent-hp), #000 20%), var(--opponent-hp));
+  }
+  .tug-divider {
+    width: 4px; background: #fff; border-radius: 2px; box-shadow: 0 0 8px rgba(255,255,255,0.5);
+    z-index: 1; flex-shrink: 0;
+  }
+  .tug-pct {
+    position: absolute; top: 18px; height: 24px;
     display: flex; align-items: center;
-    font-weight: 700; font-size: 11px; color: #fff;
+    font-weight: 700; font-size: 11px; color: #fff; z-index: 2;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.5);
   }
-  .meter-bar.left .pct { right: 6px; }
-  .meter-bar.right .pct { left: 6px; }
-  .meter-label {
-    position: absolute; top: 194px;
-    font-weight: 800; font-size: 9px; letter-spacing: 2px;
-    color: rgba(255,255,255,0.5); z-index: 11; text-transform: uppercase;
-  }
-  .meter-label.left { left: 24px; }
-  .meter-label.right { right: 24px; text-align: right; }
+  .tug-pct.left { left: 8px; }
+  .tug-pct.right { right: 8px; }
 
   /* ── Dialogue bubble (V3 glass panel) ── */
   .dialogue {
@@ -300,16 +299,17 @@
   <div class="name left" id="name-left">Player</div>
   <div class="name right" id="name-right">Pressure</div>
 
-  <!-- Meter bars -->
-  <div class="meter-label left">WILLPOWER</div>
-  <div class="meter-label right">PRESSURE</div>
-  <div class="meter-bar left" id="meter-left">
-    <div class="meter-fill" id="meter-fill-left" style="width:50%;"></div>
-    <span class="pct" id="meter-pct-left">50%</span>
-  </div>
-  <div class="meter-bar right" id="meter-right">
-    <div class="meter-fill" id="meter-fill-right" style="width:30%;"></div>
-    <span class="pct" id="meter-pct-right">30%</span>
+  <!-- Tug-of-war bar -->
+  <div class="tug-bar-area hidden" id="tug-bar-area">
+    <div class="tug-label-left">WILL</div>
+    <div class="tug-label-right">PRESSURE</div>
+    <div class="tug-track">
+      <div class="tug-fill-will" id="tug-fill-will" style="width:50%;"></div>
+      <div class="tug-divider" id="tug-divider"></div>
+      <div class="tug-fill-pressure" id="tug-fill-pressure"></div>
+    </div>
+    <span class="tug-pct left" id="tug-pct-left">50%</span>
+    <span class="tug-pct right" id="tug-pct-right">50%</span>
   </div>
 
   <!-- Dialogue bubble -->
@@ -344,7 +344,7 @@
   <div class="boot-card hidden" id="boot-card" style="position:absolute;top:380px;left:0;width:100%;text-align:center;z-index:12;">
     <div style="font-weight:900;font-size:28px;color:var(--primary);margin-bottom:8px;">意志涌动</div>
     <div style="font-weight:700;font-size:14px;color:#64748B;margin-bottom:24px;" id="boot-subtitle">Challenge</div>
-    <div style="font-weight:700;font-size:13px;color:#E2E8F0;line-height:2;">Tap to resist pressure<br>Survive surge waves<br>Hold on until the timer ends!</div>
+    <div style="font-weight:700;font-size:13px;color:#E2E8F0;line-height:2;">Tap to push back the pressure wave!<br>Survive surges and hold your ground.<br>Keep the bar past center to score!</div>
   </div>
 
   <div class="btn-area" id="btn-area"></div>
@@ -368,7 +368,7 @@ var COPY = Object.assign({
 
 var W = 393, H = 852;
 var ROUND_SECONDS = 28;
-var RATING_THRESHOLDS = { S: 210, A: 130, B: 70, C: 40 };
+var RATING_THRESHOLDS = { S: 180, A: 120, B: 70, C: 30 };
 var MODIFIER_BY_RATING = { S: 3, A: 1, B: 0, C: -1 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -569,10 +569,11 @@ function makeTapButton(label, fs, onTap) {
 
 function clearBtnArea() { $('btn-area').innerHTML = ''; }
 
-function updateMeter(side, ratio) {
-  var pct = Math.round(clamp(ratio, 0, 1) * 100);
-  $(side === 'left' ? 'meter-fill-left' : 'meter-fill-right').style.width = pct + '%';
-  $(side === 'left' ? 'meter-pct-left' : 'meter-pct-right').textContent = pct + '%';
+function updateTugBar(position) {
+  var pct = Math.round(clamp(position, 0, 1) * 100);
+  $('tug-fill-will').style.width = pct + '%';
+  $('tug-pct-left').textContent = pct + '%';
+  $('tug-pct-right').textContent = (100 - pct) + '%';
 }
 
 function initShellDOM() {
@@ -618,11 +619,11 @@ class BootScene extends Phaser.Scene {
     setVisible('score-display', false);
     setVisible('timer-text', false);
     setVisible('surge-bar-area', false);
+    setVisible('tug-bar-area', false);
     setVisible('stars-row', false);
     setVisible('result-info', false);
 
-    updateMeter('left', 0.5); updateMeter('right', 0.3);
-    $('dialogue').textContent = 'Tap rapidly to resist pressure waves. Hold on until help arrives!';
+    $('dialogue').textContent = 'Tap to push back the pressure wave! Survive surges and hold your ground.';
 
     var cx = W / 2, cy = 420;
     this.add.circle(cx, cy, 90, hexToInt(T.primary), 0.04).setDepth(2);
@@ -639,7 +640,7 @@ class BootScene extends Phaser.Scene {
     $('btn-area').appendChild(makeCandyButton('UNLOCK S TIER  🌙 50', 'full secondary', 16, function() {
       audio.unlock();
       setVisible('boot-card', false); setVisible('dialogue', false);
-      window.__game.scene.start('ResultScene', { score: 9999, surgesDefeated: 99, willFinal: 100 });
+      window.__game.scene.start('ResultScene', { score: 9999, wavesDefeated: 99, positionFinal: 100 });
     }));
   }
 }
@@ -652,12 +653,19 @@ class GameScene extends Phaser.Scene {
 
   init() {
     this.score = 0; this.timeLeft = ROUND_SECONDS; this.isOver = false;
-    this.meter = 0.5; this.threat = 0.3;
-    this.nextSurgeAt = 6; this.elapsed = 0;
-    this.surgeActive = false; this.surgeTimer = 0; this.surgeDur = 2.2;
-    this.surgesDefeated = 0; this.surgeWarned = false;
+    this.position = 0.5;       // tug position 0-1, 0.5 = center
+    this.pushSpeed = 0.04;     // opponent base push speed
+    this.tapBoost = 0.035;     // per-tap push amount
+    this.waveActive = false;   // current wave active?
+    this.waveTimer = 0;
+    this.waveDur = 1.5;
+    this.nextWaveAt = 4 + Math.random() * 3;  // 4-7s first wave
+    this.wavesDefeated = 0;
+    this.isSurge = false;      // big surge?
+    this.loseTimer = 0;        // pushed-to-edge timer
     this.tapCooldown = 0; this.lastTickSec = -1;
-    this.audioStarted = false; this.difficulty = 1; this.consecutiveLoss = 0;
+    this.audioStarted = false; this.difficulty = 1;
+    this.elapsed = 0;
   }
 
   create() {
@@ -672,6 +680,7 @@ class GameScene extends Phaser.Scene {
     setVisible('score-display', true);
     setVisible('timer-text', true);
     setVisible('surge-bar-area', true);
+    setVisible('tug-bar-area', true);
     setVisible('stars-row', false);
     setVisible('result-info', false);
 
@@ -680,11 +689,11 @@ class GameScene extends Phaser.Scene {
     $('timer-text').textContent = ROUND_SECONDS + 's';
     $('timer-text').classList.remove('warn');
     $('dialogue').textContent = COPY.statusNeutral;
-    $('surge-bar-label').textContent = 'SAFE';
-    $('surge-bar-label').style.color = '#888';
+    $('surge-bar-label').textContent = 'CALM';
+    $('surge-bar-label').style.color = 'rgba(255,255,255,0.4)';
     $('surge-bar-fill').style.width = '0%';
 
-    updateMeter('left', 0.5); updateMeter('right', 0.3);
+    updateTugBar(0.5);
 
     var cx = W / 2, cy = 410;
     this.coreCx = cx; this.coreCy = cy;
@@ -716,12 +725,9 @@ class GameScene extends Phaser.Scene {
     var T = window.__V3_THEME__;
     if (!this.audioStarted) { audio.unlock(); audio.bgm('tense'); this.audioStarted = true; }
 
-    var baseBoost = this.surgeActive ? 0.09 : 0.065;
-    var boost = Math.max(0.03, baseBoost - this.difficulty * 0.003);
-    this.meter = Math.min(1, this.meter + boost);
-    this.tapCooldown = 0.08 + this.difficulty * 0.002;
-
-    if (this.meter > this.threat) this.consecutiveLoss = 0;
+    var boost = Math.max(0.02, this.tapBoost - this.difficulty * 0.001);
+    this.position = Math.min(1, this.position + boost);
+    this.tapCooldown = 0.08;
 
     audio.tap();
     this.tweens.add({ targets: this.coreCircle, scaleX: 1.45, scaleY: 1.45, yoyo: true, duration: 90, ease: 'Quad.easeOut' });
@@ -742,19 +748,22 @@ class GameScene extends Phaser.Scene {
 
   updateStatus() {
     var T = window.__V3_THEME__;
-    var diff = this.meter - this.threat;
     var txt, col;
-    if (this.surgeActive) { txt = COPY.surgeWarning; col = T.gold; }
-    else if (diff > 0.2) { txt = COPY.statusHolding; col = T.playerHp; }
-    else if (diff > -0.05) { txt = COPY.statusNeutral; col = T.primary; }
+    if (this.waveActive) { txt = this.isSurge ? COPY.surgeWarning : 'WAVE INCOMING!'; col = this.isSurge ? '#FF4D6A' : T.gold; }
+    else if (this.position > 0.6) { txt = COPY.statusHolding; col = T.playerHp; }
+    else if (this.position > 0.35) { txt = COPY.statusNeutral; col = T.primary; }
     else { txt = COPY.statusLosing; col = '#FF4D6A'; }
     $('dialogue').textContent = txt; $('dialogue').style.color = col; $('dialogue').style.borderColor = col;
   }
 
-  finishGame() {
+  finishGame(reason) {
     if (this.isOver) return; this.isOver = true;
     window.__activeGameScene = null; audio.stopBgm(600);
-    this.scene.start('ResultScene', { score: Math.round(this.score), surgesDefeated: this.surgesDefeated, willFinal: Math.round(this.meter * 100) });
+    if (reason === 'lost') {
+      showToast(this, 'Will broken!', '#FF4D6A', W / 2, 400);
+      damageFlash(this);
+    }
+    this.scene.start('ResultScene', { score: Math.round(this.score), wavesDefeated: this.wavesDefeated, positionFinal: Math.round(this.position * 100) });
   }
 
   update(time, delta) {
@@ -778,117 +787,145 @@ class GameScene extends Phaser.Scene {
     var t = time / 1000;
     this.difficulty = Math.min(12, 1 + this.elapsed * 0.5);
 
-    this.nextSurgeAt -= dt;
+    // ── Opponent continuous push (scales with time) ──
+    this.pushSpeed = 0.04 + this.elapsed / 28 * 0.06 + this.difficulty * 0.003;
+    var push = this.pushSpeed;
 
-    if (!this.surgeActive && this.nextSurgeAt > 0) {
-      var surgeRatio = clamp(1 - this.nextSurgeAt / 6, 0, 1);
-      $('surge-bar-fill').style.width = (surgeRatio * 100) + '%';
-      if (this.nextSurgeAt <= 1.5) { $('surge-bar-label').textContent = 'SURGE IN ' + Math.ceil(this.nextSurgeAt) + '...'; $('surge-bar-label').style.color = '#FF4D6A'; }
-      else if (this.nextSurgeAt <= 3) { $('surge-bar-label').textContent = 'SURGE APPROACHING'; $('surge-bar-label').style.color = T.gold; }
-      else { $('surge-bar-label').textContent = 'SAFE'; $('surge-bar-label').style.color = '#888'; }
-    }
+    // ── Wave system ──
+    if (this.waveActive) {
+      push *= this.isSurge ? 3.0 : 2.0;
+      this.waveTimer -= dt;
 
-    if (!this.surgeActive && !this.surgeWarned && this.nextSurgeAt <= 1.5 && this.nextSurgeAt > 0) {
-      this.surgeWarned = true;
-      audio.alert();
-      this.surgeRing.setStrokeStyle(3, 0xff4d6a, 0.8).setScale(1);
-      this.tweens.add({ targets: this.surgeRing, scaleX: 3, scaleY: 3, alpha: 0, duration: 800, ease: 'Quad.easeOut' });
-    }
+      // Surge bar shows wave remaining
+      var waveRatio = clamp(this.waveTimer / this.waveDur, 0, 1);
+      $('surge-bar-fill').style.width = (waveRatio * 100) + '%';
 
-    if (!this.surgeActive && this.nextSurgeAt <= 0) {
-      this.surgeActive = true;
-      this.surgeDur = 2.2 + this.difficulty * 0.08;
-      this.surgeTimer = this.surgeDur;
-      this.surgeWarned = false;
-      this.nextSurgeAt = Phaser.Math.FloatBetween(4.5, 7.0) - this.difficulty * 0.1;
-      audio.alert();
-      damageFlash(this); screenShake(this, 0.01);
-      $('surge-bar-label').textContent = 'SURGE!';
-      $('surge-bar-label').style.color = '#FF4D6A';
-      $('surge-bar-fill').style.width = '100%';
-    }
-
-    if (this.surgeActive) {
-      this.surgeTimer -= dt;
-      this.threat += (0.15 + this.difficulty * 0.02) * dt;
-      if (this.surgeTimer <= 0) {
-        this.surgeActive = false;
-        if (this.meter >= this.threat - 0.10) {
-          this.surgesDefeated++;
-          var bonus = 22 + Math.min(this.surgesDefeated, 4) * 4;
+      if (this.waveTimer <= 0) {
+        this.waveActive = false;
+        if (this.position > 0.3) {
+          this.wavesDefeated++;
+          var bonus = 20 + this.wavesDefeated * 5;
           this.addScore(bonus);
-          showToast(this, '\u2726 Surge Repelled +' + bonus, T.playerHp, W / 2, 350);
+          showToast(this, '+' + bonus + ' Wave survived!', T.playerHp, W / 2, 350);
           spawnParticles(this, this.coreCx, this.coreCy, hexToInt(T.gold), 10, 400);
-          audio.success(); this.consecutiveLoss = 0;
+          audio.success();
         } else {
-          var pen = 8 + this.consecutiveLoss * 3;
-          this.consecutiveLoss++;
-          this.addScore(-pen);
-          showToast(this, 'Overwhelmed -' + pen, '#FF4D6A', W / 2, 350);
-          audio.fail(); damageFlash(this); screenShake(this, 0.012);
+          this.addScore(-10);
+          showToast(this, 'Overwhelmed -10', '#FF4D6A', W / 2, 350);
+          audio.fail(); damageFlash(this);
         }
+        // Schedule next wave
+        this.nextWaveAt = 3 + Math.random() * 3 - this.difficulty * 0.1;
       }
     } else {
-      var creep = 0.045 + (this.elapsed / ROUND_SECONDS) * 0.06 + this.difficulty * 0.003;
-      this.threat += creep * dt;
+      this.nextWaveAt -= dt;
+
+      // Wave preview bar
+      if (this.nextWaveAt <= 3) {
+        var ratio = 1 - this.nextWaveAt / 3;
+        $('surge-bar-fill').style.width = (ratio * 100) + '%';
+        if (this.nextWaveAt <= 1.5) {
+          $('surge-bar-label').textContent = 'WAVE IN ' + Math.ceil(this.nextWaveAt) + '...';
+          $('surge-bar-label').style.color = '#FF4D6A';
+        } else {
+          $('surge-bar-label').textContent = 'WAVE APPROACHING';
+          $('surge-bar-label').style.color = T.gold;
+        }
+      } else {
+        $('surge-bar-fill').style.width = '0%';
+        $('surge-bar-label').textContent = 'CALM';
+        $('surge-bar-label').style.color = 'rgba(255,255,255,0.4)';
+      }
+
+      // Warning ring at 1.5s
+      if (this.nextWaveAt <= 1.5 && this.nextWaveAt > 1.4) {
+        audio.alert();
+        this.surgeRing.setStrokeStyle(3, 0xff4d6a, 0.8).setScale(1);
+        this.tweens.add({ targets: this.surgeRing, scaleX: 3, scaleY: 3, alpha: 0, duration: 800, ease: 'Quad.easeOut' });
+      }
+
+      if (this.nextWaveAt <= 0) {
+        // Trigger wave
+        this.waveActive = true;
+        this.isSurge = this.difficulty >= 4 && Math.random() < 0.3;
+        this.waveDur = this.isSurge ? 2.5 : 1.5;
+        this.waveTimer = this.waveDur;
+        if (this.isSurge) {
+          screenShake(this, 0.015);
+          $('surge-bar-label').textContent = 'SURGE!';
+          $('surge-bar-label').style.color = '#FF4D6A';
+          audio.alert();
+        } else {
+          $('surge-bar-label').textContent = 'WAVE!';
+          $('surge-bar-label').style.color = T.gold;
+        }
+        damageFlash(this);
+      }
     }
 
-    var decay = 0.065 + (this.surgeActive ? 0.04 : 0) + this.difficulty * 0.002;
-    this.meter -= decay * dt;
-    if (this.meter < this.threat - 0.15) this.meter -= 0.02 * dt;
+    // ── Apply push ──
+    this.position -= push * dt;
 
-    this.meter = Phaser.Math.Clamp(this.meter, 0, 1);
-    this.threat = Phaser.Math.Clamp(this.threat, 0, 1);
+    // ── Scoring: ahead = +, behind = - ──
+    if (this.position > 0.5) {
+      this.addScore((this.position - 0.5) * 8 * dt * 60);
+    } else if (this.position < 0.4) {
+      this.addScore((this.position - 0.4) * 4 * dt * 60);
+    }
 
-    var diff = this.meter - this.threat;
-    if (diff > 0) this.addScore(diff * 14 * dt);
-    else this.addScore(diff * 9 * dt);
+    // ── Lose detection: position <= 0.05 for 1 second ──
+    if (this.position <= 0.05) {
+      this.loseTimer += dt;
+      if (this.loseTimer >= 1.0) { this.finishGame('lost'); return; }
+    } else {
+      this.loseTimer = 0;
+    }
 
-    updateMeter('left', this.meter);
-    updateMeter('right', this.threat);
+    this.position = Phaser.Math.Clamp(this.position, 0, 1);
 
-    var glow = 0.35 + this.meter * 0.5;
+    // ── Update tug bar ──
+    updateTugBar(this.position);
+
+    // ── Core visuals ──
+    var glow = 0.35 + this.position * 0.5;
     this.coreGlowOuter.setAlpha(glow * 0.15);
     this.coreGlowMid.setAlpha(glow * 0.25);
-    this.coreCircle.setAlpha(0.5 + this.meter * 0.5);
+    this.coreCircle.setAlpha(0.5 + this.position * 0.5);
 
     var breathe = 1 + Math.sin(t * 2) * 0.04;
     this.coreCircle.setScale(breathe);
     this.coreGlowMid.setScale(breathe * 1.1);
 
-    if (this.meter < 0.2) {
-      var shrink = 0.6 + this.meter * 2;
+    if (this.position < 0.2) {
+      var shrink = 0.6 + this.position * 2;
       this.coreCircle.setScale(shrink * breathe);
     }
 
     for (var i = 0; i < this.orbiters.length; i++) {
       var o = this.orbiters[i];
       o.angle += o.speed * dt;
-      var od = o.dist * (0.8 + this.meter * 0.4);
+      var od = o.dist * (0.8 + this.position * 0.4);
       o.obj.x = this.coreCx + Math.cos(o.angle) * od;
       o.obj.y = this.coreCy + Math.sin(o.angle) * od;
-      o.obj.setAlpha(0.2 + this.meter * 0.5);
+      o.obj.setAlpha(0.2 + this.position * 0.5);
     }
 
+    // ── Wave visual ring ──
     this.surgeGfx.clear();
-    if (this.surgeActive) {
-      var pulseT = (this.surgeDur - this.surgeTimer) / this.surgeDur;
+    if (this.waveActive) {
+      var pulseT = (this.waveDur - this.waveTimer) / this.waveDur;
       var pulseR = 50 + pulseT * 80;
       var pulseA = 0.2 + Math.sin(t * 8) * 0.1;
-      this.surgeGfx.lineStyle(4, 0xff4d6a, pulseA);
+      var ringColor = this.isSurge ? 0xff4d6a : hexToInt(T.gold);
+      this.surgeGfx.lineStyle(4, ringColor, pulseA);
       this.surgeGfx.beginPath(); this.surgeGfx.arc(this.coreCx, this.coreCy, pulseR, 0, Math.PI * 2); this.surgeGfx.strokePath();
-      this.surgeGfx.lineStyle(2, 0xdc2626, pulseA * 0.5);
+      this.surgeGfx.lineStyle(2, ringColor, pulseA * 0.5);
       this.surgeGfx.beginPath(); this.surgeGfx.arc(this.coreCx, this.coreCy, pulseR + 20, 0, Math.PI * 2); this.surgeGfx.strokePath();
     }
 
     this.updateStatus();
 
-    if (this.meter <= 0) {
-      showToast(this, 'Will broken!', '#FF4D6A', W / 2, 400);
-      damageFlash(this); this.finishGame(); return;
-    }
-
-    if (this.timeLeft <= 0) this.finishGame();
+    if (this.timeLeft <= 0) this.finishGame('time');
   }
 }
 
@@ -897,7 +934,7 @@ class GameScene extends Phaser.Scene {
 // ══════════════════════════════════════════════════════════════════════════════
 class ResultScene extends Phaser.Scene {
   constructor() { super('ResultScene'); }
-  init(data) { this.finalScore = data.score || 0; this.surgesDefeated = data.surgesDefeated || 0; this.willFinal = data.willFinal || 0; }
+  init(data) { this.finalScore = data.score || 0; this.wavesDefeated = data.wavesDefeated || 0; this.positionFinal = data.positionFinal || 0; }
 
   create() {
     this.children.removeAll(true);
@@ -913,9 +950,8 @@ class ResultScene extends Phaser.Scene {
     setVisible('boot-card', false);
     setVisible('dialogue', false); setVisible('score-display', false);
     setVisible('timer-text', false); setVisible('surge-bar-area', false);
+    setVisible('tug-bar-area', false);
     setVisible('stars-row', true); setVisible('result-info', true);
-
-    updateMeter('left', 1); updateMeter('right', 0);
 
     var cx = W / 2, cy = 410;
     this.add.circle(cx, cy, 90, hexToInt(rColor), 0.08).setDepth(2);
@@ -952,12 +988,12 @@ class ResultScene extends Phaser.Scene {
     }
 
     $('attr-mod').textContent = DISPLAY_ATTRIBUTE + ' ' + modText;
-    $('stat-surges').textContent = 'Surges: ' + this.surgesDefeated;
-    $('stat-will').textContent = 'Will: ' + this.willFinal + '%';
+    $('stat-surges').textContent = 'Waves: ' + this.wavesDefeated;
+    $('stat-will').textContent = 'Position: ' + this.positionFinal + '%';
 
     clearBtnArea();
     $('btn-area').appendChild(makeCandyButton('CONTINUE', 'full', 18, function() {
-      notifyGameComplete({ rating: rating, score: self.finalScore, attribute: ATTRIBUTE, modifier: modifier, gameId: 'will-surge', surgesDefeated: self.surgesDefeated, willFinal: self.willFinal });
+      notifyGameComplete({ rating: rating, score: self.finalScore, attribute: ATTRIBUTE, modifier: modifier, gameId: 'will-surge', wavesDefeated: self.wavesDefeated, positionFinal: self.positionFinal });
       setTimeout(function() { window.__game.scene.start('BootScene'); }, 600);
     }));
     $('btn-area').appendChild(makeCandyButton('REPLAY', 'full', 18, function() { window.__game.scene.start('BootScene'); }));

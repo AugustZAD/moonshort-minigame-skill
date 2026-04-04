@@ -230,7 +230,7 @@
         <span class="delta" id="score-delta"></span>
       </div>
     </div>
-    <span class="timer-text" id="timer-text">30s</span>
+    <span class="timer-text" id="timer-text">35s</span>
   </div>
 
   <div class="maze-label hidden" id="maze-label">Maze 1</div>
@@ -257,7 +257,7 @@
   <div class="boot-card hidden" id="boot-card" style="position:absolute;top:380px;left:0;width:100%;text-align:center;z-index:12;">
     <div style="font-weight:900;font-size:28px;color:var(--primary);margin-bottom:8px;">迷宫探险</div>
     <div style="font-weight:700;font-size:14px;color:#64748B;margin-bottom:24px;" id="boot-subtitle">Wisdom Challenge</div>
-    <div style="font-weight:700;font-size:13px;color:#E2E8F0;line-height:2;">Navigate the maze with D-pad or swipe.<br>Collect the key, then reach the exit.<br>Avoid bumping walls!</div>
+    <div style="font-weight:700;font-size:13px;color:#E2E8F0;line-height:2;">Find the 🔑 key, then reach the 🚪 door.<br>Use D-pad or swipe to move.<br>Avoid bumping walls — they cost time!</div>
   </div>
   <div class="btn-area hidden" id="btn-area" style="position:absolute;bottom:20px;left:12px;right:12px;display:flex;flex-direction:column;gap:14px;z-index:10;"></div>
 </div>
@@ -272,7 +272,7 @@ var EPISODE_LABEL = CTX.episodeLabel || params.get('episodeLabel') || '';
 var EPISODE_TITLE = CTX.episodeTitle || params.get('episodeTitle') || 'Maze Escape';
 
 var W = 393, H = 852;
-var ROUND_SECONDS = 30;
+var ROUND_SECONDS = 35;
 var RATING_THRESHOLDS = { S: 220, A: 160, B: 110, C: 70 };
 var MODIFIER_BY_RATING = { S: 3, A: 1, B: 0, C: -1 };
 
@@ -674,7 +674,7 @@ class GameScene extends Phaser.Scene {
   init() {
     this.score = 0; this.timeLeft = ROUND_SECONDS; this.isOver = false; this.combo = 0; this.maxCombo = 0;
     this.escapes = 0; this.bumps = 0; this.mazeIndex = 0; this.cell = 24; this.boardX = 40; this.boardY = 170;
-    this.lastTickSec = -1; this.audioStarted = false; this.difficulty = 1; this.timePenaltyPerBump = 1.5;
+    this.lastTickSec = -1; this.audioStarted = false; this.difficulty = 1; this.timePenaltyPerBump = 1.0;
     this.hasKey = false; this.player = null; this.key = null; this.exit = null; this.map = null; this.trail = {};
   }
   create() {
@@ -716,13 +716,15 @@ class GameScene extends Phaser.Scene {
   }
 
   loadMaze(idx) {
-    var bc = 5, br = 5, ex = Math.min(idx, 4);
+    var bc = 4, br = 4, ex = Math.min(idx, 3);
     this.map = generateMaze(bc + ex, br + ex);
     var gw = this.map[0].length, gh = this.map.length;
     var maxW = W - 30, maxH = 480;
     this.cell = Math.floor(Math.min(maxW / gw, maxH / gh));
     this.boardX = Math.floor((W - gw * this.cell) / 2); this.boardY = 170;
     this.mazeIndex = idx; this.hasKey = false; this.trail = {};
+    if (this.keyEmoji) { this.keyEmoji.destroy(); this.keyEmoji = null; }
+    if (this.exitEmoji) { this.tweens.killTweensOf(this.exitEmoji); this.exitEmoji.destroy(); this.exitEmoji = null; this.exitGlow = false; }
     for (var y = 0; y < this.map.length; y++) for (var x = 0; x < this.map[y].length; x++) {
       var c = this.map[y][x];
       if (c === 'S') this.player = { x: x, y: y };
@@ -761,7 +763,7 @@ class GameScene extends Phaser.Scene {
         var cB = Math.max(0, 14 - this.bumps * 2), dB = Math.min(this.difficulty, 8) * 2, coB = Math.min(this.combo, 4) * 4;
         var gain = 36 + cB + coB + dB; this.escapes++; this.combo++; this.maxCombo = Math.max(this.maxCombo, this.combo);
         this.addScore(gain); this.difficulty = Math.min(12, this.difficulty + 1);
-        this.timePenaltyPerBump = Math.min(3, 1.5 + this.difficulty * 0.15);
+        this.timePenaltyPerBump = Math.min(2, 1.0 + this.difficulty * 0.1);
         showToast(this, 'Escaped +' + gain, T.playerHp, W / 2, 400);
         spawnParticles(this, W / 2, 350, hexToInt(T.gold), 12, 500); audio.success();
         $('combo-text').textContent = 'Combo x' + this.combo;
@@ -787,13 +789,20 @@ class GameScene extends Phaser.Scene {
     }
     // Trail
     for (var k in this.trail) { var pts = k.split(','), tx = parseInt(pts[0]), ty = parseInt(pts[1]);
-      this.trailGfx.fillStyle(priI, 0.15); this.trailGfx.fillRoundedRect(this.boardX + tx * this.cell + 2, this.boardY + ty * this.cell + 2, this.cell - 5, this.cell - 5, 2); }
+      this.trailGfx.fillStyle(hexToInt(T.playerHp), 0.25); this.trailGfx.fillRoundedRect(this.boardX + tx * this.cell + 2, this.boardY + ty * this.cell + 2, this.cell - 5, this.cell - 5, 2); }
     var r = Math.max(3, this.cell * 0.3);
-    // Key
-    if (!this.hasKey) { this.graphics.fillStyle(hexToInt(T.gold), 1); this.graphics.fillCircle(this.boardX + this.key.x * this.cell + this.cell / 2, this.boardY + this.key.y * this.cell + this.cell / 2, r); }
-    // Exit
-    var ec = this.hasKey ? hexToInt(T.playerHp) : hexToInt(T.primaryLight), pd = Math.max(2, this.cell * 0.15);
-    this.graphics.fillStyle(ec, 1); this.graphics.fillRoundedRect(this.boardX + this.exit.x * this.cell + pd, this.boardY + this.exit.y * this.cell + pd, this.cell - pd * 2, this.cell - pd * 2, 4);
+    // Key emoji
+    if (!this.hasKey) {
+      if (!this.keyEmoji) { this.keyEmoji = this.add.text(0, 0, '\uD83D\uDD11', { fontSize: (this.cell * 0.8) + 'px' }).setOrigin(0.5).setDepth(12); }
+      this.keyEmoji.setPosition(this.boardX + this.key.x * this.cell + this.cell / 2, this.boardY + this.key.y * this.cell + this.cell / 2).setVisible(true).setFontSize(this.cell * 0.8);
+    } else if (this.keyEmoji) { this.keyEmoji.setVisible(false); }
+    // Exit emoji
+    if (!this.exitEmoji) { this.exitEmoji = this.add.text(0, 0, '\uD83D\uDEAA', { fontSize: (this.cell * 0.8) + 'px' }).setOrigin(0.5).setDepth(12); this.exitGlow = false; }
+    this.exitEmoji.setPosition(this.boardX + this.exit.x * this.cell + this.cell / 2, this.boardY + this.exit.y * this.cell + this.cell / 2).setFontSize(this.cell * 0.8);
+    if (this.hasKey) {
+      this.exitEmoji.setTint(0x4FECA2);
+      if (!this.exitGlow) { this.exitGlow = true; this.tweens.add({ targets: this.exitEmoji, scaleX: 1.2, scaleY: 1.2, yoyo: true, repeat: -1, duration: 600, ease: 'Sine.easeInOut' }); }
+    } else { this.exitEmoji.clearTint(); if (this.exitGlow) { this.tweens.killTweensOf(this.exitEmoji); this.exitEmoji.setScale(1); this.exitGlow = false; } }
     // Player
     this.graphics.fillStyle(0xffffff, 1); this.graphics.fillCircle(this.boardX + this.player.x * this.cell + this.cell / 2, this.boardY + this.player.y * this.cell + this.cell / 2, r);
     this.graphics.fillStyle(priI, 0.5); this.graphics.fillCircle(this.boardX + this.player.x * this.cell + this.cell / 2 - r * 0.2, this.boardY + this.player.y * this.cell + this.cell / 2 - r * 0.2, r * 0.4);

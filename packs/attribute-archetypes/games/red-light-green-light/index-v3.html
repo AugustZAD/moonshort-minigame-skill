@@ -254,7 +254,7 @@
   <div class="stamina-area hidden" id="stamina-area"><span class="stamina-label">STAMINA</span><div class="stamina-track"><div class="stamina-fill" id="stamina-fill" style="width:100%"></div></div></div>
   <div class="combo-text hidden" id="combo-text"></div>
   <div class="switch-bar-area hidden" id="switch-bar-area"><div class="switch-bar-track"><div class="switch-bar-fill" id="switch-bar-fill" style="width:100%"></div></div></div>
-  <div class="rules-card hidden" id="rules-card"><h2>TRAFFIC LIGHT SPRINT</h2><p>Hold RUN when the light is GREEN.<br>STOP immediately when it turns RED!<br>Manage your stamina wisely.<br>Build combos by running on green.</p></div>
+  <div class="rules-card hidden" id="rules-card"><h2>TRAFFIC LIGHT SPRINT</h2><p>Hold RUN when the light is GREEN.<br>STOP immediately when it turns RED!<br>Yellow flash is a bluff — keep running!<br>Manage your stamina wisely.<br>Build combos by running on green.</p></div>
   <div class="grade-overlay hidden" id="grade-overlay"><div class="grade-letter pop-in" id="grade-letter"></div><div class="grade-score" id="grade-score"></div></div>
   <div class="stars-row hidden" id="stars-row"></div>
   <div class="result-info hidden" id="result-info"><div class="attr-mod" id="attr-mod"></div><div class="stats"><span id="stat-combo"></span><span id="stat-hits"></span></div></div>
@@ -269,7 +269,7 @@ var DISPLAY_ATTRIBUTE = (CTX.character && CTX.character.name ? CTX.character.nam
 var EPISODE_LABEL = CTX.episodeLabel || params.get('episodeLabel') || '';
 var EPISODE_TITLE = CTX.episodeTitle || params.get('episodeTitle') || 'Red Light Green Light';
 var W = 393, H = 852, ROUND_SECONDS = 36;
-var RATING_THRESHOLDS = { S: 380, A: 290, B: 200, C: 120 };
+var RATING_THRESHOLDS = { S: 1800, A: 1200, B: 700, C: 350 };
 var MODIFIER_BY_RATING = { S: 3, A: 1, B: 0, C: -1 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -362,7 +362,7 @@ class BootScene extends Phaser.Scene {
 // ══════════════════════════════════════════════════════════════════════════════
 class GameScene extends Phaser.Scene {
   constructor() { super('GameScene'); }
-  init() { this.score = 0; this.timeLeft = ROUND_SECONDS; this.isOver = false; this.light = 'green'; this.running = false; this.distance = 0; this.combo = 0; this.maxCombo = 0; this.totalHits = 0; this.totalMiss = 0; this.lastTickSec = -1; this.audioStarted = false; this.difficulty = 1; this.stamina = 100; this.maxStamina = 100; this.penaltyStack = 0; this.comboRunTime = 0; this.lastComboMilestone = 0; this.switchTimer = 2400; this.greenDurationBase = 2400; this.redDurationBase = 1600; this.switchTimerMax = 2400; this._holding = false; this._runBtn = null; }
+  init() { this.score = 0; this.timeLeft = ROUND_SECONDS; this.isOver = false; this.light = 'green'; this.running = false; this.distance = 0; this.combo = 0; this.maxCombo = 0; this.totalHits = 0; this.totalMiss = 0; this.lastTickSec = -1; this.audioStarted = false; this.difficulty = 1; this.stamina = 100; this.maxStamina = 100; this.penaltyStack = 0; this.comboRunTime = 0; this.lastComboMilestone = 0; this.switchTimer = 2400; this.greenDurationBase = 2400; this.redDurationBase = 1600; this.switchTimerMax = 2400; this._holding = false; this._runBtn = null; this.fakeOutCooldown = 0; this.fakeOutActive = false; this.fakeOutTimer = 0; }
   create() {
     this.children.removeAll(true);
     this.cameras.main.resetFX();
@@ -387,8 +387,21 @@ class GameScene extends Phaser.Scene {
   toggleLight() {
     var T = window.__V3_THEME__;
     var ds = Math.min(this.difficulty, 10);
-    if (this.light === 'green') { this.light = 'red'; setTrafficLight('red'); var rt = Math.max(800, this.redDurationBase - ds * 50) + Math.random() * 600; this.switchTimer = rt; this.switchTimerMax = rt; audio.alert(); }
-    else { this.light = 'green'; this.penaltyStack = 0; setTrafficLight('green'); var gt = Math.max(1200, this.greenDurationBase - ds * 60) + Math.random() * 800; this.switchTimer = gt; this.switchTimerMax = gt; audio.swoosh(); }
+    if (this.light === 'green') {
+      this.light = 'red'; setTrafficLight('red');
+      var rt = 600 + Math.random() * Math.max(300, 1400 - ds * 80);
+      this.switchTimer = rt; this.switchTimerMax = rt; audio.alert();
+    } else {
+      this.light = 'green'; this.penaltyStack = 0; setTrafficLight('green');
+      if (this.difficulty >= 6 && Math.random() < 0.20) {
+        var trapGt = 400 + Math.random() * 200;
+        this.switchTimer = trapGt; this.switchTimerMax = trapGt;
+      } else {
+        var gt = 800 + Math.random() * Math.max(400, 2200 - ds * 100);
+        this.switchTimer = gt; this.switchTimerMax = gt;
+      }
+      audio.swoosh();
+    }
   }
   addScore(d) { this.score = Math.max(0, this.score + d); $('score-value').textContent = Math.round(this.score); deltaPop(d); }
   finishGame(reason) { if (this.isOver) return; this.isOver = true; audio.stopBgm(600); this.scene.start('ResultScene', { score: Math.round(this.score), maxCombo: this.maxCombo, hits: Math.round(this.totalHits), misses: this.totalMiss, distance: Math.floor(this.distance), reason: reason || 'time' }); }
@@ -402,6 +415,15 @@ class GameScene extends Phaser.Scene {
     var bc; if (sr > 0.5) bc = this.light === 'green' ? '#4FECA2' : '#FF4D6A'; else if (sr > 0.25) bc = '#FFB347'; else bc = this.light === 'green' ? '#FFB347' : '#4FECA2';
     $('switch-bar-fill').style.width = (sr * 100) + '%'; $('switch-bar-fill').style.background = bc;
     if (this.switchTimer <= 0) { this.toggleLight(); this.difficulty = Math.min(12, this.difficulty + 0.3); }
+    if (this.light === 'green' && !this.fakeOutActive && this.fakeOutCooldown <= 0) {
+      var fakeChance = Math.min(0.40, 0.15 + this.difficulty * 0.025) * dt;
+      if (Math.random() < fakeChance) { this.fakeOutActive = true; this.fakeOutTimer = 300; setTrafficLight('yellow'); $('light-label').textContent = '\u26A0\uFE0F'; audio.alert(); }
+    }
+    if (this.fakeOutActive) {
+      this.fakeOutTimer -= delta;
+      if (this.fakeOutTimer <= 0) { this.fakeOutActive = false; this.fakeOutCooldown = 3000; setTrafficLight('green'); $('light-label').textContent = 'GO!'; $('light-label').style.color = '#4FECA2'; }
+    }
+    if (this.fakeOutCooldown > 0) this.fakeOutCooldown -= delta;
     if (!this.running) { this.stamina = Math.min(this.maxStamina, this.stamina + 18 * dt); }
     if (this.light === 'green' && this.running && this.stamina > 0) {
       this.stamina = Math.max(0, this.stamina - 25 * dt); this.distance += 12 * dt; this.comboRunTime += dt; this.totalHits += dt * 0.5;
