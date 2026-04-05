@@ -235,7 +235,7 @@
   <div class="combo-text hidden" id="combo-text"></div>
 
   <!-- Rules card -->
-  <div class="rules-card hidden" id="rules-card"><h2>FIRING RANGE</h2><p>Drag to aim, tap FIRE to shoot.<br>🎯 Big balloon (bottom): <b>10pt</b><br>🎯 Medium balloon: <b>20pt</b><br>🎯 Small gold balloon (top): <b>40pt</b><br>Small top balloons worth 4x more!</p></div>
+  <div class="rules-card hidden" id="rules-card"><h2>FIRING RANGE</h2><p>Drag to aim, tap FIRE to shoot.<br>🎯 Big balloon: <b>2pt</b> (no combo)<br>🎯 Medium: <b>20pt</b> (builds combo)<br>🎯 Small gold (top): <b>50pt</b> (builds combo)<br>Only medium & gold build your combo multiplier!</p></div>
 
   <!-- Grade overlay -->
   <div class="grade-overlay hidden" id="grade-overlay"><div class="grade-letter pop-in" id="grade-letter"></div><div class="grade-score" id="grade-score"></div></div>
@@ -260,7 +260,7 @@ var EPISODE_LABEL = CTX.episodeLabel || params.get('episodeLabel') || '';
 var EPISODE_TITLE = CTX.episodeTitle || params.get('episodeTitle') || 'Cannon Aim';
 
 var W = 393, H = 852, ROUND_SECONDS = 30;
-var RATING_THRESHOLDS = { S: 400, A: 280, B: 180, C: 90 };
+var RATING_THRESHOLDS = { S: 420, A: 280, B: 170, C: 80 };
 var MODIFIER_BY_RATING = { S: 3, A: 1, B: 0, C: -1 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -883,11 +883,11 @@ class GameScene extends Phaser.Scene {
 
     this.targets = [
       // Tier 3: small, fast, top, gold — high risk/reward
-      { x: 90,  y: 260, r: 14, vx: 70,  tier: 3, color: GOLD_INT,      value: 40 },
+      { x: 90,  y: 260, r: 14, vx: 70,  tier: 3, color: GOLD_INT,      value: 50 },
       // Tier 2: medium, middle, secondary color — balanced
       { x: 304, y: 380, r: 20, vx: -55, tier: 2, color: SECONDARY_INT, value: 20 },
-      // Tier 1: big, slow, bottom, primary — easy/safe
-      { x: 180, y: 500, r: 28, vx: 40,  tier: 1, color: PRIMARY_INT,   value: 10 }
+      // Tier 1: big, slow, bottom, primary — easy/safe but trivial value
+      { x: 180, y: 500, r: 28, vx: 40,  tier: 1, color: PRIMARY_INT,   value: 2 }
     ];
 
     var setAim = function(ptr) {
@@ -1098,10 +1098,16 @@ class GameScene extends Phaser.Scene {
         var dist = Phaser.Math.Distance.Between(this.shell.x, this.shell.y, target.x, target.y);
         if (dist <= target.r + 14) {
           this.hits += 1;
-          this.combo += 1;
-          this.maxCombo = Math.max(this.maxCombo, this.combo);
-          var mult = 1 + Math.min(this.combo - 1, 8) * 0.1;
-          var gain = Math.round(target.value * mult);
+          var gain;
+          if (target.tier === 1) {
+            // Tier 1: flat value, no combo contribution
+            gain = target.value;
+          } else {
+            this.combo += 1;
+            this.maxCombo = Math.max(this.maxCombo, this.combo);
+            var mult = 1 + Math.min(this.combo - 1, 8) * 0.1;
+            gain = Math.round(target.value * mult);
+          }
           this.addScore(gain);
           var toastColor = target.tier === 3 ? T.gold : (target.tier === 2 ? T.primaryLight : T.primary);
           var toastMsg = target.tier === 3 ? '+' + gain + ' 🎯' : '+' + gain;
