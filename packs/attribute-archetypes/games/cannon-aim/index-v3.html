@@ -260,7 +260,7 @@ var EPISODE_LABEL = CTX.episodeLabel || params.get('episodeLabel') || '';
 var EPISODE_TITLE = CTX.episodeTitle || params.get('episodeTitle') || 'Cannon Aim';
 
 var W = 393, H = 852, ROUND_SECONDS = 30;
-var RATING_THRESHOLDS = { S: 320, A: 220, B: 140, C: 70 };
+var RATING_THRESHOLDS = { S: 400, A: 280, B: 180, C: 90 };
 var MODIFIER_BY_RATING = { S: 3, A: 1, B: 0, C: -1 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -1100,8 +1100,8 @@ class GameScene extends Phaser.Scene {
           this.hits += 1;
           this.combo += 1;
           this.maxCombo = Math.max(this.maxCombo, this.combo);
-          var cb = Math.min(this.combo, 5) * 4;
-          var gain = target.value + cb;
+          var mult = 1 + Math.min(this.combo - 1, 8) * 0.1;
+          var gain = Math.round(target.value * mult);
           this.addScore(gain);
           var toastColor = target.tier === 3 ? T.gold : (target.tier === 2 ? T.primaryLight : T.primary);
           var toastMsg = target.tier === 3 ? '+' + gain + ' 🎯' : '+' + gain;
