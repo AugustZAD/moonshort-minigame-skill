@@ -235,7 +235,7 @@
   <div class="combo-text hidden" id="combo-text"></div>
 
   <!-- Rules card -->
-  <div class="rules-card hidden" id="rules-card"><h2>FIRING RANGE</h2><p>Drag to aim the cannon.<br>Tap FIRE to launch shells.<br>Hit moving targets for points.<br>Smaller targets = bigger rewards!</p></div>
+  <div class="rules-card hidden" id="rules-card"><h2>FIRING RANGE</h2><p>Drag to aim, tap FIRE to shoot.<br>🎯 Big balloon (bottom): <b>10pt</b><br>🎯 Medium balloon: <b>20pt</b><br>🎯 Small gold balloon (top): <b>40pt</b><br>Small top balloons worth 4x more!</p></div>
 
   <!-- Grade overlay -->
   <div class="grade-overlay hidden" id="grade-overlay"><div class="grade-letter pop-in" id="grade-letter"></div><div class="grade-score" id="grade-score"></div></div>
@@ -260,7 +260,7 @@ var EPISODE_LABEL = CTX.episodeLabel || params.get('episodeLabel') || '';
 var EPISODE_TITLE = CTX.episodeTitle || params.get('episodeTitle') || 'Cannon Aim';
 
 var W = 393, H = 852, ROUND_SECONDS = 30;
-var RATING_THRESHOLDS = { S: 230, A: 170, B: 120, C: 70 };
+var RATING_THRESHOLDS = { S: 320, A: 220, B: 140, C: 70 };
 var MODIFIER_BY_RATING = { S: 3, A: 1, B: 0, C: -1 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -882,9 +882,12 @@ class GameScene extends Phaser.Scene {
     var SECONDARY_INT = (secColor[0] << 16) | (secColor[1] << 8) | secColor[2];
 
     this.targets = [
-      { x: 90,  y: 320, r: 24, vx: 45,  color: PRIMARY_INT,   value: 16 },
-      { x: 304, y: 420, r: 22, vx: -50, color: SECONDARY_INT, value: 20 },
-      { x: 180, y: 500, r: 20, vx: 42,  color: GOLD_INT,      value: 26 }
+      // Tier 3: small, fast, top, gold — high risk/reward
+      { x: 90,  y: 260, r: 14, vx: 70,  tier: 3, color: GOLD_INT,      value: 40 },
+      // Tier 2: medium, middle, secondary color — balanced
+      { x: 304, y: 380, r: 20, vx: -55, tier: 2, color: SECONDARY_INT, value: 20 },
+      // Tier 1: big, slow, bottom, primary — easy/safe
+      { x: 180, y: 500, r: 28, vx: 40,  tier: 1, color: PRIMARY_INT,   value: 10 }
     ];
 
     var setAim = function(ptr) {
@@ -1022,20 +1025,6 @@ class GameScene extends Phaser.Scene {
       g.moveTo(t.x, drawY + t.r);
       g.lineTo(t.x + Math.sin(this.gameTime * 2 + ti) * 3, drawY + t.r + 22);
       g.strokePath();
-      // Prediction ghost: where balloon will be in 0.55s (shell travel time)
-      var sm = 1 + this.difficulty * 0.06;
-      var ghostX = t.x + t.vx * sm * 0.55;
-      ghostX = clamp(ghostX, this.playLeft + t.r, this.playRight - t.r);
-      if (Math.abs(ghostX - t.x) > 8) {
-        g.lineStyle(2, t.color, 0.5);
-        g.strokeCircle(ghostX, t.y, t.r * 0.8);
-        // Small arrow indicator from current to ghost
-        g.lineStyle(1, t.color, 0.3);
-        g.beginPath();
-        g.moveTo(t.x + (ghostX > t.x ? t.r : -t.r), t.y);
-        g.lineTo(ghostX + (ghostX > t.x ? -t.r * 0.8 : t.r * 0.8), t.y);
-        g.strokePath();
-      }
     }
 
     // Shell
@@ -1114,15 +1103,30 @@ class GameScene extends Phaser.Scene {
           var cb = Math.min(this.combo, 5) * 4;
           var gain = target.value + cb;
           this.addScore(gain);
-          showToast(this, '+' + gain, T.primary, target.x, target.y - 30);
+          var toastColor = target.tier === 3 ? T.gold : (target.tier === 2 ? T.primaryLight : T.primary);
+          var toastMsg = target.tier === 3 ? '+' + gain + ' 🎯' : '+' + gain;
+          showToast(this, toastMsg, toastColor, target.x, target.y - 30);
           spawnParticles(this, target.x, target.y, target.color, 10, 400);
           audio.success();
           $('combo-text').textContent = 'Combo x' + this.combo;
-          target.x = Phaser.Math.Between(40, 353);
-          target.y = Phaser.Math.Between(this.playTop + 40, this.playBottom - 200);
-          var bs = 55 + this.difficulty * 4;
-          target.vx = Phaser.Math.Between(bs, bs + 30) * (Math.random() > 0.5 ? 1 : -1);
-          target.r = Math.max(15, target.r - 0.15);
+          // Respawn keeping tier characteristics
+          target.x = Phaser.Math.Between(50, 343);
+          if (target.tier === 3) {
+            target.y = Phaser.Math.Between(220, 290);
+            target.r = Phaser.Math.Between(12, 16);
+            var bs3 = 65 + this.difficulty * 4;
+            target.vx = Phaser.Math.Between(bs3, bs3 + 15) * (Math.random() > 0.5 ? 1 : -1);
+          } else if (target.tier === 2) {
+            target.y = Phaser.Math.Between(340, 420);
+            target.r = Phaser.Math.Between(18, 22);
+            var bs2 = 50 + this.difficulty * 3;
+            target.vx = Phaser.Math.Between(bs2, bs2 + 15) * (Math.random() > 0.5 ? 1 : -1);
+          } else {
+            target.y = Phaser.Math.Between(470, 540);
+            target.r = Phaser.Math.Between(26, 30);
+            var bs1 = 35 + this.difficulty * 2;
+            target.vx = Phaser.Math.Between(bs1, bs1 + 12) * (Math.random() > 0.5 ? 1 : -1);
+          }
           this.shell = null;
           hit = true;
           break;
