@@ -882,9 +882,9 @@ class GameScene extends Phaser.Scene {
     var SECONDARY_INT = (secColor[0] << 16) | (secColor[1] << 8) | secColor[2];
 
     this.targets = [
-      { x: 90,  y: 280, r: 18, vx: 64,  color: PRIMARY_INT,   value: 16 },
-      { x: 304, y: 380, r: 17, vx: -72, color: SECONDARY_INT, value: 20 },
-      { x: 180, y: 480, r: 15, vx: 58,  color: GOLD_INT,      value: 26 }
+      { x: 90,  y: 320, r: 24, vx: 45,  color: PRIMARY_INT,   value: 16 },
+      { x: 304, y: 420, r: 22, vx: -50, color: SECONDARY_INT, value: 20 },
+      { x: 180, y: 500, r: 20, vx: 42,  color: GOLD_INT,      value: 26 }
     ];
 
     var setAim = function(ptr) {
@@ -929,7 +929,7 @@ class GameScene extends Phaser.Scene {
     if (this.shell || this.isOver) return;
     if (!this.audioStarted) { audio.unlock(); audio.bgm('action'); this.audioStarted = true; }
     audio.swoosh();
-    var pw = 400;
+    var pw = 600;
     this.shell = {
       x: this.cannon.x + Math.cos(this.angle) * 30,
       y: this.cannon.y + Math.sin(this.angle) * 30,
@@ -981,8 +981,8 @@ class GameScene extends Phaser.Scene {
     // Trajectory prediction dots — dual-layer
     var sx = this.cannon.x + Math.cos(this.angle) * 30;
     var sy = this.cannon.y + Math.sin(this.angle) * 30;
-    var svx = Math.cos(this.angle) * 400;
-    var svy = Math.sin(this.angle) * 400;
+    var svx = Math.cos(this.angle) * 600;
+    var svy = Math.sin(this.angle) * 600;
     for (var step = 0; step < 8; step++) {
       sx += svx * 0.04;
       sy += svy * 0.04;
@@ -1022,6 +1022,20 @@ class GameScene extends Phaser.Scene {
       g.moveTo(t.x, drawY + t.r);
       g.lineTo(t.x + Math.sin(this.gameTime * 2 + ti) * 3, drawY + t.r + 22);
       g.strokePath();
+      // Prediction ghost: where balloon will be in 0.55s (shell travel time)
+      var sm = 1 + this.difficulty * 0.06;
+      var ghostX = t.x + t.vx * sm * 0.55;
+      ghostX = clamp(ghostX, this.playLeft + t.r, this.playRight - t.r);
+      if (Math.abs(ghostX - t.x) > 8) {
+        g.lineStyle(2, t.color, 0.5);
+        g.strokeCircle(ghostX, t.y, t.r * 0.8);
+        // Small arrow indicator from current to ghost
+        g.lineStyle(1, t.color, 0.3);
+        g.beginPath();
+        g.moveTo(t.x + (ghostX > t.x ? t.r : -t.r), t.y);
+        g.lineTo(ghostX + (ghostX > t.x ? -t.r * 0.8 : t.r * 0.8), t.y);
+        g.strokePath();
+      }
     }
 
     // Shell
@@ -1093,7 +1107,7 @@ class GameScene extends Phaser.Scene {
       for (var j = 0; j < this.targets.length; j++) {
         var target = this.targets[j];
         var dist = Phaser.Math.Distance.Between(this.shell.x, this.shell.y, target.x, target.y);
-        if (dist <= target.r + 8) {
+        if (dist <= target.r + 14) {
           this.hits += 1;
           this.combo += 1;
           this.maxCombo = Math.max(this.maxCombo, this.combo);
@@ -1108,7 +1122,7 @@ class GameScene extends Phaser.Scene {
           target.y = Phaser.Math.Between(this.playTop + 40, this.playBottom - 200);
           var bs = 55 + this.difficulty * 4;
           target.vx = Phaser.Math.Between(bs, bs + 30) * (Math.random() > 0.5 ? 1 : -1);
-          target.r = Math.max(12, target.r - 0.15);
+          target.r = Math.max(15, target.r - 0.15);
           this.shell = null;
           hit = true;
           break;
