@@ -257,7 +257,7 @@
   <div class="boot-card hidden" id="boot-card" style="position:absolute;top:380px;left:0;width:100%;text-align:center;z-index:12;">
     <div style="font-weight:900;font-size:28px;color:var(--primary);margin-bottom:8px;">迷宫探险</div>
     <div style="font-weight:700;font-size:14px;color:#64748B;margin-bottom:24px;" id="boot-subtitle">Wisdom Challenge</div>
-    <div style="font-weight:700;font-size:13px;color:#E2E8F0;line-height:2;">Find the 🔑 key, then reach the 🚪 door.<br>Use D-pad or swipe to move.<br>Avoid bumping walls — they cost time!</div>
+    <div style="font-weight:700;font-size:13px;color:#E2E8F0;line-height:2;">Grab the key, reach the door, escape!<br>After 8s a ghost appears — dodge it!<br>3 escapes = S rank. Caught = -5s + reset.</div>
   </div>
   <div class="btn-area hidden" id="btn-area" style="position:absolute;bottom:20px;left:12px;right:12px;display:flex;flex-direction:column;gap:14px;z-index:10;"></div>
 </div>
@@ -272,8 +272,8 @@ var EPISODE_LABEL = CTX.episodeLabel || params.get('episodeLabel') || '';
 var EPISODE_TITLE = CTX.episodeTitle || params.get('episodeTitle') || 'Maze Escape';
 
 var W = 393, H = 852;
-var ROUND_SECONDS = 35;
-var RATING_THRESHOLDS = { S: 220, A: 160, B: 110, C: 70 };
+var ROUND_SECONDS = 40;
+var RATING_THRESHOLDS = { S: 220, A: 160, B: 110, C: 70 }; // legacy, rating now uses escape count
 var MODIFIER_BY_RATING = { S: 3, A: 1, B: 0, C: -1 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -601,20 +601,31 @@ function generateMaze(cols, rows) {
       }
     }
   }
-  carve(0, 0); grid[1][1] = 'S'; grid[h - 2][w - 2] = 'E';
-  var dead = [];
+  carve(0, 0);
+  // Braid pass: remove 30% of inner walls to create loops
+  var innerWalls = [];
   for (var cy = 0; cy < rows; cy++) for (var cx = 0; cx < cols; cx++) {
     var gy = cy * 2 + 1, gx = cx * 2 + 1;
-    if (grid[gy][gx] !== '.') continue;
-    var on = 0;
-    for (var d = 0; d < dirs.length; d++) {
-      var c = grid[gy + dirs[d][1]] ? grid[gy + dirs[d][1]][gx + dirs[d][0]] : undefined;
-      if (c === '.' || c === 'S' || c === 'E') on++;
-    }
-    if (on === 1) dead.push([gx, gy]);
+    // Horizontal wall (between (cx,cy) and (cx+1,cy))
+    if (cx < cols - 1 && grid[gy][gx + 1] === '#') innerWalls.push([gx + 1, gy]);
+    // Vertical wall (between (cx,cy) and (cx,cy+1))
+    if (cy < rows - 1 && grid[gy + 1][gx] === '#') innerWalls.push([gx, gy + 1]);
   }
-  if (dead.length > 0) { var kp = dead[Math.floor(Math.random() * dead.length)]; grid[kp[1]][kp[0]] = 'K'; }
-  else { grid[2 * Math.floor(rows / 2) + 1][2 * Math.floor(cols / 2) + 1] = 'K'; }
+  var braidCount = Math.floor(innerWalls.length * 0.30);
+  var braidMin = Math.max(3, braidCount);
+  braidCount = Math.min(braidMin, innerWalls.length);
+  innerWalls.sort(function() { return Math.random() - 0.5; });
+  for (var b = 0; b < braidCount; b++) {
+    var wp = innerWalls[b]; grid[wp[1]][wp[0]] = '.';
+  }
+  // Fixed start/exit at opposite corners
+  grid[1][1] = 'S'; grid[h - 2][w - 2] = 'E';
+  // Key near center (±1 offset)
+  var kcx = Math.floor(cols / 2) + (Math.floor(Math.random() * 3) - 1);
+  var kcy = Math.floor(rows / 2) + (Math.floor(Math.random() * 3) - 1);
+  kcx = Math.max(1, Math.min(cols - 2, kcx));
+  kcy = Math.max(1, Math.min(rows - 2, kcy));
+  grid[kcy * 2 + 1][kcx * 2 + 1] = 'K';
   return grid.map(function(r) { return r.join(''); });
 }
 
@@ -673,9 +684,12 @@ class GameScene extends Phaser.Scene {
   constructor() { super('GameScene'); }
   init() {
     this.score = 0; this.timeLeft = ROUND_SECONDS; this.isOver = false; this.combo = 0; this.maxCombo = 0;
-    this.escapes = 0; this.bumps = 0; this.mazeIndex = 0; this.cell = 24; this.boardX = 40; this.boardY = 170;
+    this.escapes = 0; this.bumps = 0; this.captures = 0; this.mazeIndex = 0; this.cell = 24; this.boardX = 40; this.boardY = 170;
     this.lastTickSec = -1; this.audioStarted = false; this.difficulty = 1; this.timePenaltyPerBump = 1.0;
     this.hasKey = false; this.player = null; this.key = null; this.exit = null; this.map = null; this.trail = {};
+    // Ghost state
+    this.ghost = null; this.ghostAlpha = 0; this.ghostState = 'dormant'; this.ghostTimer = 8; this.ghostMoveMs = 700; this.ghostMoveAcc = 0; this.ghostPathMs = 500; this.ghostPathAcc = 0; this.ghostSpeedTier = 0;
+    this.mazeStartTime = 0; this.nearMissFlag = false;
   }
   create() {
     this.children.removeAll(true);
@@ -716,13 +730,14 @@ class GameScene extends Phaser.Scene {
   }
 
   loadMaze(idx) {
-    var bc = 4, br = 4, ex = Math.min(idx, 3);
+    var bc = 6, br = 6, ex = Math.min(idx, 3);
     this.map = generateMaze(bc + ex, br + ex);
     var gw = this.map[0].length, gh = this.map.length;
-    var maxW = W - 30, maxH = 480;
+    var maxW = W - 20, maxH = 500;
     this.cell = Math.floor(Math.min(maxW / gw, maxH / gh));
-    this.boardX = Math.floor((W - gw * this.cell) / 2); this.boardY = 170;
+    this.boardX = Math.floor((W - gw * this.cell) / 2); this.boardY = 165;
     this.mazeIndex = idx; this.hasKey = false; this.trail = {};
+    this.mazeStartTime = this.time.now;
     if (this.keyEmoji) { this.keyEmoji.destroy(); this.keyEmoji = null; }
     if (this.exitEmoji) { this.tweens.killTweensOf(this.exitEmoji); this.exitEmoji.destroy(); this.exitEmoji = null; this.exitGlow = false; }
     for (var y = 0; y < this.map.length; y++) for (var x = 0; x < this.map[y].length; x++) {
@@ -731,12 +746,48 @@ class GameScene extends Phaser.Scene {
       if (c === 'K') this.key = { x: x, y: y };
       if (c === 'E') this.exit = { x: x, y: y };
     }
+    // Reset ghost state for new maze
+    this.ghostState = 'dormant'; this.ghostTimer = 8; this.ghostAlpha = 0;
+    this.ghostSpeedTier = 0; this.ghostMoveMs = 700;
+    this.ghost = null; this.ghostMoveAcc = 0; this.ghostPathAcc = 0;
+    this.nearMissFlag = false;
     $('maze-label').textContent = 'Maze ' + (this.escapes + 1);
     $('key-status').textContent = 'Find the Key!';
     this.drawMaze();
   }
 
   addScore(d) { this.score = Math.max(0, this.score + d); $('score-value').textContent = Math.round(this.score); deltaPop(d); }
+
+  bfsPath(fromX, fromY, toX, toY) {
+    // Returns next step [dx,dy] toward (toX,toY), or null
+    if (!this.map) return null;
+    var w = this.map[0].length, h = this.map.length;
+    var key = function(x, y) { return y * w + x; };
+    var queue = [[fromX, fromY]]; var cameFrom = {}; cameFrom[key(fromX, fromY)] = null;
+    var found = false; var iter = 0;
+    var dirs = [[0,-1],[1,0],[0,1],[-1,0]];
+    while (queue.length > 0 && iter < 200) {
+      iter++;
+      var cur = queue.shift(); var cx = cur[0], cy = cur[1];
+      if (cx === toX && cy === toY) { found = true; break; }
+      for (var d = 0; d < 4; d++) {
+        var nx = cx + dirs[d][0], ny = cy + dirs[d][1];
+        if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
+        if (this.map[ny][nx] === '#') continue;
+        var k = key(nx, ny);
+        if (cameFrom.hasOwnProperty(k)) continue;
+        cameFrom[k] = [cx, cy]; queue.push([nx, ny]);
+      }
+    }
+    if (!found) return null;
+    // Walk back from target to find first step
+    var node = [toX, toY]; var prev = cameFrom[key(toX, toY)];
+    if (!prev) return null;
+    while (prev[0] !== fromX || prev[1] !== fromY) {
+      node = prev; prev = cameFrom[key(prev[0], prev[1])]; if (!prev) return null;
+    }
+    return [node[0] - fromX, node[1] - fromY];
+  }
 
   tryMove(dx, dy) {
     if (this.isOver) return;
@@ -753,18 +804,23 @@ class GameScene extends Phaser.Scene {
     this.player.x = nx; this.player.y = ny;
 
     if (!this.hasKey && this.player.x === this.key.x && this.player.y === this.key.y) {
-      this.hasKey = true; var kb = 14 + Math.min(this.escapes, 3) * 4; this.addScore(kb);
-      showToast(this, 'Key +' + kb, T.gold, W / 2, 400);
+      this.hasKey = true; this.addScore(10);
+      // Boost ghost speed when key picked up (urgency)
+      this.ghostMoveMs = Math.max(400, this.ghostMoveMs - 80);
+      showToast(this, 'Key +10', T.gold, W / 2, 400);
       spawnParticles(this, this.boardX + this.key.x * this.cell + this.cell / 2, this.boardY + this.key.y * this.cell + this.cell / 2, hexToInt(T.gold), 8, 400);
-      audio.success(); $('key-status').textContent = 'Got it! Find Exit!';
+      audio.success(); $('key-status').textContent = 'Got it! Run to Exit!';
     } else if (this.player.x === this.exit.x && this.player.y === this.exit.y) {
       if (!this.hasKey) { showToast(this, 'Need key!', T.primaryLight, W / 2, 400); audio.alert(); }
       else {
-        var cB = Math.max(0, 14 - this.bumps * 2), dB = Math.min(this.difficulty, 8) * 2, coB = Math.min(this.combo, 4) * 4;
-        var gain = 36 + cB + coB + dB; this.escapes++; this.combo++; this.maxCombo = Math.max(this.maxCombo, this.combo);
-        this.addScore(gain); this.difficulty = Math.min(12, this.difficulty + 1);
-        this.timePenaltyPerBump = Math.min(2, 1.0 + this.difficulty * 0.1);
-        showToast(this, 'Escaped +' + gain, T.playerHp, W / 2, 400);
+        var elapsed = (this.time.now - this.mazeStartTime) / 1000;
+        var speedBonus = elapsed < 10 ? 20 : (elapsed < 15 ? 10 : 0);
+        var nmBonus = this.nearMissFlag ? 5 : 0;
+        var gain = 30 + speedBonus + nmBonus;
+        this.escapes++; this.combo++; this.maxCombo = Math.max(this.maxCombo, this.combo);
+        this.addScore(gain);
+        var label = 'Escaped +' + gain + (speedBonus ? ' Fast!' : '') + (nmBonus ? ' Close!' : '');
+        showToast(this, label, T.playerHp, W / 2, 400);
         spawnParticles(this, W / 2, 350, hexToInt(T.gold), 12, 500); audio.success();
         $('combo-text').textContent = 'Combo x' + this.combo;
         this.loadMaze(this.mazeIndex + 1);
@@ -832,10 +888,28 @@ class GameScene extends Phaser.Scene {
     // Player
     this.graphics.fillStyle(0xffffff, 1); this.graphics.fillCircle(this.boardX + this.player.x * this.cell + this.cell / 2, this.boardY + this.player.y * this.cell + this.cell / 2, r);
     this.graphics.fillStyle(priI, 0.5); this.graphics.fillCircle(this.boardX + this.player.x * this.cell + this.cell / 2 - r * 0.2, this.boardY + this.player.y * this.cell + this.cell / 2 - r * 0.2, r * 0.4);
+    // Ghost (purple hunter)
+    if (this.ghost && this.ghostAlpha > 0) {
+      var ghostX = this.boardX + this.ghost.x * this.cell + this.cell / 2;
+      var ghostY = this.boardY + this.ghost.y * this.cell + this.cell / 2;
+      var pulseR = r * (1 + Math.sin(this.time.now / 200) * 0.15);
+      // Glow halo
+      this.graphics.fillStyle(0x8B5CF6, this.ghostAlpha * 0.3); this.graphics.fillCircle(ghostX, ghostY, pulseR + 6);
+      this.graphics.fillStyle(0x8B5CF6, this.ghostAlpha * 0.6); this.graphics.fillCircle(ghostX, ghostY, pulseR + 2);
+      // Body (ghost shape: purple circle)
+      this.graphics.fillStyle(0x7C3AED, this.ghostAlpha); this.graphics.fillCircle(ghostX, ghostY, pulseR);
+      // Eyes
+      this.graphics.fillStyle(0xffffff, this.ghostAlpha); this.graphics.fillCircle(ghostX - pulseR * 0.35, ghostY - pulseR * 0.15, pulseR * 0.25);
+      this.graphics.fillStyle(0xffffff, this.ghostAlpha); this.graphics.fillCircle(ghostX + pulseR * 0.35, ghostY - pulseR * 0.15, pulseR * 0.25);
+      this.graphics.fillStyle(0x000000, this.ghostAlpha); this.graphics.fillCircle(ghostX - pulseR * 0.35, ghostY - pulseR * 0.15, pulseR * 0.12);
+      this.graphics.fillStyle(0x000000, this.ghostAlpha); this.graphics.fillCircle(ghostX + pulseR * 0.35, ghostY - pulseR * 0.15, pulseR * 0.12);
+    }
   }
 
   finishGame() { if (this.isOver) return; this.isOver = true; window.__activeGameScene = null; audio.stopBgm(600);
-    this.scene.start('ResultScene', { score: Math.round(this.score), maxCombo: this.maxCombo, hits: this.escapes, misses: this.bumps }); }
+    // No-bump bonus
+    if (this.bumps === 0 && this.escapes > 0) this.addScore(50);
+    this.scene.start('ResultScene', { score: Math.round(this.score), maxCombo: this.maxCombo, hits: this.escapes, misses: this.bumps, captures: this.captures }); }
 
   update(time, delta) {
     if (this.isOver) return;
@@ -847,7 +921,61 @@ class GameScene extends Phaser.Scene {
     $('timer-text').textContent = sec + 's';
     if (this.timeLeft <= 10 && sec !== this.lastTickSec && sec > 0) { this.lastTickSec = sec; if (this.timeLeft <= 5) audio.heartbeat(); else audio.tick(); }
     if (this.timeLeft <= 10) $('timer-text').classList.add('warn'); else $('timer-text').classList.remove('warn');
+    // Ghost state machine
+    var dt = delta / 1000;
+    if (this.ghostState === 'dormant') {
+      this.ghostTimer -= dt;
+      if (this.ghostTimer <= 0) {
+        // Spawn at opposite corner of player
+        var w = this.map[0].length, h = this.map.length;
+        var gx = this.player.x < w / 2 ? w - 2 : 1;
+        var gy = this.player.y < h / 2 ? h - 2 : 1;
+        while (this.map[gy][gx] === '#') { gx += gx === 1 ? 1 : -1; }
+        this.ghost = { x: gx, y: gy };
+        this.ghostState = 'spawning'; this.ghostAlpha = 0; this.ghostTimer = 0.5;
+      }
+    } else if (this.ghostState === 'spawning') {
+      this.ghostAlpha = Math.min(0.9, this.ghostAlpha + dt * 1.8);
+      this.ghostTimer -= dt;
+      if (this.ghostTimer <= 0) { this.ghostState = 'hunting'; this.ghostAlpha = 0.9; }
+    } else if (this.ghostState === 'hunting') {
+      this.ghostMoveAcc += delta;
+      if (this.ghostMoveAcc >= this.ghostMoveMs) {
+        this.ghostMoveAcc = 0;
+        var step = this.bfsPath(this.ghost.x, this.ghost.y, this.player.x, this.player.y);
+        if (step) {
+          this.ghost.x += step[0]; this.ghost.y += step[1];
+          // Near-miss detection (distance 1-2)
+          var dx = Math.abs(this.ghost.x - this.player.x), dy = Math.abs(this.ghost.y - this.player.y);
+          if (dx + dy <= 2 && !(dx === 0 && dy === 0)) this.nearMissFlag = true;
+          // Capture check
+          if (this.ghost.x === this.player.x && this.ghost.y === this.player.y) this.captureByGhost();
+        }
+      }
+    }
     if (this.timeLeft <= 0) this.finishGame();
+    // Redraw for ghost animation
+    if (this.ghostState !== 'dormant') this.drawMaze();
+  }
+
+  captureByGhost() {
+    var T = window.__V3_THEME__;
+    this.captures++; this.combo = 0; this.hasKey = false;
+    this.timeLeft = Math.max(0, this.timeLeft - 5);
+    // Reset player to start, ghost to opposite corner
+    for (var y = 0; y < this.map.length; y++) for (var x = 0; x < this.map[y].length; x++) {
+      if (this.map[y][x] === 'S') this.player = { x: x, y: y };
+    }
+    this.trail = {};
+    // Speed tier reset (slow down on capture)
+    this.ghostSpeedTier = 0; this.ghostMoveMs = 700;
+    // Push ghost to opposite corner
+    var w = this.map[0].length, h = this.map.length;
+    this.ghost.x = w - 2; this.ghost.y = h - 2;
+    while (this.map[this.ghost.y][this.ghost.x] === '#' && this.ghost.x > 1) { this.ghost.x -= 1; }
+    showToast(this, 'Caught! -5s', '#FF4D6A', W / 2, 380); audio.fail(); damageFlash(this); screenShake(this, 0.015);
+    $('key-status').textContent = 'Find the Key!'; $('combo-text').textContent = '';
+    this.drawMaze();
   }
 }
 
@@ -856,13 +984,21 @@ class GameScene extends Phaser.Scene {
 // ══════════════════════════════════════════════════════════════════════════════
 class ResultScene extends Phaser.Scene {
   constructor() { super('ResultScene'); }
-  init(data) { this.finalScore = data.score || 0; this.maxCombo = data.maxCombo || 0; this.hits = data.hits || 0; this.misses = data.misses || 0; }
+  init(data) { this.finalScore = data.score || 0; this.maxCombo = data.maxCombo || 0; this.hits = data.hits || 0; this.misses = data.misses || 0; this.captures = data.captures || 0; }
   create() {
     this.children.removeAll(true);
     this.cameras.main.resetFX();
     var T = window.__V3_THEME__;
     this.add.rectangle(W / 2, H / 2, W, H, hexToInt(T.bg), 1).setDepth(0);
-    var rating = getRating(this.finalScore), modifier = getModifier(rating), modText = modifier > 0 ? '+' + modifier : String(modifier);
+    // Rating based on escapes + captures (skill-based, not luck)
+    var escapes = this.hits, caps = this.captures;
+    var rating;
+    if (escapes >= 3 && caps === 0) rating = 'S';
+    else if (escapes >= 4 && caps <= 1) rating = 'S';
+    else if (escapes >= 2) rating = 'A';
+    else if (escapes >= 1) rating = 'B';
+    else rating = 'C';
+    var modifier = getModifier(rating), modText = modifier > 0 ? '+' + modifier : String(modifier);
     var rHex = { S: T.gold, A: T.primary, B: T.primaryLight, C: T.strokeDark }, rcHex = rHex[rating];
 
     setVisible('boot-card', false);
@@ -882,11 +1018,11 @@ class ResultScene extends Phaser.Scene {
     for (var i = 0; i < 4; i++) { var s = document.createElement('span'); s.className = 'star ' + (i < sc ? 'filled' : 'empty'); s.textContent = '\u2605'; s.style.animationDelay = (0.1 + i * 0.08) + 's'; sr.appendChild(s); }
 
     $('result-info').style.top = '490px'; $('attr-mod').textContent = ''; $('attr-mod').style.color = T.primaryLight;
-    $('stat-combo').textContent = 'Combo: ' + this.maxCombo; $('stat-hits').textContent = 'Escapes: ' + this.hits + ' / Bumps: ' + this.misses;
+    $('stat-combo').textContent = 'Escapes: ' + this.hits; $('stat-hits').textContent = 'Caught: ' + this.captures + ' / Bumps: ' + this.misses;
 
     var self = this; clearBtnArea();
     $('btn-area').appendChild(makeCandyButton('CONTINUE', 'full', 18, function() {
-      notifyGameComplete({ rating: rating, score: self.finalScore, attribute: ATTRIBUTE, modifier: modifier, gameId: 'maze-escape', maxCombo: self.maxCombo, hits: self.hits, misses: self.misses });
+      notifyGameComplete({ rating: rating, score: self.finalScore, attribute: ATTRIBUTE, modifier: modifier, gameId: 'maze-escape', maxCombo: self.maxCombo, hits: self.hits, misses: self.misses, captures: self.captures });
       self.time.delayedCall(600, function() { self.scene.start('BootScene'); });
     }));
     $('btn-area').appendChild(makeCandyButton('REPLAY', 'full', 18, function() {
