@@ -791,14 +791,28 @@ class GameScene extends Phaser.Scene {
     for (var k in this.trail) { var pts = k.split(','), tx = parseInt(pts[0]), ty = parseInt(pts[1]);
       this.trailGfx.fillStyle(hexToInt(T.playerHp), 0.25); this.trailGfx.fillRoundedRect(this.boardX + tx * this.cell + 2, this.boardY + ty * this.cell + 2, this.cell - 5, this.cell - 5, 2); }
     var r = Math.max(3, this.cell * 0.3);
-    // Key emoji
+    // Key highlight halo (bright gold backdrop so key stands out vs walls)
     if (!this.hasKey) {
-      if (!this.keyEmoji) { this.keyEmoji = this.add.text(0, 0, '\uD83D\uDD11', { fontSize: (this.cell * 0.8) + 'px' }).setOrigin(0.5).setDepth(12); }
-      this.keyEmoji.setPosition(this.boardX + this.key.x * this.cell + this.cell / 2, this.boardY + this.key.y * this.cell + this.cell / 2).setVisible(true).setFontSize(this.cell * 0.8);
+      var kcx = this.boardX + this.key.x * this.cell + this.cell / 2;
+      var kcy = this.boardY + this.key.y * this.cell + this.cell / 2;
+      this.graphics.fillStyle(hexToInt(T.gold), 0.35); this.graphics.fillCircle(kcx, kcy, this.cell * 0.55);
+      this.graphics.fillStyle(hexToInt(T.gold), 0.7); this.graphics.fillCircle(kcx, kcy, this.cell * 0.42);
+      this.graphics.fillStyle(0xffffff, 0.15); this.graphics.fillCircle(kcx, kcy, this.cell * 0.3);
+    }
+    // Exit highlight halo (bright backdrop, brighter when unlocked)
+    var ecx = this.boardX + this.exit.x * this.cell + this.cell / 2;
+    var ecy = this.boardY + this.exit.y * this.cell + this.cell / 2;
+    var exitCol = this.hasKey ? 0x4FECA2 : hexToInt(T.primaryLight);
+    this.graphics.fillStyle(exitCol, this.hasKey ? 0.4 : 0.25); this.graphics.fillCircle(ecx, ecy, this.cell * 0.55);
+    this.graphics.fillStyle(exitCol, this.hasKey ? 0.75 : 0.5); this.graphics.fillCircle(ecx, ecy, this.cell * 0.42);
+    // Key emoji (on top of halo)
+    if (!this.hasKey) {
+      if (!this.keyEmoji) { this.keyEmoji = this.add.text(0, 0, '\uD83D\uDD11', { fontSize: (this.cell * 1.0) + 'px' }).setOrigin(0.5).setDepth(12); }
+      this.keyEmoji.setPosition(this.boardX + this.key.x * this.cell + this.cell / 2, this.boardY + this.key.y * this.cell + this.cell / 2).setVisible(true).setFontSize(this.cell * 1.0);
     } else if (this.keyEmoji) { this.keyEmoji.setVisible(false); }
     // Exit emoji
-    if (!this.exitEmoji) { this.exitEmoji = this.add.text(0, 0, '\uD83D\uDEAA', { fontSize: (this.cell * 0.8) + 'px' }).setOrigin(0.5).setDepth(12); this.exitGlow = false; }
-    this.exitEmoji.setPosition(this.boardX + this.exit.x * this.cell + this.cell / 2, this.boardY + this.exit.y * this.cell + this.cell / 2).setFontSize(this.cell * 0.8);
+    if (!this.exitEmoji) { this.exitEmoji = this.add.text(0, 0, '\uD83D\uDEAA', { fontSize: (this.cell * 1.0) + 'px' }).setOrigin(0.5).setDepth(12); this.exitGlow = false; }
+    this.exitEmoji.setPosition(this.boardX + this.exit.x * this.cell + this.cell / 2, this.boardY + this.exit.y * this.cell + this.cell / 2).setFontSize(this.cell * 1.0);
     if (this.hasKey) {
       this.exitEmoji.setTint(0x4FECA2);
       if (!this.exitGlow) { this.exitGlow = true; this.tweens.add({ targets: this.exitEmoji, scaleX: 1.2, scaleY: 1.2, yoyo: true, repeat: -1, duration: 600, ease: 'Sine.easeInOut' }); }
