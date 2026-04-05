@@ -269,7 +269,7 @@ var DISPLAY_ATTRIBUTE = (CTX.character && CTX.character.name ? CTX.character.nam
 var EPISODE_LABEL = CTX.episodeLabel || params.get('episodeLabel') || '';
 var EPISODE_TITLE = CTX.episodeTitle || params.get('episodeTitle') || 'Red Light Green Light';
 var W = 393, H = 852, ROUND_SECONDS = 36;
-var RATING_THRESHOLDS = { S: 1800, A: 1200, B: 700, C: 350 };
+var RATING_THRESHOLDS = { S: 100, A: 70, B: 45, C: 20 };
 var MODIFIER_BY_RATING = { S: 3, A: 1, B: 0, C: -1 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -426,7 +426,7 @@ class GameScene extends Phaser.Scene {
     if (this.fakeOutCooldown > 0) this.fakeOutCooldown -= delta;
     if (!this.running) { this.stamina = Math.min(this.maxStamina, this.stamina + 18 * dt); }
     if (this.light === 'green' && this.running && this.stamina > 0) {
-      this.stamina = Math.max(0, this.stamina - 25 * dt); this.distance += 12 * dt; this.comboRunTime += dt; this.totalHits += dt * 0.5;
+      this.stamina = Math.max(0, this.stamina - 25 * dt); this.distance += 6 * dt; this.comboRunTime += dt; this.totalHits += dt * 0.5;
       var cb = Math.min(this.combo, 8) * 0.15; var gain = 2 * (1 + cb); this.addScore(gain * dt * 60);
       if (this.comboRunTime - this.lastComboMilestone >= 1.5) { this.lastComboMilestone = this.comboRunTime; this.combo += 1; this.maxCombo = Math.max(this.maxCombo, this.combo); $('combo-text').textContent = 'Combo x' + this.combo; if (this.combo % 3 === 0) { audio.success(); spawnParticles(this, W / 2, 500, hexToInt(T.gold), 6, 350); showToast(this, 'Combo x' + this.combo + '!', T.primary, W / 2, 480); } }
     } else if (this.light === 'red' && this.running) {
@@ -435,6 +435,7 @@ class GameScene extends Phaser.Scene {
       this.running = false; this._holding = false; if (this._runBtn) this._runBtn.classList.remove('holding');
     }
     updateStamina(this.stamina / this.maxStamina); updateProgress(this.distance, 100);
+    if (this.distance >= 100) this.finishGame('finish');
     if (this.timeLeft <= 0) this.finishGame('time');
   }
 }
@@ -447,7 +448,7 @@ class ResultScene extends Phaser.Scene {
     this.children.removeAll(true);
     this.cameras.main.resetFX();
     var self = this; var T = window.__V3_THEME__;
-    var rating = getRating(this.finalScore); var modifier = getModifier(rating); var modText = modifier > 0 ? '+' + modifier : String(modifier);
+    var rating = getRating(this.distance); var modifier = getModifier(rating); var modText = modifier > 0 ? '+' + modifier : String(modifier);
     setVisible('info-strip', false); setVisible('traffic-light', false); setVisible('light-label', false);
     setVisible('progress-track', false); setVisible('stamina-area', false); setVisible('combo-text', false); setVisible('switch-bar-area', false);
     setVisible('rules-card', false); setVisible('grade-overlay', true); setVisible('stars-row', true); setVisible('result-info', true);
