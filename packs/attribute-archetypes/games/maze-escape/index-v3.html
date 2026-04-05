@@ -257,7 +257,7 @@
   <div class="boot-card hidden" id="boot-card" style="position:absolute;top:380px;left:0;width:100%;text-align:center;z-index:12;">
     <div style="font-weight:900;font-size:28px;color:var(--primary);margin-bottom:8px;">迷宫探险</div>
     <div style="font-weight:700;font-size:14px;color:#64748B;margin-bottom:24px;" id="boot-subtitle">Wisdom Challenge</div>
-    <div style="font-weight:700;font-size:13px;color:#E2E8F0;line-height:2;">Grab the key, reach the door, escape!<br>After 8s a ghost appears — dodge it!<br>3 escapes = S rank. Caught = -5s + reset.</div>
+    <div style="font-weight:700;font-size:13px;color:#E2E8F0;line-height:2;">Grab the key, reach the door, escape!<br>After 4s a 👻 ghost hunts you!<br>3 escapes = S rank. Caught = -5s + reset.</div>
   </div>
   <div class="btn-area hidden" id="btn-area" style="position:absolute;bottom:20px;left:12px;right:12px;display:flex;flex-direction:column;gap:14px;z-index:10;"></div>
 </div>
@@ -688,8 +688,8 @@ class GameScene extends Phaser.Scene {
     this.lastTickSec = -1; this.audioStarted = false; this.difficulty = 1; this.timePenaltyPerBump = 1.0;
     this.hasKey = false; this.player = null; this.key = null; this.exit = null; this.map = null; this.trail = {};
     // Ghost state
-    this.ghost = null; this.ghostAlpha = 0; this.ghostState = 'dormant'; this.ghostTimer = 8; this.ghostMoveMs = 700; this.ghostMoveAcc = 0; this.ghostPathMs = 500; this.ghostPathAcc = 0; this.ghostSpeedTier = 0;
-    this.mazeStartTime = 0; this.nearMissFlag = false;
+    this.ghost = null; this.ghostAlpha = 0; this.ghostState = 'dormant'; this.ghostTimer = 4; this.ghostMoveMs = 550; this.ghostMoveAcc = 0; this.ghostPathMs = 500; this.ghostPathAcc = 0; this.ghostSpeedTier = 0;
+    this.mazeStartTime = 0; this.nearMissFlag = false; this.warnedGhost = false;
   }
   create() {
     this.children.removeAll(true);
@@ -747,10 +747,10 @@ class GameScene extends Phaser.Scene {
       if (c === 'E') this.exit = { x: x, y: y };
     }
     // Reset ghost state for new maze
-    this.ghostState = 'dormant'; this.ghostTimer = 8; this.ghostAlpha = 0;
-    this.ghostSpeedTier = 0; this.ghostMoveMs = 700;
+    this.ghostState = 'dormant'; this.ghostTimer = 4; this.ghostAlpha = 0;
+    this.ghostSpeedTier = 0; this.ghostMoveMs = 550;
     this.ghost = null; this.ghostMoveAcc = 0; this.ghostPathAcc = 0;
-    this.nearMissFlag = false;
+    this.nearMissFlag = false; this.warnedGhost = false;
     $('maze-label').textContent = 'Maze ' + (this.escapes + 1);
     $('key-status').textContent = 'Find the Key!';
     this.drawMaze();
@@ -892,17 +892,21 @@ class GameScene extends Phaser.Scene {
     if (this.ghost && this.ghostAlpha > 0) {
       var ghostX = this.boardX + this.ghost.x * this.cell + this.cell / 2;
       var ghostY = this.boardY + this.ghost.y * this.cell + this.cell / 2;
-      var pulseR = r * (1 + Math.sin(this.time.now / 200) * 0.15);
-      // Glow halo
-      this.graphics.fillStyle(0x8B5CF6, this.ghostAlpha * 0.3); this.graphics.fillCircle(ghostX, ghostY, pulseR + 6);
-      this.graphics.fillStyle(0x8B5CF6, this.ghostAlpha * 0.6); this.graphics.fillCircle(ghostX, ghostY, pulseR + 2);
-      // Body (ghost shape: purple circle)
-      this.graphics.fillStyle(0x7C3AED, this.ghostAlpha); this.graphics.fillCircle(ghostX, ghostY, pulseR);
-      // Eyes
-      this.graphics.fillStyle(0xffffff, this.ghostAlpha); this.graphics.fillCircle(ghostX - pulseR * 0.35, ghostY - pulseR * 0.15, pulseR * 0.25);
-      this.graphics.fillStyle(0xffffff, this.ghostAlpha); this.graphics.fillCircle(ghostX + pulseR * 0.35, ghostY - pulseR * 0.15, pulseR * 0.25);
-      this.graphics.fillStyle(0x000000, this.ghostAlpha); this.graphics.fillCircle(ghostX - pulseR * 0.35, ghostY - pulseR * 0.15, pulseR * 0.12);
-      this.graphics.fillStyle(0x000000, this.ghostAlpha); this.graphics.fillCircle(ghostX + pulseR * 0.35, ghostY - pulseR * 0.15, pulseR * 0.12);
+      var ghostR = this.cell * 0.42;
+      var pulseR = ghostR * (1 + Math.sin(this.time.now / 200) * 0.12);
+      // Big outer glow halo (very visible)
+      this.graphics.fillStyle(0xFF4D6A, this.ghostAlpha * 0.25); this.graphics.fillCircle(ghostX, ghostY, pulseR + 14);
+      this.graphics.fillStyle(0x8B5CF6, this.ghostAlpha * 0.45); this.graphics.fillCircle(ghostX, ghostY, pulseR + 8);
+      this.graphics.fillStyle(0x8B5CF6, this.ghostAlpha * 0.7); this.graphics.fillCircle(ghostX, ghostY, pulseR + 3);
+      // Body (bright magenta-purple)
+      this.graphics.fillStyle(0xA855F7, this.ghostAlpha); this.graphics.fillCircle(ghostX, ghostY, pulseR);
+      // Inner body highlight
+      this.graphics.fillStyle(0xffffff, this.ghostAlpha * 0.2); this.graphics.fillCircle(ghostX - pulseR * 0.25, ghostY - pulseR * 0.25, pulseR * 0.4);
+      // Eyes (white with red pupils for menace)
+      this.graphics.fillStyle(0xffffff, this.ghostAlpha); this.graphics.fillCircle(ghostX - pulseR * 0.35, ghostY - pulseR * 0.15, pulseR * 0.28);
+      this.graphics.fillStyle(0xffffff, this.ghostAlpha); this.graphics.fillCircle(ghostX + pulseR * 0.35, ghostY - pulseR * 0.15, pulseR * 0.28);
+      this.graphics.fillStyle(0xFF4D6A, this.ghostAlpha); this.graphics.fillCircle(ghostX - pulseR * 0.30, ghostY - pulseR * 0.12, pulseR * 0.14);
+      this.graphics.fillStyle(0xFF4D6A, this.ghostAlpha); this.graphics.fillCircle(ghostX + pulseR * 0.40, ghostY - pulseR * 0.12, pulseR * 0.14);
     }
   }
 
@@ -925,6 +929,12 @@ class GameScene extends Phaser.Scene {
     var dt = delta / 1000;
     if (this.ghostState === 'dormant') {
       this.ghostTimer -= dt;
+      // Warn player 1.5s before spawn
+      if (!this.warnedGhost && this.ghostTimer <= 1.5) {
+        this.warnedGhost = true;
+        showToast(this, '👻 Ghost incoming!', '#8B5CF6', W / 2, 380);
+        audio.alert();
+      }
       if (this.ghostTimer <= 0) {
         // Spawn at opposite corner of player
         var w = this.map[0].length, h = this.map.length;
