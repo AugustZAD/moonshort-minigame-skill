@@ -245,7 +245,7 @@
   <div id="phaser-container"></div>
   <div class="title-bar"><span class="title-text" id="title-text">Red Light Green Light</span></div>
   <div class="info-strip hidden" id="info-strip">
-    <div class="left"><span class="score-label">SCORE</span><span class="score-val" id="score-value">0</span><span class="score-delta" id="score-delta"></span></div>
+    <div class="left"><span class="score-label">DIST</span><span class="score-val" id="score-value">0m</span><span class="score-delta" id="score-delta"></span></div>
     <div class="right"><span class="timer-val" id="timer-value">36s</span></div>
   </div>
   <div class="traffic-light hidden" id="traffic-light"><div class="light red" id="light-red"></div><div class="light yellow" id="light-yellow"></div><div class="light green" id="light-green"></div></div>
@@ -254,7 +254,7 @@
   <div class="stamina-area hidden" id="stamina-area"><span class="stamina-label">STAMINA</span><div class="stamina-track"><div class="stamina-fill" id="stamina-fill" style="width:100%"></div></div></div>
   <div class="combo-text hidden" id="combo-text"></div>
   <div class="switch-bar-area hidden" id="switch-bar-area"><div class="switch-bar-track"><div class="switch-bar-fill" id="switch-bar-fill" style="width:100%"></div></div></div>
-  <div class="rules-card hidden" id="rules-card"><h2>TRAFFIC LIGHT SPRINT</h2><p>Hold RUN when the light is GREEN.<br>STOP immediately when it turns RED!<br>Yellow flash is a bluff — keep running!<br>Manage your stamina wisely.<br>Build combos by running on green.</p></div>
+  <div class="rules-card hidden" id="rules-card"><h2>TRAFFIC LIGHT SPRINT</h2><p>Reach 100m to get S rank!<br>Hold RUN on GREEN, STOP on RED.<br>Yellow flash is a bluff — keep running!<br>Red violation pushes you back -5/-8/-12m<br>Combos reward +5m / +10m bonus<br>Quick release before RED = +3m</p></div>
   <div class="grade-overlay hidden" id="grade-overlay"><div class="grade-letter pop-in" id="grade-letter"></div><div class="grade-score" id="grade-score"></div></div>
   <div class="stars-row hidden" id="stars-row"></div>
   <div class="result-info hidden" id="result-info"><div class="attr-mod" id="attr-mod"></div><div class="stats"><span id="stat-combo"></span><span id="stat-hits"></span></div></div>
@@ -269,7 +269,7 @@ var DISPLAY_ATTRIBUTE = (CTX.character && CTX.character.name ? CTX.character.nam
 var EPISODE_LABEL = CTX.episodeLabel || params.get('episodeLabel') || '';
 var EPISODE_TITLE = CTX.episodeTitle || params.get('episodeTitle') || 'Red Light Green Light';
 var W = 393, H = 852, ROUND_SECONDS = 36;
-var RATING_THRESHOLDS = { S: 100, A: 70, B: 45, C: 20 };
+var RATING_THRESHOLDS = { S: 100, A: 75, B: 50, C: 25 };
 var MODIFIER_BY_RATING = { S: 3, A: 1, B: 0, C: -1 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -319,7 +319,7 @@ function $(id) { return document.getElementById(id); }
 function setVisible(id, v) { var el = $(id); if (!el) return; if (v) el.classList.remove('hidden'); else el.classList.add('hidden'); }
 function makeCandyButton(label, cls, fs, onClick) { var b = document.createElement('div'); b.className = 'btn-candy ' + (cls || 'full'); b.innerHTML = '<div class="base"></div><div class="glass"></div><div class="highlight"></div><div class="glow"></div><div class="label" style="font-size:' + (fs || 18) + 'px">' + label + '</div>'; b.addEventListener('pointerdown', function(e) { e.preventDefault(); audio.tap(); }); b.addEventListener('pointerup', function(e) { e.preventDefault(); if (onClick) onClick(); }); return b; }
 function clearBtnArea() { $('btn-area').innerHTML = ''; }
-function deltaPop(val) { var el = $('score-delta'); el.classList.remove('pop', 'plus', 'minus'); el.textContent = (val > 0 ? '+' : '') + Math.round(val); el.classList.add(val > 0 ? 'plus' : 'minus'); void el.offsetWidth; el.classList.add('pop'); }
+function deltaPop(val) { var el = $('score-delta'); el.classList.remove('pop', 'plus', 'minus'); el.textContent = (val > 0 ? '+' : '') + Math.round(val) + 'm'; el.classList.add(val > 0 ? 'plus' : 'minus'); void el.offsetWidth; el.classList.add('pop'); }
 function initShellDOM() { var t = EPISODE_LABEL ? EPISODE_LABEL + ': ' + EPISODE_TITLE : EPISODE_TITLE; $('title-text').textContent = t; }
 
 function setTrafficLight(color) {
@@ -370,7 +370,7 @@ class GameScene extends Phaser.Scene {
     setVisible('rules-card', false); setVisible('info-strip', true); setVisible('traffic-light', true); setVisible('light-label', true);
     setVisible('progress-track', true); setVisible('stamina-area', true); setVisible('combo-text', true); setVisible('switch-bar-area', true);
     setVisible('grade-overlay', false); setVisible('stars-row', false); setVisible('result-info', false);
-    $('score-value').textContent = '0'; $('timer-value').textContent = ROUND_SECONDS + 's'; $('timer-value').classList.remove('warn'); $('combo-text').textContent = '';
+    $('score-value').textContent = '0m'; $('timer-value').textContent = ROUND_SECONDS + 's'; $('timer-value').classList.remove('warn'); $('combo-text').textContent = '';
     setTrafficLight('green'); updateProgress(0, 100); updateStamina(1);
     this.switchTimer = this.greenDurationBase + Math.random() * 1000; this.switchTimerMax = this.switchTimer;
     clearBtnArea();
@@ -378,7 +378,7 @@ class GameScene extends Phaser.Scene {
     runBtn.innerHTML = '<div class="base"></div><div class="glass"></div><div class="highlight"></div><div class="glow"></div><div class="label" style="font-size:20px">&#127939; HOLD TO RUN</div>';
     this._runBtn = runBtn;
     runBtn.addEventListener('pointerdown', function(e) { e.preventDefault(); audio.tap(); if (self.isOver) return; if (!self.audioStarted) { audio.unlock(); audio.bgm('action'); self.audioStarted = true; } self._holding = true; self.running = true; runBtn.classList.add('holding'); });
-    runBtn.addEventListener('pointerup', function(e) { e.preventDefault(); self._holding = false; self.running = false; runBtn.classList.remove('holding'); });
+    runBtn.addEventListener('pointerup', function(e) { e.preventDefault(); if (self.running && self.light === 'green' && self.switchTimer <= 400 && !self.fakeOutActive) { self.applyDistance(3); showToast(self, 'Quick! +3m', '#4FECA2', W / 2, 480); audio.tick(); } self._holding = false; self.running = false; runBtn.classList.remove('holding'); });
     runBtn.addEventListener('pointerout', function() { self._holding = false; self.running = false; runBtn.classList.remove('holding'); });
     runBtn.addEventListener('pointercancel', function() { self._holding = false; self.running = false; runBtn.classList.remove('holding'); });
     $('btn-area').appendChild(runBtn);
@@ -403,7 +403,8 @@ class GameScene extends Phaser.Scene {
       audio.swoosh();
     }
   }
-  addScore(d) { this.score = Math.max(0, this.score + d); $('score-value').textContent = Math.round(this.score); deltaPop(d); }
+  addScore(d) { this.score = Math.max(0, this.score + d); $('score-value').textContent = Math.floor(this.distance) + 'm'; }
+  applyDistance(d) { this.distance = Math.max(0, Math.min(100, this.distance + d)); $('score-value').textContent = Math.floor(this.distance) + 'm'; var r = Math.round(d); if (r !== 0) deltaPop(r); }
   finishGame(reason) { if (this.isOver) return; this.isOver = true; audio.stopBgm(600); this.scene.start('ResultScene', { score: Math.round(this.score), maxCombo: this.maxCombo, hits: Math.round(this.totalHits), misses: this.totalMiss, distance: Math.floor(this.distance), reason: reason || 'time' }); }
   update(time, delta) {
     if (this.isOver) return; var dt = delta / 1000;
@@ -426,12 +427,12 @@ class GameScene extends Phaser.Scene {
     if (this.fakeOutCooldown > 0) this.fakeOutCooldown -= delta;
     if (!this.running) { this.stamina = Math.min(this.maxStamina, this.stamina + 18 * dt); }
     if (this.light === 'green' && this.running && this.stamina > 0) {
-      this.stamina = Math.max(0, this.stamina - 25 * dt); this.distance += 6 * dt; this.comboRunTime += dt; this.totalHits += dt * 0.5;
-      var cb = Math.min(this.combo, 8) * 0.15; var gain = 2 * (1 + cb); this.addScore(gain * dt * 60);
-      if (this.comboRunTime - this.lastComboMilestone >= 1.5) { this.lastComboMilestone = this.comboRunTime; this.combo += 1; this.maxCombo = Math.max(this.maxCombo, this.combo); $('combo-text').textContent = 'Combo x' + this.combo; if (this.combo % 3 === 0) { audio.success(); spawnParticles(this, W / 2, 500, hexToInt(T.gold), 6, 350); showToast(this, 'Combo x' + this.combo + '!', T.primary, W / 2, 480); } }
-    } else if (this.light === 'red' && this.running) {
-      this.penaltyStack += 1; var penalty = 10 + Math.min(this.penaltyStack, 5) * 3; this.totalMiss += 1; this.combo = 0; this.comboRunTime = 0; this.lastComboMilestone = 0; $('combo-text').textContent = '';
-      this.addScore(-penalty); showToast(this, 'Moved on RED! -' + penalty, '#FF4D6A', W / 2, 480); audio.fail(); damageFlash(this); screenShake(this, 0.012);
+      this.stamina = Math.max(0, this.stamina - 25 * dt); this.distance = Math.min(100, this.distance + 6 * dt); this.comboRunTime += dt; this.totalHits += dt * 0.5;
+      $('score-value').textContent = Math.floor(this.distance) + 'm';
+      if (this.comboRunTime - this.lastComboMilestone >= 1.5) { this.lastComboMilestone = this.comboRunTime; this.combo += 1; this.maxCombo = Math.max(this.maxCombo, this.combo); $('combo-text').textContent = 'Combo x' + this.combo; if (this.combo % 6 === 0) { audio.success(); spawnParticles(this, W / 2, 500, hexToInt(T.gold), 8, 400); this.applyDistance(10); showToast(this, 'Combo x' + this.combo + '! +10m', T.gold, W / 2, 480); } else if (this.combo % 3 === 0) { audio.success(); spawnParticles(this, W / 2, 500, hexToInt(T.gold), 6, 350); this.applyDistance(5); showToast(this, 'Combo x' + this.combo + '! +5m', T.primary, W / 2, 480); } }
+    } else if (this.light === 'red' && this.running && !this.fakeOutActive) {
+      this.penaltyStack += 1; var distPen = this.penaltyStack === 1 ? 5 : (this.penaltyStack === 2 ? 8 : 12); this.totalMiss += 1; this.combo = 0; this.comboRunTime = 0; this.lastComboMilestone = 0; $('combo-text').textContent = '';
+      this.applyDistance(-distPen); showToast(this, 'RED! -' + distPen + 'm', '#FF4D6A', W / 2, 480); audio.fail(); damageFlash(this); screenShake(this, 0.012);
       this.running = false; this._holding = false; if (this._runBtn) this._runBtn.classList.remove('holding');
     }
     updateStamina(this.stamina / this.maxStamina); updateProgress(this.distance, 100);
@@ -453,7 +454,7 @@ class ResultScene extends Phaser.Scene {
     setVisible('progress-track', false); setVisible('stamina-area', false); setVisible('combo-text', false); setVisible('switch-bar-area', false);
     setVisible('rules-card', false); setVisible('grade-overlay', true); setVisible('stars-row', true); setVisible('result-info', true);
     var rH = { S: T.gold, A: T.primary, B: '#9B7DB8', C: '#7A7A8E' };
-    $('grade-letter').textContent = rating; $('grade-letter').style.color = rH[rating]; $('grade-score').textContent = 'Score ' + this.finalScore + ' | ' + this.distance + 'm';
+    $('grade-letter').textContent = rating; $('grade-letter').style.color = rH[rating]; $('grade-score').textContent = this.distance + 'm / 100m';
     var sc = { S: 4, A: 3, B: 2, C: 1 }[rating]; var sr = $('stars-row'); sr.innerHTML = '';
     for (var i = 0; i < 4; i++) { var star = document.createElement('span'); star.className = 'star ' + (i < sc ? 'filled' : 'empty'); star.textContent = '\u2605'; star.style.animationDelay = (0.2 + i * 0.08) + 's'; sr.appendChild(star); }
     $('attr-mod').textContent = DISPLAY_ATTRIBUTE + ' ' + modText; $('stat-combo').textContent = 'Combo ' + this.maxCombo; $('stat-hits').textContent = 'Penalties ' + this.misses;
