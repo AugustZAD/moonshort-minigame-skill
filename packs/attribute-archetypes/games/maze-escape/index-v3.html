@@ -791,32 +791,44 @@ class GameScene extends Phaser.Scene {
     for (var k in this.trail) { var pts = k.split(','), tx = parseInt(pts[0]), ty = parseInt(pts[1]);
       this.trailGfx.fillStyle(hexToInt(T.playerHp), 0.25); this.trailGfx.fillRoundedRect(this.boardX + tx * this.cell + 2, this.boardY + ty * this.cell + 2, this.cell - 5, this.cell - 5, 2); }
     var r = Math.max(3, this.cell * 0.3);
-    // Key highlight halo (bright gold backdrop so key stands out vs walls)
+    // Key (custom-drawn: gold circle head + shaft + teeth)
     if (!this.hasKey) {
       var kcx = this.boardX + this.key.x * this.cell + this.cell / 2;
       var kcy = this.boardY + this.key.y * this.cell + this.cell / 2;
-      this.graphics.fillStyle(hexToInt(T.gold), 0.35); this.graphics.fillCircle(kcx, kcy, this.cell * 0.55);
-      this.graphics.fillStyle(hexToInt(T.gold), 0.7); this.graphics.fillCircle(kcx, kcy, this.cell * 0.42);
-      this.graphics.fillStyle(0xffffff, 0.15); this.graphics.fillCircle(kcx, kcy, this.cell * 0.3);
+      var kr = this.cell * 0.35;
+      // Halo glow
+      this.graphics.fillStyle(hexToInt(T.gold), 0.25); this.graphics.fillCircle(kcx, kcy, kr + 6);
+      this.graphics.fillStyle(hexToInt(T.gold), 0.45); this.graphics.fillCircle(kcx, kcy, kr + 2);
+      // Key head (ring shape)
+      this.graphics.fillStyle(hexToInt(T.gold), 1); this.graphics.fillCircle(kcx - kr * 0.3, kcy, kr * 0.55);
+      this.graphics.fillStyle(hexToInt(T.bg), 1); this.graphics.fillCircle(kcx - kr * 0.3, kcy, kr * 0.25);
+      // Key shaft (horizontal bar to the right)
+      this.graphics.fillStyle(hexToInt(T.gold), 1); this.graphics.fillRect(kcx + kr * 0.1, kcy - kr * 0.15, kr * 0.8, kr * 0.3);
+      // Key teeth (bumps)
+      this.graphics.fillRect(kcx + kr * 0.5, kcy + kr * 0.15, kr * 0.2, kr * 0.25);
+      this.graphics.fillRect(kcx + kr * 0.8, kcy + kr * 0.15, kr * 0.1, kr * 0.25);
     }
-    // Exit highlight halo (bright backdrop, brighter when unlocked)
+    // Exit (custom-drawn: door shape)
     var ecx = this.boardX + this.exit.x * this.cell + this.cell / 2;
     var ecy = this.boardY + this.exit.y * this.cell + this.cell / 2;
+    var ew = this.cell * 0.5, eh = this.cell * 0.7;
     var exitCol = this.hasKey ? 0x4FECA2 : hexToInt(T.primaryLight);
-    this.graphics.fillStyle(exitCol, this.hasKey ? 0.4 : 0.25); this.graphics.fillCircle(ecx, ecy, this.cell * 0.55);
-    this.graphics.fillStyle(exitCol, this.hasKey ? 0.75 : 0.5); this.graphics.fillCircle(ecx, ecy, this.cell * 0.42);
-    // Key emoji (on top of halo)
-    if (!this.hasKey) {
-      if (!this.keyEmoji) { this.keyEmoji = this.add.text(0, 0, '\uD83D\uDD11', { fontSize: (this.cell * 1.0) + 'px' }).setOrigin(0.5).setDepth(12); }
-      this.keyEmoji.setPosition(this.boardX + this.key.x * this.cell + this.cell / 2, this.boardY + this.key.y * this.cell + this.cell / 2).setVisible(true).setFontSize(this.cell * 1.0);
-    } else if (this.keyEmoji) { this.keyEmoji.setVisible(false); }
-    // Exit emoji
-    if (!this.exitEmoji) { this.exitEmoji = this.add.text(0, 0, '\uD83D\uDEAA', { fontSize: (this.cell * 1.0) + 'px' }).setOrigin(0.5).setDepth(12); this.exitGlow = false; }
-    this.exitEmoji.setPosition(this.boardX + this.exit.x * this.cell + this.cell / 2, this.boardY + this.exit.y * this.cell + this.cell / 2).setFontSize(this.cell * 1.0);
+    // Halo
+    this.graphics.fillStyle(exitCol, this.hasKey ? 0.35 : 0.2); this.graphics.fillCircle(ecx, ecy, this.cell * 0.5);
+    // Door frame
+    this.graphics.fillStyle(exitCol, 1); this.graphics.fillRoundedRect(ecx - ew/2, ecy - eh/2, ew, eh, 2);
+    // Door panel (darker)
+    this.graphics.fillStyle(hexToInt(T.bg), 0.5); this.graphics.fillRoundedRect(ecx - ew/2 + 2, ecy - eh/2 + 2, ew - 4, eh - 4, 2);
+    // Door knob
+    this.graphics.fillStyle(hexToInt(T.gold), 1); this.graphics.fillCircle(ecx + ew * 0.25, ecy, Math.max(1.5, ew * 0.08));
+    // Arrow indicator when key collected
     if (this.hasKey) {
-      this.exitEmoji.setTint(0x4FECA2);
-      if (!this.exitGlow) { this.exitGlow = true; this.tweens.add({ targets: this.exitEmoji, scaleX: 1.2, scaleY: 1.2, yoyo: true, repeat: -1, duration: 600, ease: 'Sine.easeInOut' }); }
-    } else { this.exitEmoji.clearTint(); if (this.exitGlow) { this.tweens.killTweensOf(this.exitEmoji); this.exitEmoji.setScale(1); this.exitGlow = false; } }
+      this.graphics.fillStyle(0xffffff, 0.9);
+      this.graphics.fillTriangle(ecx - eh * 0.15, ecy - eh * 0.4, ecx + eh * 0.15, ecy - eh * 0.4, ecx, ecy - eh * 0.6);
+    }
+    // Hide old emoji objects if they exist from previous versions
+    if (this.keyEmoji) this.keyEmoji.setVisible(false);
+    if (this.exitEmoji) this.exitEmoji.setVisible(false);
     // Player
     this.graphics.fillStyle(0xffffff, 1); this.graphics.fillCircle(this.boardX + this.player.x * this.cell + this.cell / 2, this.boardY + this.player.y * this.cell + this.cell / 2, r);
     this.graphics.fillStyle(priI, 0.5); this.graphics.fillCircle(this.boardX + this.player.x * this.cell + this.cell / 2 - r * 0.2, this.boardY + this.player.y * this.cell + this.cell / 2 - r * 0.2, r * 0.4);
