@@ -1,0 +1,150 @@
+{
+  "ep_num": 1,
+  "variant": "mainline",
+  "current": {
+    "ep_num": 1,
+    "variant_kind": "mainline",
+    "output": {
+      "episode_id": "EP 1",
+      "episode_title": "Kenny",
+      "characters": [
+        "Sylvia",
+        "James",
+        "Kennedy"
+      ],
+      "character_outfits": {
+        "Sylvia": "二十多岁女性，深色针织长袖上衣，深灰色宽腿长裤，腰腹处因孕肚微微撑起，黑色平底软鞋，左手腕细银手链。",
+        "James": "三十岁左右男性，深色羊绒大衣半敞，内搭黑色高领毛衣，深色修身长裤，黑色皮鞋，领口微乱。",
+        "Kennedy": "二十多岁女性，黑色长款风衣，黑色高领内搭，黑色长裤，黑色低跟靴，头发散落。"
+      },
+      "scene_locations": {
+        "银月领地 豪宅 厨房": {
+          "location_id": "silver_moon_manor_kitchen",
+          "parent_location_id": "silver_moon_manor",
+          "visual_prompt": "宽敞厨房，哑光深灰橱柜，白色大理石岛台，岛台上摆有切菜板与食材，灶台火苗亮着，吊灯暖黄，窗外针叶林树影，空气静止，光线沉郁。"
+        },
+        "新月领地 公墓": {
+          "location_id": "new_moon_cemetery",
+          "parent_location_id": "new_moon_cemetery",
+          "visual_prompt": "户外公墓，灰色石碑排列于草地间，新坟土色深暗，落叶覆盖土路，枯树枝桠交错，天空阴云低压，远处针叶林深暗，整体色调冷灰沉郁，风吹草动。"
+        }
+      },
+      "pre_choice_script": "（场景：银月领地 豪宅 厨房 — 日）\n\n画外音 — Sylvia:（低沉平静）\"In our world, the Moon Goddess binds two wolves together — a Fate Bond. You feel everything your mate feels. But if he keeps choosing someone else, that bond doesn't just hurt. It slowly destroys you.\"\n\n字幕：【Sylvia：银月领地Luna，Alpha James之妻，怀孕七个月】\n\n（Sylvia 站在岛台旁切菜。腹部隆起，动作缓慢而小心。灶台上的火苗安静地燃着。）\n\n字幕：【James：银月领地Alpha（氏族首领）】\n\n（James 推门冲进厨房，外套半敞，神情慌乱，目光在她脸上停了不到一秒，立刻移开。）\n\nJames: Alpha Barnes passed. I have to go.\n\n（Sylvia 放下刀，手本能地覆上腹部，转过身。）\n\nSylvia: I'll come with you.\n\nJames:（摆手，已在往外走）Road's too long. You shouldn't travel.\n\n（他在门口停下，背对她，沉默了一秒。）\n\nJames: Don't wait up.\n\n（门关上。厨房里只剩切菜板上的食材和还亮着的灶台。Sylvia 的手仍压在腹部，一动不动。胸口某处骤然发凉，手指慢慢收紧了一下。）\n\n（她拿上车钥匙，朝门口走去。）\n\n---\n\n（场景：新月领地 公墓 — 日，数小时后）\n\n（Sylvia 将车停在公墓入口，下车，走到一排石碑后，手撑着碑沿，站定。）\n\n（三米外，James 单膝跪在新坟旁，双臂将身旁的女人揽住，低头靠近她的耳边。）\n\nJames:（极轻，像在哄）Shh. Kenny. I'm here.\n\n（Kennedy 把脸埋进他胸口。James 的手顺着她的头发慢慢往下压，动作熟稳，从容。）\n\n字幕：【Kennedy：新月领地已故Alpha Barnes之女】\n\n（风向变了。James 猛地抬头，与 Sylvia 对视。他的神情从温柔瞬间僵住——但双臂不仅没有松开，反而收紧了。）\n\n（Sylvia 从石碑后走出，脚步平稳，走到 James 面前，站定。）\n\nSylvia: James. We need to talk.\n\n（James 的目光从她脸上滑开，落在 Kennedy 的肩头。沉默。Kennedy 的哭声压住了风声。他没有开口，没有动。）\n\n（Sylvia 等着。）",
+      "choice_node": {
+        "type": "成长型",
+        "options": [
+          {
+            "id": "A",
+            "content": "Stand still. Let the silence do the work.",
+            "description": "James的目光从你脸上滑开了，落在Kennedy肩头，连看都不看你一眼。胸口那条连结冰凉得像一块死石。风把Kennedy的哭声送过来，你站在那里，三米远，挺着七个月的肚子。你不开口——让这份沉默替你逼他。",
+            "check": "无需检定"
+          },
+          {
+            "id": "B",
+            "content": "Say his name. Make him look at you.",
+            "description": "他跪在那里，抱着另一个女人，用从未给过你的声音说\"I'm here\"。你的腹部还有重量，风把Kennedy的哭声送过来，James的手一直没有松开。你站在三米外，他的眼睛还是没有转过来。你张开嘴。",
+            "check": "WIL（意志）10"
+          }
+        ]
+      },
+      "post_choice_outcomes": [
+        {
+          "reaction_id": "反应一",
+          "trigger_condition": "选择选项 A",
+          "story_content": "（Sylvia没有动，也没有再开口。她就那样站在三米外，手覆在腹部，风吹着她的头发。）\n\n（James的目光落在Kennedy肩头，不看她。Kennedy的哭声填满了两人之间的沉默。十秒，二十秒，没有人说话。）\n\n（Sylvia的眼眶慢慢发红。失落、愤怒、委屈涌上来——但她没有哭，没有求。她站在原地，等着一个他显然不打算给的回答。）\n\n黑屏字幕：He won't speak first. So you will.",
+          "butterfly_effect": "Sylvia's silence registers as restraint, not surrender. James receives no confrontation but also no permission. WIL holds steady."
+        },
+        {
+          "reaction_id": "反应二",
+          "trigger_condition": "选择选项 B - 检定失败",
+          "story_content": "（Sylvia 深吸一口气，开口。）\n\nSylvia: Kennedy.\n\n（声音比她预想的小了一号，被风压住，散在石碑之间。James 的目光慢慢移过来，落在她脸上，神情没有愧疚，只有一种沉默的、疲倦的拒绝。Kennedy 从他怀里微微抬头，眼圈红着，看了她一眼，又把脸埋回去。James 的手臂没有松。）\n\nJames:（低，像在结束一件事）Not now, Sylvia.\n\n（Sylvia 站在原地，嘴唇动了一下，没有声音出来。风继续吹。）\n\n黑屏字幕：\"Not now\" — but you're not going to wait until he's ready.",
+          "butterfly_effect": "Sylvia attempted confrontation but her voice failed to land. James registers her as manageable. WIL marginally engaged but yields no immediate shift."
+        },
+        {
+          "reaction_id": "反应三",
+          "trigger_condition": "选择选项 B - 检定成功",
+          "story_content": "（Sylvia 开口，声音平稳，一字一顿，落地有声。）\n\nSylvia: Kennedy.\n\n（Kennedy 从 James 怀里抬起头，眼圈红着，挑衅地看向 Sylvia。James 的目光终于转过来，落在她脸上——他的下颌绷紧了。）\n\nSylvia:（声音极平，没有起伏）What is the relationship between you and her?\n\n（沉默。风把 Kennedy 散落的发丝吹过来。James 的嘴唇动了一下，没有开口。他的双臂仍揽着 Kennedy，但手指不自觉地收紧了一下。）\n\n黑屏字幕：He doesn't answer. But you don't need his answer anymore.",
+          "butterfly_effect": "Sylvia held her ground and forced James to register her presence. WIL gains traction; James can no longer treat her silence as consent."
+        }
+      ]
+    }
+  },
+  "next": {
+    "ep_num": 2,
+    "mainline": {
+      "ep_num": 2,
+      "variant_kind": "mainline",
+      "output": {
+        "episode_id": "EP 2",
+        "episode_title": "工具",
+        "characters": [
+          "Sylvia",
+          "James",
+          "Kennedy",
+          "Daisy",
+          "Luna Miller",
+          "Huxley"
+        ],
+        "character_outfits": {
+          "Sylvia": "二十多岁女性，深色长发，穿着简洁深灰色长袖连衣裙，腰部因孕期微微隆起，黑色平底皮鞋，左手腕细银手链。",
+          "James": "三十岁左右男性，深色修身西装外套，白色衬衫未系领带，黑色皮鞋，整体利落但略显凌乱。",
+          "Kennedy": "二十多岁女性，新月领地休闲装束，米色针织上衣，深色修身长裤，棕色短靴，发丝散落。",
+          "Daisy": "二十多岁女性，私立领地日常便装，浅蓝色衬衫，米白色阔腿裤，白色运动鞋，头发简单扎起。",
+          "Luna Miller": "五十岁左右女性，深酒红色长款羊绒大衣，黑色高领毛衣，黑色直筒裤，深色低跟皮鞋，颈间细金项链。",
+          "Huxley": "三十岁左右男性，银月领地战士装束，深橄榄色战术夹克，黑色修身长裤，军靴，手腕皮革护腕。"
+        },
+        "scene_locations": {
+          "新月领地 公墓": {
+            "location_id": "new_moon_cemetery",
+            "parent_location_id": "new_moon_cemetery",
+            "visual_prompt": "户外公墓，灰色石碑排列于草地间，落叶覆盖土路，枯树枝桠交错，天空阴云低压，远处针叶林深暗，整体色调冷灰沉郁，无风，空气凝滞。"
+          },
+          "银月领地 豪宅 客厅": {
+            "location_id": "silver_moon_manor_living_room",
+            "parent_location_id": "silver_moon_manor",
+            "visual_prompt": "高挑客厅，深色实木地板，落地壁炉火焰低燃，皮质厚重沙发组，墙面深灰石材，吊灯冷光，窗帘厚重拉合，一把单人椅椅背朝向壁炉，空间压迫感强烈。"
+          }
+        },
+        "pre_choice_script": "（场景：新月领地 公墓 — 日）\n（Sylvia 的手指在腹部收紧，然后松开。她抬起头，直视James。）\n\nSylvia:（声音极平，一字一顿）I need an answer, James.\n\n（James 的下颌绷紧。他没有开口，也没有松手。Kennedy 从 James 怀中抬起头，挑衅地看向 Sylvia。）\n（Sylvia 看了两人三秒，转身往停车场走。）\n\nJames: Sylvia. Stop.\n\n（她没有停。脚步稳，不快，没有回头。）\n\n（场景：银月领地 豪宅 客厅 — 日）\n（Sylvia 推开大门走进客厅。James 从她身后进来，带上门，在壁炉前站定，背对她。）\n\nSylvia: Our bond is almost gone. You feel it. Tell me who she is.\n\nJames: You followed me. You have no right.\n\nSylvia: Answer the question.\n\n（James 猛地转身，眼睛骤然变深。Alpha 命令砸下来——Sylvia 的双腿往下沉，她攥住椅背，指节泛白，硬撑着没有跪，全身在抖。）\n\n字幕：【Daisy：Sylvia 的妹妹，Pack 普通成员】\n\n（Daisy 从走廊冲进来，挡在 Sylvia 前面。）\n\nDaisy: How could you suppress her using the Alpha command?\n\n（James 的视线扫过去。Daisy 的喉咙里发出一声哽住的声音，身体僵直，双手撑着空气，嘴唇动了动，一个字都出不来。她的眼睛睁大，死死盯着 Sylvia。）\n\n字幕：【Huxley：银月领地高阶战士】\n\n（Huxley 站在客厅门口，视线落在 Sylvia 身上，停住。）\n\n字幕：【Luna Miller：银月领地前任 Luna，James 之母】\n\n（Luna Miller 从走廊推门进来，扫了一眼 Daisy 僵在原地的样子，又看了看 Sylvia 攥着椅背的手，神情没有变。）\n\nLuna Miller: Enough.\n\n（James 收回 Alpha 命令。Daisy 猛地吸了口气，膝盖软了一下，扶着墙站稳。Sylvia 的手没有松开椅背。）\n\nLuna Miller: Focus on your duties. Luna. Mother. That is all.\n\nSylvia: You knew Kennedy couldn't have children. You arranged this. Didn't you.\n\n（Luna Miller 没有否认。她的嘴角动了一下，像是某个答案终于被说出来让她满意。）\n\nLuna Miller: The Pack needed an heir. You were the solution.\n\n（客厅里没有人说话。Daisy 的手死死捏住墙边的壁灯架。James 看向地板，没有开口。）\n（Sylvia 站在原地，手从椅背上慢慢松开，垂在身侧。）\n（Luna Miller 转身走出客厅。James 跟着进了走廊，带上门。Alpha 命令的压力彻底散去。）\n（Daisy 猛地喘了口气，扑过来抓住 Sylvia 的手臂。两人对视。）\n（Huxley 向 Sylvia 走来，脚步刚迈出，走廊里传来 James 喊他名字的声音。他的脚步顿了一下，只好转身朝走廊走去。）\n（特写 — 客厅里只剩 Sylvia 和 Daisy。Sylvia 低下头，视线落在刚才 Daisy 撑着空气的那双手上。）",
+        "choice_node": {
+          "type": "成长型",
+          "options": [
+            {
+              "id": "A",
+              "content": "Say nothing. Lower your eyes.",
+              "description": "Daisy 的手还攥着你的手臂，她的手腕上有一道浅红的压痕——Alpha 命令留下的。你的嘴唇动了一下，又合上。\"The Pack needed an heir. You were the solution.\"那句话还在客厅里，像烟一样散不掉。",
+              "check": "无需检定"
+            },
+            {
+              "id": "B",
+              "content": "\"I heard every word. And I remember.\"",
+              "description": "Daisy 的眼睛还是红的，她刚才一个字都说不出来——你替她开口。壁炉的火烧得很低，James 带上门的声音还没有散尽，你的腿还在抖，但你把它压住了。",
+              "check": "WIL（意志）10"
+            }
+          ]
+        },
+        "post_choice_outcomes": [
+          {
+            "reaction_id": "反应一",
+            "trigger_condition": "选择选项 A",
+            "story_content": "（Sylvia 的视线从 Daisy 的手腕上移开，低下头，沉默。）\n（Daisy 看着她，慢慢松开手，嘴唇抿紧，没有说话。）\n（壁炉里的火烧得更低了。客厅里只剩两个人的呼吸声。）\n\n（厨房那边，灶台上的锅沸腾的声音穿过门缝传来，匀速，不停。Sylvia抬起头，看了一眼厨房的方向，走过去。Daisy跟在后面。）\n\n黑屏字幕：You said nothing. But you didn't forget a single word Luna Miller said.",
+            "butterfly_effect": "Sylvia's silence in the face of Luna Miller's admission registers as submission. WIL loses traction; her agency in the household is further eroded."
+          },
+          {
+            "reaction_id": "反应二",
+            "trigger_condition": "选择选项 B - 检定失败",
+            "story_content": "（话出了口，但声音比预想的低了一档，带着一丝颤。）\n（Daisy 猛地抬起头，眼睛睁大。）\n\nDaisy: （压低声音，急）Sylvia, not here—\n\n（走廊里传来脚步声，两人同时闭嘴。脚步声经过门口，没有停，渐渐远去。）\n\nSylvia: I heard every word. And I remember.\n\n（Daisy 看了她一会儿，慢慢点头，没有多说。厨房那边，灶台上的锅沸腾的声音穿过门缝传来，匀速，不停。两人一前一后走回厨房，谁都没有再开口。）\n\n黑屏字幕：You said it — too quiet, maybe. But Daisy heard you.",
+            "butterfly_effect": "Sylvia speaks, but her voice falters under pressure. WIL registers a marginal gain; the words were said, though their weight did not fully land."
+          },
+          {
+            "reaction_id": "反应三",
+            "trigger_condition": "选择选项 B - 检定成功",
+            "story_content": "（Daisy 的手在 Sylvia 手臂上猛地收紧了一下。）\n\nDaisy: （愣了整整两秒，声音压得极低）You're serious.\n\nSylvia: （平静，不重复）I heard every word. And I remember.\n\n（Daisy 看着她，眼眶慢慢红了，但她没有哭。她松开 Sylvia 的手臂，把自己的手背在身后，攥成拳。）\n\nDaisy: （轻，但很稳）Then we remember together.\n\n（两人没有再说话。壁炉的火烧得很低。厨房那边，灶台上的锅沸腾的声音穿过门缝传来，匀速，不停。Sylvia先转身往厨房走，Daisy跟上。）\n\n黑屏字幕：You and Daisy remember the same thing now. You're not alone in this anymore.",
+            "butterfly_effect": "Sylvia names what was done to her, and Daisy witnesses it. WIL solidifies; the bond between them shifts from comfort to alliance."
+          }
+        ]
+      }
+    },
+    "minor_mainline": null
+  }
+}

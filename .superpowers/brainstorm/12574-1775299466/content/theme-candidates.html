@@ -1,0 +1,209 @@
+<h2>新增氛围主题候选</h2>
+<p class="subtitle">现有 5 套（combat/mystery/nature/dark/sweet）+ 候选新增。点选你喜欢的方向。</p>
+
+<style>
+  .theme-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:16px; }
+  .theme-card {
+    border-radius:12px; padding:16px; position:relative; overflow:hidden;
+    border:2px solid rgba(255,255,255,0.1); transition:border-color 0.2s;
+  }
+  .theme-card:hover { border-color:rgba(255,255,255,0.3); }
+  .theme-label { font-weight:900; font-size:15px; margin:4px 0 8px; }
+  .theme-desc { font-size:11px; color:#aaa; line-height:1.5; margin-bottom:10px; }
+  .theme-swatches { display:flex; gap:4px; margin-bottom:10px; }
+  .swatch { width:28px; height:28px; border-radius:50%; border:2px solid rgba(255,255,255,0.2); }
+  .theme-demo { border-radius:8px; padding:8px 12px; text-align:center; font-weight:700; font-size:12px; color:#fff; position:relative; overflow:hidden; }
+  .theme-demo .glass { position:absolute; left:0;right:0;top:2px;height:12px;background:rgba(255,255,255,0.2);border-radius:6px 6px 0 0; }
+  .theme-bar { height:6px; border-radius:3px; margin-top:8px; }
+  .tag-new { position:absolute; top:8px; right:8px; background:rgba(255,255,255,0.15); color:#fff; font-size:10px; font-weight:700; padding:2px 8px; border-radius:100px; }
+  .tag-refresh { position:absolute; top:8px; right:8px; background:rgba(245,200,66,0.2); color:#F5C842; font-size:10px; font-weight:700; padding:2px 8px; border-radius:100px; }
+</style>
+
+<div class="section">
+  <h3>现有 5 套（考虑微调）</h3>
+  <div class="theme-grid">
+
+    <div class="theme-card" style="background:#1A1221;">
+      <span class="tag-refresh">可微调</span>
+      <div style="font-size:20px;">🔥</div>
+      <div class="theme-label" style="color:#EC4F99;">Combat 热血</div>
+      <div class="theme-desc">战斗、追逐、对抗类。品红主色。</div>
+      <div class="theme-swatches">
+        <div class="swatch" style="background:#EC4F99;" title="primary"></div>
+        <div class="swatch" style="background:#F9A8D4;" title="primary-light"></div>
+        <div class="swatch" style="background:#4FECA2;" title="player-hp"></div>
+        <div class="swatch" style="background:#F5C842;" title="gold"></div>
+      </div>
+      <div class="theme-demo" style="background:linear-gradient(180deg, rgba(236,79,153,0.15), #EC4F99);border:2px solid #fff;">
+        <span class="glass"></span>START
+      </div>
+      <div class="theme-bar" style="background:linear-gradient(90deg, rgba(79,236,162,0.2), #4FECA2);"></div>
+    </div>
+
+    <div class="theme-card" style="background:#0F1729;">
+      <span class="tag-refresh">可微调</span>
+      <div style="font-size:20px;">🌊</div>
+      <div class="theme-label" style="color:#3B82F6;">Mystery 神秘</div>
+      <div class="theme-desc">探索、解谜、潜行类。深海蓝主色。</div>
+      <div class="theme-swatches">
+        <div class="swatch" style="background:#3B82F6;" title="primary"></div>
+        <div class="swatch" style="background:#93C5FD;" title="primary-light"></div>
+        <div class="swatch" style="background:#4FECA2;" title="player-hp"></div>
+        <div class="swatch" style="background:#F5C842;" title="gold"></div>
+      </div>
+      <div class="theme-demo" style="background:linear-gradient(180deg, rgba(59,130,246,0.15), #3B82F6);border:2px solid #fff;">
+        <span class="glass"></span>START
+      </div>
+      <div class="theme-bar" style="background:linear-gradient(90deg, rgba(79,236,162,0.2), #4FECA2);"></div>
+    </div>
+
+    <div class="theme-card" style="background:#0F1F16;">
+      <span class="tag-refresh">可微调</span>
+      <div style="font-size:20px;">🌿</div>
+      <div class="theme-label" style="color:#10B981;">Nature 清新</div>
+      <div class="theme-desc">田园、策略、休闲类。翠绿主色。</div>
+      <div class="theme-swatches">
+        <div class="swatch" style="background:#10B981;" title="primary"></div>
+        <div class="swatch" style="background:#6EE7B7;" title="primary-light"></div>
+        <div class="swatch" style="background:#FBBF24;" title="player-hp"></div>
+        <div class="swatch" style="background:#F5C842;" title="gold"></div>
+      </div>
+      <div class="theme-demo" style="background:linear-gradient(180deg, rgba(16,185,129,0.15), #10B981);border:2px solid #fff;">
+        <span class="glass"></span>START
+      </div>
+      <div class="theme-bar" style="background:linear-gradient(90deg, rgba(251,191,36,0.2), #FBBF24);"></div>
+    </div>
+
+    <div class="theme-card" style="background:#110E1A;">
+      <span class="tag-refresh">可微调</span>
+      <div style="font-size:20px;">💜</div>
+      <div class="theme-label" style="color:#8B5CF6;">Dark 暗黑</div>
+      <div class="theme-desc">抵抗、压力、意志类。紫罗兰主色。</div>
+      <div class="theme-swatches">
+        <div class="swatch" style="background:#8B5CF6;" title="primary"></div>
+        <div class="swatch" style="background:#C4B5FD;" title="primary-light"></div>
+        <div class="swatch" style="background:#4FECA2;" title="player-hp"></div>
+        <div class="swatch" style="background:#F5C842;" title="gold"></div>
+      </div>
+      <div class="theme-demo" style="background:linear-gradient(180deg, rgba(139,92,246,0.15), #8B5CF6);border:2px solid #fff;">
+        <span class="glass"></span>START
+      </div>
+      <div class="theme-bar" style="background:linear-gradient(90deg, rgba(79,236,162,0.2), #4FECA2);"></div>
+    </div>
+
+    <div class="theme-card" style="background:#1A1221;">
+      <span class="tag-refresh">可微调</span>
+      <div style="font-size:20px;">🌸</div>
+      <div class="theme-label" style="color:#F472B6;">Sweet 甜美</div>
+      <div class="theme-desc">匹配、节奏、社交类。樱花粉主色。</div>
+      <div class="theme-swatches">
+        <div class="swatch" style="background:#F472B6;" title="primary"></div>
+        <div class="swatch" style="background:#FBCFE8;" title="primary-light"></div>
+        <div class="swatch" style="background:#4FECA2;" title="player-hp"></div>
+        <div class="swatch" style="background:#F5C842;" title="gold"></div>
+      </div>
+      <div class="theme-demo" style="background:linear-gradient(180deg, rgba(244,114,182,0.15), #F472B6);border:2px solid #fff;">
+        <span class="glass"></span>START
+      </div>
+      <div class="theme-bar" style="background:linear-gradient(90deg, rgba(79,236,162,0.2), #4FECA2);"></div>
+    </div>
+  </div>
+</div>
+
+<div class="section" style="margin-top:28px;">
+  <h3>候选新增氛围（多选你喜欢的）</h3>
+  <div class="theme-grid" style="margin-top:0;">
+  </div>
+</div>
+
+<div class="options" data-multiselect>
+
+  <div class="option" data-choice="cyber" onclick="toggleSelect(this)">
+    <div class="letter" style="background:linear-gradient(135deg,#00F0FF,#FF00E5);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">1</div>
+    <div class="content">
+      <h3>⚡ Cyber 赛博</h3>
+      <p>赛博朋克 / 科技感。<strong>青色 #00F0FF</strong> + 品红辅色。适合竞速、反应类。</p>
+      <div style="display:flex;gap:4px;margin-top:8px;">
+        <div style="width:22px;height:22px;border-radius:50%;background:#00F0FF;border:2px solid rgba(255,255,255,0.3);"></div>
+        <div style="width:22px;height:22px;border-radius:50%;background:#FF00E5;border:2px solid rgba(255,255,255,0.3);"></div>
+        <div style="width:22px;height:22px;border-radius:50%;background:#0A0E1A;border:2px solid rgba(255,255,255,0.3);"></div>
+        <div style="width:22px;height:22px;border-radius:50%;background:#F5C842;border:2px solid rgba(255,255,255,0.3);"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="sunset" onclick="toggleSelect(this)">
+    <div class="letter" style="background:linear-gradient(135deg,#FF6B35,#F7C948);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">2</div>
+    <div class="content">
+      <h3>🌅 Sunset 日落</h3>
+      <p>暖色系 / 橙金渐变。<strong>焦橙 #FF6B35</strong> + 暖金辅色。适合冒险、探索。</p>
+      <div style="display:flex;gap:4px;margin-top:8px;">
+        <div style="width:22px;height:22px;border-radius:50%;background:#FF6B35;border:2px solid rgba(255,255,255,0.3);"></div>
+        <div style="width:22px;height:22px;border-radius:50%;background:#F7C948;border:2px solid rgba(255,255,255,0.3);"></div>
+        <div style="width:22px;height:22px;border-radius:50%;background:#1A150E;border:2px solid rgba(255,255,255,0.3);"></div>
+        <div style="width:22px;height:22px;border-radius:50%;background:#4FECA2;border:2px solid rgba(255,255,255,0.3);"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="retro" onclick="toggleSelect(this)">
+    <div class="letter" style="background:linear-gradient(135deg,#FACC15,#A3E635);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">3</div>
+    <div class="content">
+      <h3>🕹️ Retro 复古</h3>
+      <p>像素 / 怀旧游戏厅。<strong>霓虹黄 #FACC15</strong> + 荧光绿辅色。适合街机风格。</p>
+      <div style="display:flex;gap:4px;margin-top:8px;">
+        <div style="width:22px;height:22px;border-radius:50%;background:#FACC15;border:2px solid rgba(255,255,255,0.3);"></div>
+        <div style="width:22px;height:22px;border-radius:50%;background:#A3E635;border:2px solid rgba(255,255,255,0.3);"></div>
+        <div style="width:22px;height:22px;border-radius:50%;background:#0F0F12;border:2px solid rgba(255,255,255,0.3);"></div>
+        <div style="width:22px;height:22px;border-radius:50%;background:#EC4F99;border:2px solid rgba(255,255,255,0.3);"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="ocean" onclick="toggleSelect(this)">
+    <div class="letter" style="background:linear-gradient(135deg,#06B6D4,#22D3EE);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">4</div>
+    <div class="content">
+      <h3>🐠 Ocean 海洋</h3>
+      <p>水下世界 / 清凉透气。<strong>青碧 #06B6D4</strong> + 珊瑚辅色。适合钓鱼、水下、航海。</p>
+      <div style="display:flex;gap:4px;margin-top:8px;">
+        <div style="width:22px;height:22px;border-radius:50%;background:#06B6D4;border:2px solid rgba(255,255,255,0.3);"></div>
+        <div style="width:22px;height:22px;border-radius:50%;background:#FB7185;border:2px solid rgba(255,255,255,0.3);"></div>
+        <div style="width:22px;height:22px;border-radius:50%;background:#0B1620;border:2px solid rgba(255,255,255,0.3);"></div>
+        <div style="width:22px;height:22px;border-radius:50%;background:#F5C842;border:2px solid rgba(255,255,255,0.3);"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="inferno" onclick="toggleSelect(this)">
+    <div class="letter" style="background:linear-gradient(135deg,#EF4444,#F97316);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">5</div>
+    <div class="content">
+      <h3>🔥 Inferno 炼狱</h3>
+      <p>地狱烈焰 / 高压。<strong>赤红 #EF4444</strong> + 熔岩橙辅色。适合极限挑战、Boss 战。</p>
+      <div style="display:flex;gap:4px;margin-top:8px;">
+        <div style="width:22px;height:22px;border-radius:50%;background:#EF4444;border:2px solid rgba(255,255,255,0.3);"></div>
+        <div style="width:22px;height:22px;border-radius:50%;background:#F97316;border:2px solid rgba(255,255,255,0.3);"></div>
+        <div style="width:22px;height:22px;border-radius:50%;background:#1A0E0E;border:2px solid rgba(255,255,255,0.3);"></div>
+        <div style="width:22px;height:22px;border-radius:50%;background:#4FECA2;border:2px solid rgba(255,255,255,0.3);"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="sakura" onclick="toggleSelect(this)">
+    <div class="letter" style="background:linear-gradient(135deg,#FDA4AF,#FDF2F8);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">6</div>
+    <div class="content">
+      <h3>🌸 Sakura 樱花</h3>
+      <p>日系柔美 / 温柔治愈。<strong>玫瑰粉 #FDA4AF</strong> + 奶白辅色。适合治愈、恋爱、日常。</p>
+      <div style="display:flex;gap:4px;margin-top:8px;">
+        <div style="width:22px;height:22px;border-radius:50%;background:#FDA4AF;border:2px solid rgba(255,255,255,0.3);"></div>
+        <div style="width:22px;height:22px;border-radius:50%;background:#FDF2F8;border:2px solid rgba(255,255,255,0.3);"></div>
+        <div style="width:22px;height:22px;border-radius:50%;background:#1A1218;border:2px solid rgba(255,255,255,0.3);"></div>
+        <div style="width:22px;height:22px;border-radius:50%;background:#A78BFA;border:2px solid rgba(255,255,255,0.3);"></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="section" style="margin-top:16px;">
+  <p class="subtitle">💡 可多选。选完后在终端告诉我，也可以提出你自己想要的氛围方向。</p>
+</div>

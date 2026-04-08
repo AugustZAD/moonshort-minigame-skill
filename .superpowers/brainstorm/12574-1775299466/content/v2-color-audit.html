@@ -1,0 +1,160 @@
+<h2>V2 色彩现状审计</h2>
+<p class="subtitle">当前 12 个游戏的色彩使用 vs 新视觉规范要求</p>
+
+<div class="section">
+  <h3>当前问题</h3>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:12px;">
+
+    <div style="background:#1a1a2e;border-radius:12px;padding:20px;border:1px solid #333;">
+      <div style="color:#EC4F99;font-weight:700;font-size:14px;margin-bottom:12px;">🔴 V2 现状</div>
+      <!-- Title bar -->
+      <div style="background:#EC4F99;border-radius:8px;padding:10px;text-align:center;color:#fff;font-weight:700;font-size:13px;">EP 8: Boss Parry</div>
+      <!-- HP bars -->
+      <div style="display:flex;gap:8px;margin-top:12px;">
+        <div style="flex:1;height:18px;border-radius:100px;border:2px solid #fff;overflow:hidden;background:#333;">
+          <div style="width:80%;height:100%;background:#4FECA2;border-radius:100px;"></div>
+        </div>
+        <div style="flex:1;height:18px;border-radius:100px;border:2px solid #fff;overflow:hidden;background:#333;">
+          <div style="width:60%;height:100%;background:#EC4F99;border-radius:100px;float:right;"></div>
+        </div>
+      </div>
+      <!-- Button flat -->
+      <div style="margin-top:16px;background:#EC4F99;border-radius:20px;padding:12px;text-align:center;color:#fff;font-weight:700;border:2px solid #EC4F99;box-shadow:0 4px 0 rgba(0,0,0,0.15);">
+        START
+      </div>
+      <ul style="color:#999;font-size:11px;margin-top:12px;padding-left:16px;line-height:1.8;">
+        <li>硬编码 hex: <code style="color:#EC4F99;">#EC4F99</code> 出现 30+ 次</li>
+        <li>HP 条纯色填充，无渐变</li>
+        <li>按钮无 glass 层光泽</li>
+        <li>标题无描边，对比度弱</li>
+        <li>无动效 token，硬编码 ms</li>
+      </ul>
+    </div>
+
+    <div style="background:#1a1221;border-radius:12px;padding:20px;border:1px solid #EC4F99;">
+      <div style="color:#4FECA2;font-weight:700;font-size:14px;margin-bottom:12px;">🟢 V3 视觉规范目标</div>
+      <!-- Title bar with text-shadow -->
+      <div style="background:linear-gradient(180deg, rgba(236,79,153,0.3) 0%, #EC4F99 100%);border-radius:8px;padding:10px;text-align:center;color:#fff;font-weight:900;font-size:13px;text-shadow:-2px -2px 0 #c13a7a,2px -2px 0 #c13a7a,-2px 2px 0 #c13a7a,2px 2px 0 #c13a7a;">EP 8: Boss Parry</div>
+      <!-- HP bars with gradient -->
+      <div style="display:flex;gap:8px;margin-top:12px;">
+        <div style="flex:1;height:18px;border-radius:100px;border:2px solid #fff;overflow:hidden;background:#222;">
+          <div style="width:80%;height:100%;background:linear-gradient(90deg, rgba(79,236,162,0.2), #4FECA2);border-radius:100px;transition:width 280ms cubic-bezier(.34,1.56,.64,1);"></div>
+        </div>
+        <div style="flex:1;height:18px;border-radius:100px;border:2px solid #fff;overflow:hidden;background:#222;">
+          <div style="width:60%;height:100%;background:linear-gradient(270deg, rgba(236,79,153,0.2), #EC4F99);border-radius:100px;float:right;"></div>
+        </div>
+      </div>
+      <!-- Button with glass + gradient + hard shadow -->
+      <div style="margin-top:16px;position:relative;border-radius:20px;overflow:hidden;box-shadow:0 4px 0 0 rgba(0,0,0,0.15), inset 0 0 4px 4px rgba(255,255,255,0.3);border:2px solid #fff;">
+        <div style="background:linear-gradient(180deg, rgba(236,79,153,0.1) 0%, #EC4F99 100%);padding:12px;text-align:center;color:#fff;font-weight:900;">
+          <div style="position:absolute;left:0;right:0;top:2px;height:16px;background:rgba(255,255,255,0.25);border-radius:18px 18px 0 0;"></div>
+          START
+        </div>
+      </div>
+      <ul style="color:#aaa;font-size:11px;margin-top:12px;padding-left:16px;line-height:1.8;">
+        <li>全部用 CSS 变量 <code style="color:#4FECA2;">var(--primary)</code></li>
+        <li>HP 条 G-02 渐变（上淡下浓）+ spring 弹性</li>
+        <li>按钮 G-01 渐变 + 白边 + glass 高光</li>
+        <li>标题 text-shadow 8方向描边</li>
+        <li>动效 token: <code style="color:#4FECA2;">--ease-spring</code></li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<div class="section" style="margin-top:24px;">
+  <h3>5 套氛围主题 — 当前 vs 升级后</h3>
+  <p class="subtitle">每套主题都将获得渐变、光晕、玻璃质感</p>
+  <div style="display:flex;gap:8px;margin-top:16px;flex-wrap:wrap;">
+
+    <div style="flex:1;min-width:140px;background:#1A1221;border-radius:12px;padding:16px;text-align:center;border:2px solid #EC4F99;">
+      <div style="font-size:24px;">🔥</div>
+      <div style="color:#EC4F99;font-weight:700;font-size:13px;margin:4px 0;">Combat</div>
+      <div style="display:flex;gap:4px;justify-content:center;margin-top:8px;">
+        <div style="width:24px;height:24px;border-radius:50%;background:#EC4F99;"></div>
+        <div style="width:24px;height:24px;border-radius:50%;background:#4FECA2;"></div>
+        <div style="width:24px;height:24px;border-radius:50%;background:#F5C842;"></div>
+      </div>
+      <div style="margin-top:8px;height:8px;border-radius:4px;background:linear-gradient(90deg,rgba(236,79,153,0.2),#EC4F99);"></div>
+    </div>
+
+    <div style="flex:1;min-width:140px;background:#0F1729;border-radius:12px;padding:16px;text-align:center;border:2px solid #3B82F6;">
+      <div style="font-size:24px;">🌊</div>
+      <div style="color:#3B82F6;font-weight:700;font-size:13px;margin:4px 0;">Mystery</div>
+      <div style="display:flex;gap:4px;justify-content:center;margin-top:8px;">
+        <div style="width:24px;height:24px;border-radius:50%;background:#3B82F6;"></div>
+        <div style="width:24px;height:24px;border-radius:50%;background:#4FECA2;"></div>
+        <div style="width:24px;height:24px;border-radius:50%;background:#F5C842;"></div>
+      </div>
+      <div style="margin-top:8px;height:8px;border-radius:4px;background:linear-gradient(90deg,rgba(59,130,246,0.2),#3B82F6);"></div>
+    </div>
+
+    <div style="flex:1;min-width:140px;background:#0F1F16;border-radius:12px;padding:16px;text-align:center;border:2px solid #10B981;">
+      <div style="font-size:24px;">🌿</div>
+      <div style="color:#10B981;font-weight:700;font-size:13px;margin:4px 0;">Nature</div>
+      <div style="display:flex;gap:4px;justify-content:center;margin-top:8px;">
+        <div style="width:24px;height:24px;border-radius:50%;background:#10B981;"></div>
+        <div style="width:24px;height:24px;border-radius:50%;background:#FBBF24;"></div>
+        <div style="width:24px;height:24px;border-radius:50%;background:#F5C842;"></div>
+      </div>
+      <div style="margin-top:8px;height:8px;border-radius:4px;background:linear-gradient(90deg,rgba(16,185,129,0.2),#10B981);"></div>
+    </div>
+
+    <div style="flex:1;min-width:140px;background:#110E1A;border-radius:12px;padding:16px;text-align:center;border:2px solid #8B5CF6;">
+      <div style="font-size:24px;">💜</div>
+      <div style="color:#8B5CF6;font-weight:700;font-size:13px;margin:4px 0;">Dark</div>
+      <div style="display:flex;gap:4px;justify-content:center;margin-top:8px;">
+        <div style="width:24px;height:24px;border-radius:50%;background:#8B5CF6;"></div>
+        <div style="width:24px;height:24px;border-radius:50%;background:#4FECA2;"></div>
+        <div style="width:24px;height:24px;border-radius:50%;background:#F5C842;"></div>
+      </div>
+      <div style="margin-top:8px;height:8px;border-radius:4px;background:linear-gradient(90deg,rgba(139,92,246,0.2),#8B5CF6);"></div>
+    </div>
+
+    <div style="flex:1;min-width:140px;background:#1A1221;border-radius:12px;padding:16px;text-align:center;border:2px solid #F472B6;">
+      <div style="font-size:24px;">🌸</div>
+      <div style="color:#F472B6;font-weight:700;font-size:13px;margin:4px 0;">Sweet</div>
+      <div style="display:flex;gap:4px;justify-content:center;margin-top:8px;">
+        <div style="width:24px;height:24px;border-radius:50%;background:#F472B6;"></div>
+        <div style="width:24px;height:24px;border-radius:50%;background:#4FECA2;"></div>
+        <div style="width:24px;height:24px;border-radius:50%;background:#F5C842;"></div>
+      </div>
+      <div style="margin-top:8px;height:8px;border-radius:4px;background:linear-gradient(90deg,rgba(244,114,182,0.2),#F472B6);"></div>
+    </div>
+  </div>
+</div>
+
+<div class="section" style="margin-top:24px;">
+  <h3>你想聚焦哪个方向？</h3>
+</div>
+
+<div class="options">
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>12 个游戏全部升级 V3（视觉增强）</h3>
+      <p>把新的渐变/阴影/动效/token 应用到所有 12 个 V2 游戏。5 套主题色不变，纯视觉品质提升。</p>
+    </div>
+  </div>
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>先做 1 个标杆 V3，再批量复制</h3>
+      <p>选 qte-boss-parry 做标杆 V3 参考实现（Layout A），再做一个 Layout B 标杆，然后批量。</p>
+    </div>
+  </div>
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>重新设计 5 套主题的配色 + 增加新主题</h3>
+      <p>不只是视觉增强，还要调整主题色本身。可能新增 2-3 套氛围（如赛博朋克、日系清新、复古像素）。</p>
+    </div>
+  </div>
+  <div class="option" data-choice="d" onclick="toggleSelect(this)">
+    <div class="letter">D</div>
+    <div class="content">
+      <h3>动态取色 + 视觉增强一起做</h3>
+      <p>V3 同时集成封面图动态取色系统（Episode 场景用），加上渐变/阴影/动效升级。完整实现。</p>
+    </div>
+  </div>
+</div>

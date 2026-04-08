@@ -1,0 +1,135 @@
+{
+  "ep_num": 9,
+  "variant": "mainline",
+  "current": {
+    "ep_num": 9,
+    "variant_kind": "mainline",
+    "output": {
+      "episode_id": "EP 9",
+      "episode_title": "给我",
+      "characters": [
+        "Sylvia",
+        "Elara Vance"
+      ],
+      "character_outfits": {
+        "Sylvia": "二十多岁女性，深色长发散落，穿着深灰色宽松长袖上衣，黑色长裤，深色平底靴，左手腕无任何饰品，双手空握。",
+        "Elara Vance": "三十多岁女性，深棕色亚麻长裙，米白色宽松外套，深色系围裙，头发盘起，颈间细绳挂着小陶瓶。"
+      },
+      "scene_locations": {
+        "银月领地 治疗师小屋": {
+          "location_id": "silver_moon_healer_cottage",
+          "parent_location_id": "silver_moon_healer_cottage",
+          "visual_prompt": "独立木制小屋，低矮屋檐，草药束悬挂于横梁，木质药柜排列，单支蜡烛燃于桌角，窗口透出一线昏黄灯光，桌面摆有陶罐与布包，深夜，草药气息浓重，空气静止。"
+        },
+        "银月领地 豪宅 外小路": {
+          "location_id": null,
+          "parent_location_id": "silver_moon_manor",
+          "visual_prompt": "豪宅通往外围的石板小路，两侧高大针叶林，树隙间月光碎落地面，夜色深蓝，路面无人，远处豪宅轮廓隐于暗中，冷寂无声。"
+        }
+      },
+      "pre_choice_script": "（场景：银月领地 治疗师小屋 — 凌晨）\n（外面星光闪闪，治疗师小屋窗口透出一线灯光。Sylvia推开门走进去，手边什么都没拿。）\n（Elara从药柜旁转过身，看见她，没有说话，等她开口。）\n\nSylvia: I've decided.I can't bring this child into a broken bond.\n\nSylvia: My child shouldn't live under the shadow of Kennedy.\n\n（Elara放下手里的陶罐，走到桌边，在她对面站定，目光直视。）\n\nElara: The moment it ends — James feels it. Instantly.\n\nElara: Lyra will feel it too. The pain is real.\n\nElara: There's no going back from this.\n\nSylvia: I know.\n\n（Elara沉默两秒，又开口。）\n\nElara: You know.\n\nSylvia: I know.\n\n（两个字落地，小屋里彻底静下来。烛火轻轻晃了一下。）",
+      "choice_node": {
+        "type": "成长型",
+        "options": [
+          {
+            "id": "A",
+            "content": "Look away. Wait for her to decide.",
+            "description": "Elara还站在桌对面，陶罐放下的声音还留在空气里。你没有再开口，眼神移开，落在桌角那支烛火上——火苗在动，你的手没有。",
+            "check": "无需检定"
+          },
+          {
+            "id": "B",
+            "content": "\"Give it to me.\"",
+            "description": "Elara的眼睛还盯着你，\"You know\"这两个字刚落地。药柜最底层的暗格还没打开，你听见自己的声音从喉咙里出来，比你预想的更平稳。",
+            "check": "WIL（意志）12"
+          }
+        ]
+      },
+      "post_choice_outcomes": [
+        {
+          "reaction_id": "Reaction 1",
+          "trigger_condition": "选择选项 A",
+          "story_content": "（Sylvia的视线落在桌角烛火上，没有再说话。）\n（Elara看了她片刻，蹲下来，打开柜子最底层的暗格，取出一个深色布包，放到桌面上。布包落桌的声音很轻。）\n（Sylvia的手没有动。Elara在她对面等着。）\n\nElara: （低声，字字清晰）Boiling water. Drink it fast. Don't be alone after.\n\n（Sylvia的手终于伸过来，覆上布包，停了一秒，才把它拿起来，攥进手心。她抬起头，看了Elara一眼。）\n\nSylvia: Thank you.\n\n（她转身，推开门走出去。）\n\n（场景：银月领地 豪宅 外小路 — 深夜）\n（小路两侧是针叶林，月光从树隙落下来。Sylvia一个人走着，手里捏着那个布包。）\n（特写——她的脚步，稳，没有停顿。月光打在她脸上，眼睛直视前方，嘴唇抿紧，没有回头。）\n（远景——Sylvia的背影走进豪宅大门，门在她身后关上。月光留在空荡荡的小路上。她穿过走廊，推开主卧的门。）\n\n黑屏字幕：The bundle is warm in your hand. You push open the bedroom door, close it behind you. No lights.",
+          "butterfly_effect": "Sylvia's silence before taking the herbs registers as a moment of hesitation absorbed alone. WIL holds but gains no forward momentum."
+        },
+        {
+          "reaction_id": "Reaction 2",
+          "trigger_condition": "选择选项 B - 检定失败",
+          "story_content": "（\"Give it to me.\"）\n（话出了口，声音比预想的小了半个音阶。Elara没有立刻动，只是静静看着她。）\n（沉默拉长了两秒。Sylvia的手指微微收紧，她没有收回视线。）\n（Elara蹲下来，打开柜子最底层的暗格，取出一个深色布包，放到桌面上。布包落桌的声音很轻。）\n（Sylvia的手伸过来，覆上去，停了一秒，才攥进手心。）\n\nElara: （低声，字字清晰）Boiling water. Drink it fast. Don't be alone after.\n\nSylvia: （轻，但清楚）Thank you.\n\n（她转身，推开门走出去。）\n\n（场景：银月领地 豪宅 外小路 — 凌晨）\n（月光从树隙落下来。Sylvia一个人走着，手里捏着那个布包，脚步稳，没有停顿。）\n（特写——月光打在她脸上，眼睛直视前方，嘴唇抿紧，没有回头。）\n（远景——Sylvia的背影走进豪宅大门，门在她身后关上。月光留在空荡荡的小路上。她穿过走廊，推开主卧的门。）\n\n黑屏字幕：The bundle is warm in your hand. You push open the bedroom door, close it behind you. No lights.",
+          "butterfly_effect": "Sylvia spoke first but the voice faltered. The act of asking is logged; the steadiness is not yet earned. WIL registers minimal gain."
+        },
+        {
+          "reaction_id": "Reaction 3",
+          "trigger_condition": "选择选项 B - 检定成功",
+          "story_content": "（\"Give it to me.\"）\n（声音平，落地，不带一丝颤抖。）\n（Elara看了她一秒，然后蹲下来，打开柜子最底层的暗格，取出一个深色布包，放到桌面上。布包落桌的声音很轻。）\n（Sylvia的手伸过来，覆上去，没有停顿，直接攥进手心。）\n\nElara: （低声，字字清晰）Boiling water. Drink it fast. Don't be alone after.\n\n（Sylvia抬起头，和Elara的视线对了一秒。）\n\nSylvia: （轻，但清楚）Thank you.\n\n（她转身，推开门走出去。Elara站在原地，没有动，看着门口。）\n\n（场景：银月领地 豪宅 外小路 — 凌晨）\n（月光从树隙落下来。Sylvia一个人走着，手里捏着那个布包。）\n（特写——脚步，稳，没有停顿。月光打在她脸上，眼睛直视前方，嘴唇抿紧，没有回头。）\n（远景——Sylvia的背影走进豪宅大门，门在她身后关上。月光留在空荡荡的小路上。她穿过走廊，推开主卧的门。）\n\n黑屏字幕：The bundle is still warm. You push open the bedroom door, close it behind you. No lights.",
+          "butterfly_effect": "Sylvia named her need aloud without flinching. WIL gains a clear notch; her agency in this moment is self-authored."
+        }
+      ]
+    }
+  },
+  "next": {
+    "ep_num": 10,
+    "mainline": {
+      "ep_num": 10,
+      "variant_kind": "mainline",
+      "output": {
+        "episode_id": "EP 10",
+        "episode_title": "熄灭",
+        "characters": [
+          "Sylvia",
+          "James"
+        ],
+        "character_outfits": {
+          "Sylvia": "二十多岁女性，深色宽松长袖上衣，深灰色长裤，赤脚，头发散落，左掌心有四道浅红压痕。",
+          "James": "三十岁左右男性，黑色厚实睡裤，深色无袖上衣，赤足，发型凌乱。"
+        },
+        "scene_locations": {
+          "银月领地 豪宅 主卧": {
+            "location_id": "silver_moon_manor_master_bedroom",
+            "parent_location_id": "silver_moon_manor",
+            "visual_prompt": "大型卧室，深色实木四柱床，厚重深色床帘半敞，地毯柔暗，落地窗帘拉合，壁灯熄灭，仅床头柜台灯亮着昏黄光晕，床头柜上有空陶杯与布包，地板中央有一处坐压的浅痕，空气中残留草药气息，黎明前天色漆黑。"
+          }
+        },
+        "pre_choice_script": "（场景：银月领地 豪宅 主卧 — 深夜）\n（Sylvia推开主卧门，把布包放到床头柜上。她去卫生间接了水，放进电热壶，按下开关，退后一步，背靠墙站着等。壁灯是灭的，只有床头柜的台灯亮着，把她的影子拉得很长。）\n（水沸了。她把草药倒进杯里，看着水色一点一点变深，端起来，一口喝尽。）\n（特写——空杯放回桌面。她的手没有抖。）\n（时间流逝。Sylvia慢慢滑落到地板上，双臂抱住膝盖，额头抵在膝上。特写——她的牙关咬紧，指甲掐进掌心，没有发出任何声音。）\n（字幕：黎明前）\n（特写——她的手慢慢松开，掌心留下四道红痕。她的眼睛睁开，直视前方，喉结滚动一下。腹中那点温热悄然消失。同一瞬间，她的肩膀微微下沉，像什么东西断了。）\n（豪宅远端传来一声低沉的Alpha怒吼，随即是沉重的脚步声。主卧门被撞开。）\n（James冲进来，扫到地板上的Sylvia，眼睛骤然变深。他猛地走上前，蹲下来，抓住她的肩膀。）\n\nJames: (声音撕裂) What did you do? I felt it — I felt my child die.\n\n（Sylvia撑着地板站起来，拍开他的手。她直视他，嘴唇抿紧，没有后退。）\n\nSylvia: (声音极平) I spared him. From this. From you.\n\n（James腾地站起来，双手直接扼向她的咽喉——手指触到她颈侧皮肤的瞬间，他停住了。）\n（特写——Sylvia的眼睛。没有恐惧，没有求饶，只是看着他，平静得像一块石头。）\n（James的双手悬在她颈侧，没有继续动。他的下颌绷紧，喉咙里发出一声低哑的声音，却没有一个字成形。）\n（两人对视。James的手还没有收回去。）",
+        "choice_node": {
+          "type": "成长型",
+          "options": [
+            {
+              "id": "A",
+              "content": "Turn away. Don't give him the last word.",
+              "description": "他的手指还贴着你颈侧，掌心的温度透过皮肤传进来。你的四道指甲痕还在发烫，地板上那个坐压的浅痕就在你脚边。你把视线移开——不是因为怕，是因为你已经没有什么要给他了。",
+              "check": "无需检定"
+            },
+            {
+              "id": "B",
+              "content": "Say the words. Now. To his face.",
+              "description": "他的手还没有放下来，你能感觉到他的呼吸打在你额头上。空杯还在床头柜上，草药的苦味还在你喉咙里。你张开嘴——不是明天，不是在长老面前，就是现在，就是对着这双手。",
+              "check": "WIL（意志）12"
+            }
+          ]
+        },
+        "post_choice_outcomes": [
+          {
+            "reaction_id": "反应一",
+            "trigger_condition": "选择选项 A",
+            "story_content": "（Sylvia把视线从James脸上移开，转向落地窗的方向。窗帘拉合，什么也看不见，但她就这样站着，背脊是直的。）\n（James的手悬了很久，慢慢垂落。他的嘴唇动了动，没有发出声音。）\n\nJames: (声音低沉，像压着什么) You can't just—\n\nSylvia: (不转头，声音平静) Tomorrow. In front of every Elder. I will say the words. Get ready.\n\n（沉默。James站在原地，拳头攥紧又松开。Sylvia没有再开口，也没有动。她的手垂在身侧，掌心的红痕朝下。）\n（James最终转身，沉重的脚步声走向门口。门没有关上，走廊里透进一线灰白的黎明前光线。）\n\n黑屏字幕：Tomorrow. The council hall. In front of every Elder. You will say the words yourself.",
+            "butterfly_effect": "Sylvia withholds the final confrontation, preserving her declaration for the council. WIL holds steady but gains no forward momentum."
+          },
+          {
+            "reaction_id": "反应二",
+            "trigger_condition": "选择选项 B - 检定失败",
+            "story_content": "（Sylvia深吸一口气，开口——）\n\nSylvia: I, Sylvia—\n\n（声音在第一个字之后断了。她的喉咙发紧，草药的苦味还压在舌根，身体在这一刻背叛了她的意志。）\n（James的眼睛骤然锁住她，手指微微收紧，随即又停住。）\n\nJames: (声音低沉，像压着什么) You don't even know what you're doing.\n\n（Sylvia闭上眼睛，一秒，两秒。她重新睁开，下颌骨咬紧，声音比刚才低，但稳住了。）\n\nSylvia: Tomorrow. In front of every Elder. I will say the words. Get ready.\n\n（James的手缓缓放下来，停在身侧。他站在原地，没有离开，也没有再开口。Sylvia转向窗边，背对他，不再看他。）\n\n黑屏字幕：You couldn't finish tonight. But tomorrow, in the council hall, in front of everyone — you will.",
+            "butterfly_effect": "The words broke before they landed. James registers the hesitation. WIL takes a fractional hit, but the declaration stands for tomorrow."
+          },
+          {
+            "reaction_id": "反应三",
+            "trigger_condition": "选择选项 B - 检定成功",
+            "story_content": "（Sylvia没有移开视线，就这样直视着他，开口，声音清晰，一字一顿。）\n\nSylvia: I, Sylvia, reject you, James, as my Alpha and my mate—\n\n（James的手猛地收回来，像被烫到。他后退半步，眼睛里有什么东西裂开。）\n\nJames: (声音撕裂) Stop—\n\nSylvia: (继续，声音没有颤抖) —from this moment, and from every moment after.\n\n（话音落下，房间里的空气像被什么东西猛地抽走。James站在原地，呼吸急促，双手攥成拳。Sylvia的身体因誓词不完整而传来一阵刺痛，但她站着，没有动。）\n\nJames: (声音低沉，像压着什么) You don't know what you're doing.\n\nSylvia: (转身，不再看他) I know exactly what I'm doing.\n\n（James的手缓缓放下来，停在身侧。Sylvia走向窗边，背对他，不再开口。）\n\n黑屏字幕：You've already said it once. Tomorrow, in the council hall, in front of every Elder, you'll say it again.",
+            "butterfly_effect": "The words were spoken first in private — unwitnessed, incomplete, but real. Sylvia's WIL registers a meaningful gain. James's composure fractures earlier than anticipated."
+          }
+        ]
+      }
+    },
+    "minor_mainline": null
+  }
+}

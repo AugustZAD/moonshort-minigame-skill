@@ -1,0 +1,12 @@
+# EP8 资源清单
+
+**变体：** `mainline`
+
+**角色（2）：**
+- ✅ James → James.png
+- ✅ Sylvia → Sylvia.png
+
+**场景（1）：**
+- ✅ 银月领地 豪宅 主卧 → 银月领地 豪宅 主卧.png
+
+**剧本：** `script.json` 包含本集（mainline）+ EP9（含所有变体）

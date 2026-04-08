@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>V3 Mockup Gallery</title>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700;900&display=swap" rel="stylesheet">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:#0a0a0f; color:#fff; font-family:'Montserrat',system-ui,sans-serif; padding:20px; }
+  h1 { font-size:22px; font-weight:900; text-align:center; margin-bottom:4px; }
+  .sub { text-align:center; color:#888; font-size:13px; margin-bottom:28px; }
+
+  /* Tab nav */
+  .tabs { display:flex; justify-content:center; gap:8px; margin-bottom:24px; flex-wrap:wrap; }
+  .tab {
+    padding:8px 20px; border-radius:100px; font-weight:700; font-size:13px;
+    background:rgba(255,255,255,0.05); border:1.5px solid rgba(255,255,255,0.1);
+    cursor:pointer; transition:all 0.2s;
+  }
+  .tab:hover { background:rgba(255,255,255,0.1); }
+  .tab.active { background:#EC4F99; border-color:#EC4F99; color:#fff; }
+
+  .page { display:none; }
+  .page.active { display:block; }
+
+  /* ═══════════════════════════════════════ Page 1: V2 vs V3 Audit ═══════════════════════════════════════ */
+  .audit-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; max-width:800px; margin:0 auto; }
+  .audit-card { border-radius:12px; padding:20px; border:1px solid #333; }
+  .audit-card h3 { font-size:14px; margin-bottom:12px; }
+  .audit-card ul { font-size:11px; padding-left:16px; line-height:1.8; }
+
+  /* ═══════════════════════════════════════ Page 2: Full Theme System ═══════════════════════════════════════ */
+  .themes { display:flex; flex-direction:column; gap:16px; max-width:820px; margin:0 auto; }
+  .theme-row {
+    display:grid; grid-template-columns:210px 1fr; gap:16px;
+    border-radius:16px; padding:16px; position:relative; overflow:hidden;
+  }
+  .theme-row::before {
+    content:''; position:absolute; inset:0;
+    border:2px solid rgba(255,255,255,0.06); border-radius:16px; pointer-events:none;
+  }
+  .tag { position:absolute; top:10px; right:12px; font-size:10px; font-weight:700; padding:2px 10px; border-radius:100px; }
+  .tag.new { background:rgba(79,236,162,0.15); color:#4FECA2; }
+  .tag.rework { background:rgba(245,200,66,0.15); color:#F5C842; }
+  .tag.keep { background:rgba(255,255,255,0.06); color:#555; }
+  .info { display:flex; flex-direction:column; gap:4px; }
+  .info .emoji { font-size:26px; }
+  .info .name { font-weight:900; font-size:17px; }
+  .info .id { font-size:10px; color:#555; font-weight:700; letter-spacing:1px; }
+  .info .desc { font-size:11px; color:#999; line-height:1.5; margin-top:2px; }
+  .swatches { display:flex; gap:4px; margin-top:6px; }
+  .sw { width:20px; height:20px; border-radius:50%; border:2px solid rgba(255,255,255,0.12); }
+  .games { margin-top:6px; display:flex; flex-wrap:wrap; gap:4px; }
+  .game-tag { font-size:9px; background:rgba(255,255,255,0.06); padding:2px 8px; border-radius:4px; color:#aaa; }
+
+  /* Mini mockup */
+  .mm { border-radius:12px; overflow:hidden; display:flex; flex-direction:column; min-height:190px; }
+  .mm-title { padding:7px 12px; text-align:center; font-weight:900; font-size:11px; color:#fff; position:relative; }
+  .mm-scallop { height:7px; background-repeat:repeat-x; }
+  .mm-body { flex:1; display:flex; flex-direction:column; align-items:center; padding:10px; gap:7px; }
+  .mm-hp-row { display:flex; gap:6px; width:100%; align-items:center; }
+  .mm-hp { flex:1; height:10px; border-radius:100px; border:1.5px solid rgba(255,255,255,0.35); overflow:hidden; }
+  .mm-hp-fill { height:100%; border-radius:100px; }
+  .mm-circle {
+    width:72px; height:72px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+  }
+  .mm-circle-inner {
+    width:62px; height:62px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+    font-size:20px;
+  }
+  .mm-btn {
+    width:100%; padding:7px; border-radius:14px; text-align:center;
+    font-weight:900; font-size:10px; color:#fff; position:relative; overflow:hidden;
+    border:1.5px solid #fff;
+  }
+  .mm-btn .glass {
+    position:absolute; left:0;right:0;top:1px;height:9px;
+    background:rgba(255,255,255,0.22); border-radius:12px 12px 0 0;
+  }
+  .mm-btn-text { position:relative; z-index:1; }
+  .mm-bar { width:100%; height:5px; border-radius:3px; }
+
+  /* ═══════════════════════════════════════ Page 3: Assignment Table ═══════════════════════════════════════ */
+  .assign-table { max-width:820px; margin:16px auto; border-collapse:collapse; width:100%; font-size:12px; }
+  .assign-table th { text-align:left; padding:8px 12px; border-bottom:1px solid #222; color:#666; font-weight:700; }
+  .assign-table td { padding:8px 12px; border-bottom:1px solid #111; }
+  .change { color:#F5C842; }
+  .problem { background:rgba(239,68,68,0.06); border:1px solid rgba(239,68,68,0.15); border-radius:8px; padding:12px 16px; margin:16px auto; max-width:820px; font-size:12px; line-height:1.7; }
+  .hue-map { display:flex; align-items:center; justify-content:center; gap:14px; flex-wrap:wrap; margin-top:12px; }
+
+  /* Section divider */
+  .section-head { text-align:center; margin:20px 0 12px; }
+  .section-head h2 { font-size:16px; font-weight:900; }
+  .section-head p { font-size:11px; color:#555; margin-top:2px; }
+</style>
+</head>
+<body>
+
+<h1>V3 设计 Mockup 总览</h1>
+<p class="sub">3 个视角查看完整设计方案</p>
+
+<div class="tabs">
+  <div class="tab active" onclick="showPage('p1',this)">① V2 vs V3 对比</div>
+  <div class="tab" onclick="showPage('p2',this)">② 7 套主题系统</div>
+  <div class="tab" onclick="showPage('p3',this)">③ 游戏分配表</div>
+</div>
+
+<!-- ═══════════════ PAGE 1: V2 vs V3 ═══════════════ -->
+<div class="page active" id="p1">
+  <div class="section-head"><h2>V2 现状 vs V3 目标</h2><p>以 combat 主题为例</p></div>
+  <div class="audit-grid">
+    <div class="audit-card" style="background:#1a1a2e;border-color:#333;">
+      <h3 style="color:#EC4F99;">🔴 V2 现状</h3>
+      <div style="background:#EC4F99;border-radius:8px;padding:10px;text-align:center;color:#fff;font-weight:700;font-size:13px;">EP 8: Boss Parry</div>
+      <div style="display:flex;gap:8px;margin-top:12px;">
+        <div style="flex:1;height:16px;border-radius:100px;border:2px solid #fff;overflow:hidden;background:#333;">
+          <div style="width:80%;height:100%;background:#4FECA2;border-radius:100px;"></div>
+        </div>
+        <div style="flex:1;height:16px;border-radius:100px;border:2px solid #fff;overflow:hidden;background:#333;">
+          <div style="width:60%;height:100%;background:#EC4F99;border-radius:100px;float:right;"></div>
+        </div>
+      </div>
+      <div style="margin-top:14px;background:#EC4F99;border-radius:20px;padding:11px;text-align:center;color:#fff;font-weight:700;border:2px solid #EC4F99;box-shadow:0 4px 0 rgba(0,0,0,0.15);">START</div>
+      <ul style="color:#999;margin-top:12px;">
+        <li>硬编码 hex <code style="color:#EC4F99;">#EC4F99</code> × 30+</li>
+        <li>HP 条纯色填充</li>
+        <li>按钮无 glass 层</li>
+        <li>标题无描边</li>
+        <li>无动效 token</li>
+        <li>圆圈无呼吸光晕</li>
+      </ul>
+    </div>
+    <div class="audit-card" style="background:#1a1221;border-color:#EC4F99;">
+      <h3 style="color:#4FECA2;">🟢 V3 目标</h3>
+      <div style="background:linear-gradient(180deg, rgba(236,79,153,0.2), #EC4F99);border-radius:8px;padding:10px;text-align:center;color:#fff;font-weight:900;font-size:13px;text-shadow:-2px -2px 0 #b03a75,2px -2px 0 #b03a75,-2px 2px 0 #b03a75,2px 2px 0 #b03a75;">EP 8: Boss Parry</div>
+      <div style="display:flex;gap:8px;margin-top:12px;">
+        <div style="flex:1;height:16px;border-radius:100px;border:2px solid #fff;overflow:hidden;background:#222;">
+          <div style="width:80%;height:100%;background:linear-gradient(90deg,rgba(79,236,162,0.2),#4FECA2);border-radius:100px;transition:width 280ms cubic-bezier(.34,1.56,.64,1);"></div>
+        </div>
+        <div style="flex:1;height:16px;border-radius:100px;border:2px solid #fff;overflow:hidden;background:#222;">
+          <div style="width:60%;height:100%;background:linear-gradient(270deg,rgba(236,79,153,0.2),#EC4F99);border-radius:100px;float:right;"></div>
+        </div>
+      </div>
+      <div style="margin-top:14px;position:relative;border-radius:20px;overflow:hidden;box-shadow:0 4px 0 0 rgba(0,0,0,0.15),inset 0 0 4px 4px rgba(255,255,255,0.3);border:2px solid #fff;">
+        <div style="background:linear-gradient(180deg,rgba(236,79,153,0.1),#EC4F99);padding:11px;text-align:center;color:#fff;font-weight:900;">
+          <div style="position:absolute;left:0;right:0;top:2px;height:14px;background:rgba(255,255,255,0.22);border-radius:18px 18px 0 0;"></div>
+          START
+        </div>
+      </div>
+      <ul style="color:#aaa;margin-top:12px;">
+        <li>全部 CSS 变量 <code style="color:#4FECA2;">var(--primary)</code></li>
+        <li>HP 渐变 + <code style="color:#4FECA2;">ease-spring</code></li>
+        <li>按钮渐变 + 白边 + glass</li>
+        <li>text-shadow 8 方向描边</li>
+        <li>动效 token 化</li>
+        <li>圆圈 <code style="color:#4FECA2;">glow-pulse</code> 呼吸</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ PAGE 2: All 7 Themes ═══════════════ -->
+<div class="page" id="p2">
+  <div class="section-head"><h2>7 套氛围主题</h2></div>
+  <div class="themes">
+
+    <!-- COMBAT -->
+    <div class="theme-row" style="background:#1A1221;">
+      <span class="tag keep">保留</span>
+      <div class="info">
+        <div class="emoji">🔥</div>
+        <div class="name" style="color:#EC4F99;">Combat 热血</div>
+        <div class="id">ID: combat · 333°</div>
+        <div class="desc">VS 对战核心。品红 = 攻击性 + 力量感。</div>
+        <div class="swatches">
+          <div class="sw" style="background:#EC4F99;"></div>
+          <div class="sw" style="background:#F9A8D4;"></div>
+          <div class="sw" style="background:#4FECA2;"></div>
+          <div class="sw" style="background:#F5C842;"></div>
+          <div class="sw" style="background:#1A1221;"></div>
+        </div>
+        <div class="games"><span class="game-tag">qte-boss-parry</span><span class="game-tag">qte-hold-release</span></div>
+      </div>
+      <div class="mm">
+        <div class="mm-title" style="background:linear-gradient(180deg,rgba(236,79,153,0.2),#EC4F99);text-shadow:-2px -2px 0 #b03a75,2px -2px 0 #b03a75,-2px 2px 0 #b03a75,2px 2px 0 #b03a75;">Boss Parry</div>
+        <div class="mm-scallop" style="background-image:radial-gradient(circle at 8px 0,#EC4F99 8px,#1A1221 8px);background-size:16px 7px;"></div>
+        <div class="mm-body" style="background:#1A1221;">
+          <div class="mm-hp-row">
+            <div class="mm-hp"><div class="mm-hp-fill" style="width:80%;background:linear-gradient(90deg,rgba(79,236,162,0.2),#4FECA2);"></div></div>
+            <div style="font-size:9px;font-weight:900;color:#EC4F99;">VS</div>
+            <div class="mm-hp"><div class="mm-hp-fill" style="width:60%;background:linear-gradient(270deg,rgba(236,79,153,0.2),#EC4F99);float:right;"></div></div>
+          </div>
+          <div class="mm-circle" style="background:conic-gradient(from 270deg,#EC4F99,#F9A8D4,#FFE0F8,#fff);box-shadow:0 0 16px 2px rgba(236,79,153,0.2);">
+            <div class="mm-circle-inner" style="background:radial-gradient(circle,#fff,#FFE0F8);">⚔️</div>
+          </div>
+          <div class="mm-btn" style="background:linear-gradient(180deg,rgba(236,79,153,0.1),#EC4F99);box-shadow:0 3px 0 0 rgba(0,0,0,0.15),inset 0 0 3px 3px rgba(255,255,255,0.3);"><span class="glass"></span><span class="mm-btn-text">START</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MYSTERY -->
+    <div class="theme-row" style="background:#0F1729;">
+      <span class="tag keep">保留</span>
+      <div class="info">
+        <div class="emoji">🌊</div>
+        <div class="name" style="color:#3B82F6;">Mystery 神秘</div>
+        <div class="id">ID: mystery · 217°</div>
+        <div class="desc">深海蓝 = 未知 + 冷静 + 探索欲。</div>
+        <div class="swatches">
+          <div class="sw" style="background:#3B82F6;"></div>
+          <div class="sw" style="background:#93C5FD;"></div>
+          <div class="sw" style="background:#4FECA2;"></div>
+          <div class="sw" style="background:#F5C842;"></div>
+          <div class="sw" style="background:#0F1729;"></div>
+        </div>
+        <div class="games"><span class="game-tag">maze-escape</span><span class="game-tag">spotlight-seek</span></div>
+      </div>
+      <div class="mm">
+        <div class="mm-title" style="background:linear-gradient(180deg,rgba(59,130,246,0.2),#3B82F6);text-shadow:-2px -2px 0 #2563EB,2px -2px 0 #2563EB,-2px 2px 0 #2563EB,2px 2px 0 #2563EB;">Maze Escape</div>
+        <div class="mm-scallop" style="background-image:radial-gradient(circle at 8px 0,#3B82F6 8px,#0F1729 8px);background-size:16px 7px;"></div>
+        <div class="mm-body" style="background:#0F1729;">
+          <div class="mm-circle" style="background:conic-gradient(from 270deg,#3B82F6,#93C5FD,#DBEAFE,#fff);box-shadow:0 0 16px 2px rgba(59,130,246,0.2);">
+            <div class="mm-circle-inner" style="background:radial-gradient(circle,#fff,#DBEAFE);">🔍</div>
+          </div>
+          <div class="mm-bar" style="background:linear-gradient(90deg,rgba(59,130,246,0.15),#3B82F6);height:5px;border-radius:3px;width:100%;"></div>
+          <div class="mm-btn" style="background:linear-gradient(180deg,rgba(59,130,246,0.1),#3B82F6);box-shadow:0 3px 0 0 rgba(0,0,0,0.15),inset 0 0 3px 3px rgba(255,255,255,0.3);"><span class="glass"></span><span class="mm-btn-text">START</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- NATURE -->
+    <div class="theme-row" style="background:#0F1F16;">
+      <span class="tag keep">保留</span>
+      <div class="info">
+        <div class="emoji">🌿</div>
+        <div class="name" style="color:#10B981;">Nature 清新</div>
+        <div class="id">ID: nature · 160°</div>
+        <div class="desc">翠绿 = 秩序 + 策略。HP 用琥珀色（避免绿底绿条）。</div>
+        <div class="swatches">
+          <div class="sw" style="background:#10B981;"></div>
+          <div class="sw" style="background:#6EE7B7;"></div>
+          <div class="sw" style="background:#FBBF24;"></div>
+          <div class="sw" style="background:#F5C842;"></div>
+          <div class="sw" style="background:#0F1F16;"></div>
+        </div>
+        <div class="games"><span class="game-tag">conveyor-sort</span><span class="game-tag">parking-rush</span></div>
+      </div>
+      <div class="mm">
+        <div class="mm-title" style="background:linear-gradient(180deg,rgba(16,185,129,0.2),#10B981);text-shadow:-2px -2px 0 #059669,2px -2px 0 #059669,-2px 2px 0 #059669,2px 2px 0 #059669;">Conveyor Sort</div>
+        <div class="mm-scallop" style="background-image:radial-gradient(circle at 8px 0,#10B981 8px,#0F1F16 8px);background-size:16px 7px;"></div>
+        <div class="mm-body" style="background:#0F1F16;">
+          <div class="mm-circle" style="background:conic-gradient(from 270deg,#10B981,#6EE7B7,#D1FAE5,#fff);box-shadow:0 0 16px 2px rgba(16,185,129,0.2);">
+            <div class="mm-circle-inner" style="background:radial-gradient(circle,#fff,#D1FAE5);">📦</div>
+          </div>
+          <div class="mm-bar" style="background:linear-gradient(90deg,rgba(251,191,36,0.15),#FBBF24);height:5px;border-radius:3px;width:100%;"></div>
+          <div class="mm-btn" style="background:linear-gradient(180deg,rgba(16,185,129,0.1),#10B981);box-shadow:0 3px 0 0 rgba(0,0,0,0.15),inset 0 0 3px 3px rgba(255,255,255,0.3);"><span class="glass"></span><span class="mm-btn-text">START</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- DARK -->
+    <div class="theme-row" style="background:#110E1A;">
+      <span class="tag keep">保留</span>
+      <div class="info">
+        <div class="emoji">💜</div>
+        <div class="name" style="color:#8B5CF6;">Dark 暗黑</div>
+        <div class="id">ID: dark · 258°</div>
+        <div class="desc">紫罗兰 = 内心 + 心理压力 + 神秘。</div>
+        <div class="swatches">
+          <div class="sw" style="background:#8B5CF6;"></div>
+          <div class="sw" style="background:#C4B5FD;"></div>
+          <div class="sw" style="background:#4FECA2;"></div>
+          <div class="sw" style="background:#F5C842;"></div>
+          <div class="sw" style="background:#110E1A;"></div>
+        </div>
+        <div class="games"><span class="game-tag">will-surge</span></div>
+      </div>
+      <div class="mm">
+        <div class="mm-title" style="background:linear-gradient(180deg,rgba(139,92,246,0.2),#8B5CF6);text-shadow:-2px -2px 0 #6D28D9,2px -2px 0 #6D28D9,-2px 2px 0 #6D28D9,2px 2px 0 #6D28D9;">Will Surge</div>
+        <div class="mm-scallop" style="background-image:radial-gradient(circle at 8px 0,#8B5CF6 8px,#110E1A 8px);background-size:16px 7px;"></div>
+        <div class="mm-body" style="background:#110E1A;">
+          <div class="mm-circle" style="background:conic-gradient(from 270deg,#8B5CF6,#C4B5FD,#EDE9FE,#fff);box-shadow:0 0 16px 2px rgba(139,92,246,0.2);">
+            <div class="mm-circle-inner" style="background:radial-gradient(circle,#fff,#EDE9FE);">🧠</div>
+          </div>
+          <div class="mm-bar" style="background:linear-gradient(90deg,rgba(139,92,246,0.15),#8B5CF6);height:5px;border-radius:3px;width:100%;"></div>
+          <div class="mm-btn" style="background:linear-gradient(180deg,rgba(139,92,246,0.1),#8B5CF6);box-shadow:0 3px 0 0 rgba(0,0,0,0.15),inset 0 0 3px 3px rgba(255,255,255,0.3);"><span class="glass"></span><span class="mm-btn-text">START</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SWEET (reworked) -->
+    <div class="theme-row" style="background:#1A1218;">
+      <span class="tag rework">重构</span>
+      <div class="info">
+        <div class="emoji">🍬</div>
+        <div class="name" style="color:#FB7185;">Sweet 蜜桃</div>
+        <div class="id">ID: sweet · 350°</div>
+        <div class="desc"><span style="color:#F5C842;">重构:</span> #F472B6→<strong style="color:#FB7185;">#FB7185</strong>。辅色绿→薰衣紫，与 combat 彻底拉开。</div>
+        <div class="swatches">
+          <div class="sw" style="background:#FB7185;"></div>
+          <div class="sw" style="background:#FECDD3;"></div>
+          <div class="sw" style="background:#A78BFA;"></div>
+          <div class="sw" style="background:#F5C842;"></div>
+          <div class="sw" style="background:#1A1218;"></div>
+        </div>
+        <div class="games"><span class="game-tag">color-match</span><span class="game-tag">red-light-green-light</span></div>
+      </div>
+      <div class="mm">
+        <div class="mm-title" style="background:linear-gradient(180deg,rgba(251,113,133,0.2),#FB7185);text-shadow:-2px -2px 0 #E11D48,2px -2px 0 #E11D48,-2px 2px 0 #E11D48,2px 2px 0 #E11D48;">Color Match</div>
+        <div class="mm-scallop" style="background-image:radial-gradient(circle at 8px 0,#FB7185 8px,#1A1218 8px);background-size:16px 7px;"></div>
+        <div class="mm-body" style="background:#1A1218;">
+          <div class="mm-circle" style="background:conic-gradient(from 270deg,#FB7185,#FECDD3,#FFF1F2,#fff);box-shadow:0 0 16px 2px rgba(251,113,133,0.2);">
+            <div class="mm-circle-inner" style="background:radial-gradient(circle,#fff,#FFF1F2);">🎨</div>
+          </div>
+          <div class="mm-bar" style="background:linear-gradient(90deg,rgba(167,139,250,0.15),#A78BFA);height:5px;border-radius:3px;width:100%;"></div>
+          <div class="mm-btn" style="background:linear-gradient(180deg,rgba(251,113,133,0.1),#FB7185);box-shadow:0 3px 0 0 rgba(0,0,0,0.15),inset 0 0 3px 3px rgba(255,255,255,0.3);"><span class="glass"></span><span class="mm-btn-text">START</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- OCEAN (new) -->
+    <div class="theme-row" style="background:#0B1620;">
+      <span class="tag new">新增</span>
+      <div class="info">
+        <div class="emoji">🐠</div>
+        <div class="name" style="color:#06B6D4;">Ocean 海洋</div>
+        <div class="id">ID: ocean · 189°</div>
+        <div class="desc"><span style="color:#4FECA2;">新增:</span> 钓鱼归水系。青碧 = 水面 + 清凉 + 沉浸。</div>
+        <div class="swatches">
+          <div class="sw" style="background:#06B6D4;"></div>
+          <div class="sw" style="background:#67E8F9;"></div>
+          <div class="sw" style="background:#4FECA2;"></div>
+          <div class="sw" style="background:#F5C842;"></div>
+          <div class="sw" style="background:#0B1620;"></div>
+        </div>
+        <div class="games"><span class="game-tag">stardew-fishing</span></div>
+      </div>
+      <div class="mm">
+        <div class="mm-title" style="background:linear-gradient(180deg,rgba(6,182,212,0.2),#06B6D4);text-shadow:-2px -2px 0 #0891B2,2px -2px 0 #0891B2,-2px 2px 0 #0891B2,2px 2px 0 #0891B2;">Stardew Fishing</div>
+        <div class="mm-scallop" style="background-image:radial-gradient(circle at 8px 0,#06B6D4 8px,#0B1620 8px);background-size:16px 7px;"></div>
+        <div class="mm-body" style="background:#0B1620;">
+          <div class="mm-circle" style="background:conic-gradient(from 270deg,#06B6D4,#67E8F9,#CFFAFE,#fff);box-shadow:0 0 16px 2px rgba(6,182,212,0.2);">
+            <div class="mm-circle-inner" style="background:radial-gradient(circle,#fff,#CFFAFE);">🎣</div>
+          </div>
+          <div class="mm-bar" style="background:linear-gradient(90deg,rgba(6,182,212,0.15),#06B6D4);height:5px;border-radius:3px;width:100%;"></div>
+          <div class="mm-btn" style="background:linear-gradient(180deg,rgba(6,182,212,0.1),#06B6D4);box-shadow:0 3px 0 0 rgba(0,0,0,0.15),inset 0 0 3px 3px rgba(255,255,255,0.3);"><span class="glass"></span><span class="mm-btn-text">START</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ENERGY (new) -->
+    <div class="theme-row" style="background:#1A140E;">
+      <span class="tag new">新增</span>
+      <div class="info">
+        <div class="emoji">⚡</div>
+        <div class="name" style="color:#F97316;">Energy 能量</div>
+        <div class="id">ID: energy · 25°</div>
+        <div class="desc"><span style="color:#4FECA2;">新增:</span> 鲜橙 = 速度 + 爆发 + 肾上腺素。填补暖色空白。</div>
+        <div class="swatches">
+          <div class="sw" style="background:#F97316;"></div>
+          <div class="sw" style="background:#FDBA74;"></div>
+          <div class="sw" style="background:#4FECA2;"></div>
+          <div class="sw" style="background:#F5C842;"></div>
+          <div class="sw" style="background:#1A140E;"></div>
+        </div>
+        <div class="games"><span class="game-tag">cannon-aim</span><span class="game-tag">lane-dash</span></div>
+      </div>
+      <div class="mm">
+        <div class="mm-title" style="background:linear-gradient(180deg,rgba(249,115,22,0.2),#F97316);text-shadow:-2px -2px 0 #C2410C,2px -2px 0 #C2410C,-2px 2px 0 #C2410C,2px 2px 0 #C2410C;">Cannon Aim</div>
+        <div class="mm-scallop" style="background-image:radial-gradient(circle at 8px 0,#F97316 8px,#1A140E 8px);background-size:16px 7px;"></div>
+        <div class="mm-body" style="background:#1A140E;">
+          <div class="mm-circle" style="background:conic-gradient(from 270deg,#F97316,#FDBA74,#FFF7ED,#fff);box-shadow:0 0 16px 2px rgba(249,115,22,0.2);">
+            <div class="mm-circle-inner" style="background:radial-gradient(circle,#fff,#FFF7ED);">🎯</div>
+          </div>
+          <div class="mm-bar" style="background:linear-gradient(90deg,rgba(249,115,22,0.15),#F97316);height:5px;border-radius:3px;width:100%;"></div>
+          <div class="mm-btn" style="background:linear-gradient(180deg,rgba(249,115,22,0.1),#F97316);box-shadow:0 3px 0 0 rgba(0,0,0,0.15),inset 0 0 3px 3px rgba(255,255,255,0.3);"><span class="glass"></span><span class="mm-btn-text">START</span></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Hue map -->
+  <div style="text-align:center;margin:24px auto;padding:14px;background:rgba(255,255,255,0.02);border-radius:12px;max-width:820px;">
+    <div style="font-size:12px;color:#666;">色相分布（360° 色轮）</div>
+    <div class="hue-map">
+      <span style="color:#F97316;font-weight:700;">25° energy</span>
+      <span style="color:#10B981;font-weight:700;">160° nature</span>
+      <span style="color:#06B6D4;font-weight:700;">189° ocean</span>
+      <span style="color:#3B82F6;font-weight:700;">217° mystery</span>
+      <span style="color:#8B5CF6;font-weight:700;">258° dark</span>
+      <span style="color:#EC4F99;font-weight:700;">333° combat</span>
+      <span style="color:#FB7185;font-weight:700;">350° sweet</span>
+    </div>
+    <div style="font-size:10px;color:#444;margin-top:6px;">覆盖 325° 弧度 · 平均间距 46° · 最小间距 17°</div>
+  </div>
+</div>
+
+<!-- ═══════════════ PAGE 3: Assignment Table ═══════════════ -->
+<div class="page" id="p3">
+  <div class="section-head"><h2>游戏主题重新分配</h2><p>V2 → V3 变化一览</p></div>
+
+  <div class="problem">
+    <strong style="color:#EF4444;">V2 问题：</strong>
+    ① combat 和 sweet 色相差仅 3°，几乎无法区分 ·
+    ② 4 游戏挤 combat（cannon-aim/lane-dash 不是 VS 对战）·
+    ③ 钓鱼用绿色（钓鱼=水≠草地）·
+    ④ 全系列零暖色
+    <br><span style="color:#4FECA2;">✅ V3：5 个游戏重新分配，新增 ocean + energy 填补空白</span>
+  </div>
+
+  <table class="assign-table">
+    <tr><th>游戏</th><th>V2</th><th>V3</th><th>变化</th></tr>
+    <tr><td>qte-boss-parry</td><td style="color:#EC4F99;">combat</td><td style="color:#EC4F99;">combat</td><td style="color:#444;">—</td></tr>
+    <tr><td>qte-hold-release</td><td style="color:#EC4F99;">combat</td><td style="color:#EC4F99;">combat</td><td style="color:#444;">—</td></tr>
+    <tr><td>will-surge</td><td style="color:#8B5CF6;">dark</td><td style="color:#8B5CF6;">dark</td><td style="color:#444;">—</td></tr>
+    <tr><td>maze-escape</td><td style="color:#3B82F6;">mystery</td><td style="color:#3B82F6;">mystery</td><td style="color:#444;">—</td></tr>
+    <tr><td>spotlight-seek</td><td style="color:#3B82F6;">mystery</td><td style="color:#3B82F6;">mystery</td><td style="color:#444;">—</td></tr>
+    <tr><td>conveyor-sort</td><td style="color:#10B981;">nature</td><td style="color:#10B981;">nature</td><td style="color:#444;">—</td></tr>
+    <tr><td>parking-rush</td><td style="color:#10B981;">nature</td><td style="color:#10B981;">nature</td><td style="color:#444;">—</td></tr>
+    <tr style="background:rgba(245,200,66,0.04);"><td>color-match</td><td style="color:#F472B6;">sweet</td><td class="change">sweet 🍬 #FB7185</td><td class="change">主色偏移 + 辅色→紫</td></tr>
+    <tr style="background:rgba(245,200,66,0.04);"><td>red-light-green-light</td><td style="color:#F472B6;">sweet</td><td class="change">sweet 🍬 #FB7185</td><td class="change">同上</td></tr>
+    <tr style="background:rgba(79,236,162,0.04);"><td>stardew-fishing</td><td style="color:#10B981;">nature</td><td style="color:#06B6D4;" class="change">ocean 🐠</td><td class="change">钓鱼归水系</td></tr>
+    <tr style="background:rgba(79,236,162,0.04);"><td>cannon-aim</td><td style="color:#EC4F99;">combat</td><td style="color:#F97316;" class="change">energy ⚡</td><td class="change">动作射击 ≠ VS 对战</td></tr>
+    <tr style="background:rgba(79,236,162,0.04);"><td>lane-dash</td><td style="color:#EC4F99;">combat</td><td style="color:#F97316;" class="change">energy ⚡</td><td class="change">高速闪避 ≠ VS 对战</td></tr>
+  </table>
+</div>
+
+<script>
+function showPage(id, el) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  el.classList.add('active');
+}
+</script>
+</body>
+</html>

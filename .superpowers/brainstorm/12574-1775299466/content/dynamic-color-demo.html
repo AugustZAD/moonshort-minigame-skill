@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Dynamic Color Extraction Demo</title>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700;900&display=swap" rel="stylesheet">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:#0a0a0f; color:#fff; font-family:'Montserrat',system-ui,sans-serif; padding:20px; }
+  h1 { font-size:20px; font-weight:900; text-align:center; margin-bottom:4px; }
+  .sub { text-align:center; color:#888; font-size:12px; margin-bottom:20px; }
+
+  .flow { max-width:860px; margin:0 auto; }
+  .flow-section { margin-bottom:28px; }
+  .flow-title { font-size:14px; font-weight:900; color:#F5C842; margin-bottom:8px; display:flex; align-items:center; gap:8px; }
+  .flow-title .num { background:#F5C842; color:#000; width:24px; height:24px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:11px; }
+  .flow-desc { font-size:12px; color:#999; line-height:1.6; margin-bottom:12px; }
+  .code-block { background:#111; border-radius:8px; padding:12px 16px; font-family:monospace; font-size:11px; color:#aaa; line-height:1.6; overflow-x:auto; margin-bottom:12px; }
+  .code-block .kw { color:#C792EA; }
+  .code-block .fn { color:#82AAFF; }
+  .code-block .str { color:#C3E88D; }
+  .code-block .cm { color:#546E7A; }
+  .code-block .num { color:#F78C6C; background:none; width:auto; height:auto; border-radius:0; display:inline; font-size:inherit; }
+
+  /* Comparison */
+  .compare { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+  .compare-card { border-radius:14px; overflow:hidden; position:relative; }
+  .compare-label { position:absolute; top:8px; left:8px; font-size:10px; font-weight:700; padding:3px 10px; border-radius:100px; z-index:20; }
+
+  /* Mini phone mockup */
+  .phone { width:100%; aspect-ratio:393/852; border-radius:12px; position:relative; overflow:hidden; }
+  .phone-title { padding:8px 12px; text-align:center; font-weight:900; font-size:11px; color:#fff; position:relative; z-index:10; }
+  .phone-scallop { height:6px; background-repeat:repeat-x; position:relative; z-index:10; }
+  .phone-body { position:absolute; top:40px; left:0; right:0; bottom:0; display:flex; flex-direction:column; align-items:center; padding:16px; gap:8px; z-index:10; }
+  .phone-circle { width:80px; height:80px; border-radius:50%; display:flex; align-items:center; justify-content:center; margin-top:20px; }
+  .phone-circle-inner { width:68px; height:68px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:20px; }
+  .phone-btn { width:80%; padding:8px; border-radius:14px; text-align:center; font-weight:900; font-size:10px; color:#fff; position:relative; overflow:hidden; border:1.5px solid #fff; margin-top:auto; margin-bottom:12px; }
+  .phone-btn .glass { position:absolute; left:0;right:0;top:1px;height:9px; background:rgba(255,255,255,0.22); border-radius:12px 12px 0 0; }
+
+  /* Cover layer */
+  .cover-layer {
+    position:absolute; top:0; left:0; width:100%; height:100%;
+    object-fit:cover; object-position:center;
+    opacity:0.20; z-index:1; pointer-events:none;
+  }
+
+  /* Pipeline diagram */
+  .pipeline { display:flex; align-items:center; gap:8px; flex-wrap:wrap; justify-content:center; margin:16px 0; }
+  .pipe-step { background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); border-radius:8px; padding:8px 14px; font-size:11px; text-align:center; }
+  .pipe-step strong { display:block; font-size:10px; color:#F5C842; margin-bottom:2px; }
+  .pipe-arrow { color:#555; font-size:16px; }
+
+  /* Palette display */
+  .palette { display:flex; gap:6px; margin:8px 0; }
+  .pal-swatch { width:36px; height:36px; border-radius:8px; border:2px solid rgba(255,255,255,0.15); position:relative; }
+  .pal-swatch span { position:absolute; bottom:-16px; left:50%; transform:translateX(-50%); font-size:8px; color:#555; white-space:nowrap; }
+
+  .callout { background:rgba(79,236,162,0.06); border:1px solid rgba(79,236,162,0.15); border-radius:8px; padding:12px 16px; font-size:11px; line-height:1.6; color:#aaa; margin:12px 0; }
+  .callout strong { color:#4FECA2; }
+
+  .tab-row { display:flex; gap:6px; justify-content:center; margin-bottom:20px; }
+  .tab-btn { padding:6px 16px; border-radius:100px; font-weight:700; font-size:12px; background:rgba(255,255,255,0.05); border:1.5px solid rgba(255,255,255,0.1); cursor:pointer; }
+  .tab-btn.active { background:#F5C842; color:#000; border-color:#F5C842; }
+  .tab-content { display:none; }
+  .tab-content.active { display:block; }
+</style>
+</head>
+<body>
+
+<h1>动态取色 + 封面图层 · 使用场景</h1>
+<p class="sub">什么时候触发？怎么从封面图提取颜色？提取后游戏长什么样？</p>
+
+<div class="tab-row">
+  <div class="tab-btn active" onclick="showTab('when',this)">何时触发</div>
+  <div class="tab-btn" onclick="showTab('how',this)">提取流程</div>
+  <div class="tab-btn" onclick="showTab('result',this)">效果对比</div>
+  <div class="tab-btn" onclick="showTab('layer',this)">封面图层</div>
+</div>
+
+<div class="flow">
+
+<!-- ═══════════ TAB 1: When ═══════════ -->
+<div class="tab-content active" id="when">
+  <div class="flow-section">
+    <div class="flow-title"><span class="num">?</span> 什么时候用动态取色 vs 静态主题？</div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+      <div style="background:rgba(255,255,255,0.03);border-radius:12px;padding:16px;border:1px solid rgba(255,255,255,0.08);">
+        <div style="font-weight:900;font-size:13px;color:#3B82F6;margin-bottom:8px;">场景 A：独立游戏</div>
+        <div style="font-size:11px;color:#999;line-height:1.7;">
+          用户直接打开游戏 URL：<br>
+          <code style="color:#82AAFF;font-size:10px;">game.html?theme=combat</code><br><br>
+          → 使用 <strong style="color:#fff;">7 套静态 THEMES</strong> 之一<br>
+          → 不需要封面图<br>
+          → 不触发 K-Means
+        </div>
+        <div style="margin-top:12px;background:#1A1221;border-radius:8px;padding:8px;text-align:center;font-size:10px;color:#EC4F99;font-weight:700;">
+          THEMES['combat'] → 直接写入 CSS 变量
+        </div>
+      </div>
+
+      <div style="background:rgba(79,236,162,0.03);border-radius:12px;padding:16px;border:1px solid rgba(79,236,162,0.12);">
+        <div style="font-weight:900;font-size:13px;color:#4FECA2;margin-bottom:8px;">场景 B：Episode 剧情嵌入</div>
+        <div style="font-size:11px;color:#999;line-height:1.7;">
+          构建脚本注入剧情上下文：<br>
+          <code style="color:#C3E88D;font-size:10px;">window.__EPISODE_CTX__ = {<br>&nbsp;&nbsp;coverImage: "https://..../ep8-cover.jpg",<br>&nbsp;&nbsp;theme: "combat" // fallback<br>}</code><br><br>
+          → 有 coverImage? <strong style="color:#4FECA2;">触发动态取色</strong><br>
+          → 从封面图提取 5 色调色板<br>
+          → 游戏颜色自动匹配故事氛围
+        </div>
+        <div style="margin-top:12px;background:#0B1620;border-radius:8px;padding:8px;text-align:center;font-size:10px;color:#06B6D4;font-weight:700;">
+          extractPalette(cover) → 动态调色板 → CSS 变量
+        </div>
+      </div>
+    </div>
+
+    <div class="callout" style="margin-top:16px;">
+      <strong>核心逻辑：</strong>两条路径最终都写入<strong>同一套 CSS 变量</strong>（--primary, --bg, --primary-10 等）。游戏代码不关心颜色从哪来，它只读 CSS 变量。
+    </div>
+
+    <div class="code-block">
+<span class="cm">// 游戏启动时的统一入口</span>
+<span class="kw">async function</span> <span class="fn">resolveTheme</span>() {
+  <span class="cm">// 优先级 1: 封面图动态提色</span>
+  <span class="kw">if</span> (CTX.coverImage) {
+    <span class="kw">const</span> palette = <span class="kw">await</span> <span class="fn">extractFromCover</span>(CTX.coverImage);
+    <span class="kw">if</span> (palette) <span class="kw">return</span> <span class="fn">paletteToTheme</span>(palette);
+    <span class="cm">// 质检不通过? 继续往下走 fallback</span>
+  }
+  <span class="cm">// 优先级 2: 静态预设</span>
+  <span class="kw">return</span> THEMES[CTX.theme || <span class="str">'combat'</span>];
+}
+
+<span class="kw">const</span> theme = <span class="kw">await</span> <span class="fn">resolveTheme</span>();
+<span class="fn">applyTheme</span>(theme); <span class="cm">// 写入 CSS 变量，游戏不感知来源</span>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ TAB 2: How ═══════════ -->
+<div class="tab-content" id="how">
+  <div class="flow-section">
+    <div class="flow-title"><span class="num">⚙</span> K-Means 提取流程</div>
+
+    <div class="pipeline">
+      <div class="pipe-step"><strong>封面图</strong>episode cover<br>任意尺寸</div>
+      <div class="pipe-arrow">→</div>
+      <div class="pipe-step"><strong>缩小采样</strong>canvas 80×80<br>减少计算量</div>
+      <div class="pipe-arrow">→</div>
+      <div class="pipe-step"><strong>K-Means k=12</strong>聚类 32 轮<br>得到 12 色簇</div>
+      <div class="pipe-arrow">→</div>
+      <div class="pipe-step"><strong>分三区</strong>lights (L>84%)<br>darks (L<22%)<br>mids (其余)</div>
+      <div class="pipe-arrow">→</div>
+      <div class="pipe-step"><strong>年轻感评分</strong>粉/紫 1.28<br>蓝 1.15<br>黄 0.65</div>
+      <div class="pipe-arrow">→</div>
+      <div class="pipe-step"><strong>输出 5 色</strong>primary<br>accent<br>secondary<br>surface<br>bgDark</div>
+    </div>
+
+    <div class="flow-desc">
+      <strong style="color:#fff;">为什么要「年轻感评分」?</strong> 不是所有颜色都适合游戏 UI。封面图里可能有土黄色的沙漠、灰色的建筑——这些颜色用在按钮上很丑。评分公式确保：
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:12px 0;">
+      <div style="background:#1a1221;border-radius:8px;padding:10px;text-align:center;">
+        <div style="width:32px;height:32px;border-radius:50%;background:#EC4F99;margin:0 auto 6px;"></div>
+        <div style="font-size:10px;color:#EC4F99;font-weight:700;">粉红 ×1.28</div>
+        <div style="font-size:9px;color:#666;">最高优先级</div>
+      </div>
+      <div style="background:#1a1221;border-radius:8px;padding:10px;text-align:center;">
+        <div style="width:32px;height:32px;border-radius:50%;background:#8B5CF6;margin:0 auto 6px;"></div>
+        <div style="font-size:10px;color:#8B5CF6;font-weight:700;">紫色 ×1.22</div>
+        <div style="font-size:9px;color:#666;">高优先级</div>
+      </div>
+      <div style="background:#1a1221;border-radius:8px;padding:10px;text-align:center;">
+        <div style="width:32px;height:32px;border-radius:50%;background:#3B82F6;margin:0 auto 6px;"></div>
+        <div style="font-size:10px;color:#3B82F6;font-weight:700;">蓝色 ×1.15</div>
+        <div style="font-size:9px;color:#666;">中等</div>
+      </div>
+      <div style="background:#1a1221;border-radius:8px;padding:10px;text-align:center;">
+        <div style="width:32px;height:32px;border-radius:50%;background:#B8860B;margin:0 auto 6px;"></div>
+        <div style="font-size:10px;color:#B8860B;font-weight:700;">土黄 ×0.65</div>
+        <div style="font-size:9px;color:#666;">降权，避免脏色</div>
+      </div>
+    </div>
+
+    <div class="callout">
+      <strong>Fallback 瀑布（单色封面兜底）：</strong><br>
+      ① 标准贪心从 mids 选色 →
+      ② 不足 2 色? 从 darks 中 S>30% 的提亮 →
+      ③ 仍不足? 数学生成互补色（色相旋转 150°）→
+      ④ 全部失败? fallback 到静态 THEMES 预设<br><br>
+      <strong>质检硬门槛：</strong>primary.L 40-75%, primary.S >60%, surface.L >80%。不通过直接回退静态主题。
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ TAB 3: Result comparison ═══════════ -->
+<div class="tab-content" id="result">
+  <div class="flow-section">
+    <div class="flow-title"><span class="num">👁</span> 同一个游戏，不同配色来源</div>
+    <div class="flow-desc">以 stardew-fishing 为例。左边用静态 ocean 主题，右边用一张暖色调封面图动态提色。</div>
+
+    <div class="compare">
+      <!-- Static theme -->
+      <div class="compare-card">
+        <div class="compare-label" style="background:rgba(6,182,212,0.2);color:#06B6D4;">静态 ocean 主题</div>
+        <div class="phone" style="background:#0B1620;">
+          <div class="phone-title" style="background:linear-gradient(180deg,rgba(6,182,212,0.2),#06B6D4);text-shadow:-2px -2px 0 #0891B2,2px -2px 0 #0891B2,-2px 2px 0 #0891B2,2px 2px 0 #0891B2;">
+            Stardew Fishing
+          </div>
+          <div class="phone-scallop" style="background-image:radial-gradient(circle at 8px 0,#06B6D4 8px,#0B1620 8px);background-size:16px 6px;"></div>
+          <div class="phone-body">
+            <div class="phone-circle" style="background:conic-gradient(from 270deg,#06B6D4,#67E8F9,#CFFAFE,#fff);box-shadow:0 0 20px 2px rgba(6,182,212,0.25);margin-top:40px;">
+              <div class="phone-circle-inner" style="background:radial-gradient(circle,#fff,#CFFAFE);">🎣</div>
+            </div>
+            <div style="font-size:10px;color:#06B6D4;font-weight:700;margin-top:8px;">SCORE: 0</div>
+            <div style="width:80%;height:5px;border-radius:3px;background:linear-gradient(90deg,rgba(6,182,212,0.15),#06B6D4);"></div>
+            <div class="phone-btn" style="background:linear-gradient(180deg,rgba(6,182,212,0.1),#06B6D4);box-shadow:0 3px 0 0 rgba(0,0,0,0.15),inset 0 0 3px 3px rgba(255,255,255,0.3);">
+              <span class="glass"></span>START
+            </div>
+          </div>
+          <div style="position:absolute;bottom:8px;left:0;right:0;text-align:center;">
+            <div class="palette" style="justify-content:center;">
+              <div class="pal-swatch" style="background:#06B6D4;width:24px;height:24px;border-radius:6px;"></div>
+              <div class="pal-swatch" style="background:#67E8F9;width:24px;height:24px;border-radius:6px;"></div>
+              <div class="pal-swatch" style="background:#4FECA2;width:24px;height:24px;border-radius:6px;"></div>
+              <div class="pal-swatch" style="background:#0B1620;width:24px;height:24px;border-radius:6px;"></div>
+            </div>
+            <div style="font-size:8px;color:#444;margin-top:4px;">THEMES['ocean'] 固定色板</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Dynamic from warm cover -->
+      <div class="compare-card">
+        <div class="compare-label" style="background:rgba(249,115,22,0.2);color:#F97316;">封面图动态提色</div>
+        <div class="phone" style="background:#1A0F0A;">
+          <!-- Simulated cover layer -->
+          <div style="position:absolute;top:0;left:0;width:100%;height:100%;background:linear-gradient(135deg,#3D1E0C 0%,#8B3A1A 30%,#D4793A 60%,#F5A623 100%);opacity:0.18;z-index:1;"></div>
+          <div class="phone-title" style="background:linear-gradient(180deg,rgba(213,119,42,0.2),#D5772A);text-shadow:-2px -2px 0 #8B4513,2px -2px 0 #8B4513,-2px 2px 0 #8B4513,2px 2px 0 #8B4513;z-index:10;position:relative;">
+            EP12: 夕阳钓场
+          </div>
+          <div class="phone-scallop" style="background-image:radial-gradient(circle at 8px 0,#D5772A 8px,#1A0F0A 8px);background-size:16px 6px;position:relative;z-index:10;"></div>
+          <div class="phone-body" style="z-index:10;">
+            <div class="phone-circle" style="background:conic-gradient(from 270deg,#D5772A,#F0C27F,#FFF5E6,#fff);box-shadow:0 0 20px 2px rgba(213,119,42,0.25);margin-top:40px;">
+              <div class="phone-circle-inner" style="background:radial-gradient(circle,#fff,#FFF5E6);">🎣</div>
+            </div>
+            <div style="font-size:10px;color:#D5772A;font-weight:700;margin-top:8px;">SCORE: 0</div>
+            <div style="width:80%;height:5px;border-radius:3px;background:linear-gradient(90deg,rgba(213,119,42,0.15),#D5772A);"></div>
+            <div class="phone-btn" style="background:linear-gradient(180deg,rgba(213,119,42,0.1),#D5772A);box-shadow:0 3px 0 0 rgba(0,0,0,0.15),inset 0 0 3px 3px rgba(255,255,255,0.3);">
+              <span class="glass"></span>START
+            </div>
+          </div>
+          <div style="position:absolute;bottom:8px;left:0;right:0;text-align:center;z-index:10;">
+            <div class="palette" style="justify-content:center;">
+              <div class="pal-swatch" style="background:#D5772A;width:24px;height:24px;border-radius:6px;"></div>
+              <div class="pal-swatch" style="background:#F0C27F;width:24px;height:24px;border-radius:6px;"></div>
+              <div class="pal-swatch" style="background:#6BAF7A;width:24px;height:24px;border-radius:6px;"></div>
+              <div class="pal-swatch" style="background:#1A0F0A;width:24px;height:24px;border-radius:6px;"></div>
+            </div>
+            <div style="font-size:8px;color:#666;margin-top:4px;">从「夕阳渔村」封面提取的色板</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="callout" style="margin-top:16px;">
+      <strong>同一个游戏（stardew-fishing），两种完全不同的视觉氛围。</strong><br>
+      左边：独立使用时，用静态 ocean 主题——清凉、水系感。<br>
+      右边：嵌入「夕阳渔村」Episode 时，从封面图自动提取暖橙色系——温暖、黄昏感。<br><br>
+      游戏代码完全一样，只是 CSS 变量值不同。
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ TAB 4: Cover Layer ═══════════ -->
+<div class="tab-content" id="layer">
+  <div class="flow-section">
+    <div class="flow-title"><span class="num">🖼</span> 封面图层（Layer 1）</div>
+    <div class="flow-desc">
+      来自 ui-visual-language.md §5 的四层结构。封面图以 20% 透明度叠在深色背景上，让故事氛围渗透进游戏画面。
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin:16px 0;">
+      <!-- No cover -->
+      <div style="text-align:center;">
+        <div style="font-size:10px;color:#666;font-weight:700;margin-bottom:6px;">无封面图（独立游戏）</div>
+        <div style="width:100%;aspect-ratio:9/16;background:#0B1620;border-radius:8px;position:relative;overflow:hidden;">
+          <div style="position:absolute;top:0;left:0;right:0;height:24px;background:linear-gradient(180deg,rgba(6,182,212,0.2),#06B6D4);"></div>
+          <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:50px;height:50px;border-radius:50%;background:conic-gradient(from 270deg,#06B6D4,#67E8F9,#CFFAFE,#fff);display:flex;align-items:center;justify-content:center;">
+            <div style="width:42px;height:42px;border-radius:50%;background:radial-gradient(circle,#fff,#CFFAFE);display:flex;align-items:center;justify-content:center;font-size:16px;">🎣</div>
+          </div>
+        </div>
+        <div style="font-size:9px;color:#555;margin-top:4px;">纯色背景 #0B1620</div>
+      </div>
+
+      <!-- With cover light -->
+      <div style="text-align:center;">
+        <div style="font-size:10px;color:#06B6D4;font-weight:700;margin-bottom:6px;">+ 封面图 opacity:0.20</div>
+        <div style="width:100%;aspect-ratio:9/16;background:#0B1620;border-radius:8px;position:relative;overflow:hidden;">
+          <!-- Simulated cover image -->
+          <div style="position:absolute;inset:0;background:linear-gradient(180deg,#1a3a5c 0%,#0d4f6e 30%,#0B4228 60%,#1a5c3a 100%);opacity:0.20;z-index:1;"></div>
+          <div style="position:absolute;top:0;left:0;right:0;height:24px;background:linear-gradient(180deg,rgba(6,182,212,0.2),#06B6D4);z-index:10;"></div>
+          <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:50px;height:50px;border-radius:50%;background:conic-gradient(from 270deg,#06B6D4,#67E8F9,#CFFAFE,#fff);display:flex;align-items:center;justify-content:center;z-index:10;box-shadow:0 0 16px 2px rgba(6,182,212,0.2);">
+            <div style="width:42px;height:42px;border-radius:50%;background:radial-gradient(circle,#fff,#CFFAFE);display:flex;align-items:center;justify-content:center;font-size:16px;">🎣</div>
+          </div>
+        </div>
+        <div style="font-size:9px;color:#555;margin-top:4px;">封面图若隐若现，增加氛围</div>
+      </div>
+
+      <!-- Layer diagram -->
+      <div style="text-align:center;">
+        <div style="font-size:10px;color:#F5C842;font-weight:700;margin-bottom:6px;">四层结构</div>
+        <div style="width:100%;aspect-ratio:9/16;border-radius:8px;position:relative;overflow:hidden;border:1px solid #333;display:flex;flex-direction:column;">
+          <div style="flex:1;background:rgba(255,255,255,0.03);border-bottom:1px solid #222;padding:6px;display:flex;align-items:center;justify-content:center;">
+            <div><div style="font-size:9px;color:#F5C842;font-weight:700;">Layer 3</div><div style="font-size:8px;color:#888;">UI 元素</div></div>
+          </div>
+          <div style="flex:1;background:rgba(255,255,255,0.02);border-bottom:1px solid #222;padding:6px;display:flex;align-items:center;justify-content:center;">
+            <div><div style="font-size:9px;color:#aaa;font-weight:700;">Layer 2</div><div style="font-size:8px;color:#666;">渐变幕布（可选）</div></div>
+          </div>
+          <div style="flex:1;background:rgba(6,182,212,0.08);border-bottom:1px solid #222;padding:6px;display:flex;align-items:center;justify-content:center;">
+            <div><div style="font-size:9px;color:#06B6D4;font-weight:700;">Layer 1</div><div style="font-size:8px;color:#666;">封面图 opacity:0.20</div></div>
+          </div>
+          <div style="flex:1;background:rgba(255,255,255,0.01);padding:6px;display:flex;align-items:center;justify-content:center;">
+            <div><div style="font-size:9px;color:#555;font-weight:700;">Layer 0</div><div style="font-size:8px;color:#444;">深色背景 --bg</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="code-block">
+<span class="cm">/* 封面图层 CSS — 必须完整写这几行 */</span>
+#cover-layer {
+  position: absolute;
+  top: <span class="num">0</span>; left: <span class="num">0</span>;
+  width: <span class="num">100%</span>; height: <span class="num">100%</span>;   <span class="cm">/* ← height:100% 不能省 */</span>
+  object-fit: cover;           <span class="cm">/* ← 等比裁切填满 */</span>
+  object-position: center;
+  opacity: <span class="num">0.20</span>;               <span class="cm">/* ← 固定 0.20 */</span>
+  z-index: <span class="num">0</span>;
+  pointer-events: none;
+}
+    </div>
+
+    <div class="callout">
+      <strong>封面图层是可选的。</strong><br>
+      • 独立游戏（场景 A）：不加封面图层，纯色背景<br>
+      • Episode 嵌入（场景 B）：有 CTX.coverImage 时，插入 <code>&lt;img id="cover-layer" src="..."&gt;</code><br>
+      • 封面图层和动态取色是独立的——可以只用取色不用图层，也可以只用图层不取色
+    </div>
+  </div>
+</div>
+
+</div>
+
+<script>
+function showTab(id, el) {
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(t => t.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  el.classList.add('active');
+}
+</script>
+</body>
+</html>

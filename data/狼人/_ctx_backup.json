@@ -1,0 +1,1036 @@
+{
+  "ep1": {
+    "character": {
+      "name": "Sylvia"
+    },
+    "attribute": "意志",
+    "episodeLabel": "EP 1",
+    "episodeTitle": "Kenny",
+    "coverImage": "bg-scene.jpg",
+    "theme": "dark",
+    "portraits": {
+      "left": "avatar-sylvia.png",
+      "right": "avatar-james.png"
+    },
+    "names": {
+      "left": "Sylvia",
+      "right": "James"
+    },
+    "narrative": [
+      {
+        "speaker": "Sylvia",
+        "text": "厨房里的火还亮着。\nJames冲进来说Alpha Barnes死了，然后头也不回地走了。"
+      },
+      {
+        "speaker": "",
+        "text": "你拿起车钥匙，跟到了新月领地公墓。\n三米外，他单膝跬着，把另一个女人揽在怀里。"
+      },
+      {
+        "speaker": "Sylvia",
+        "text": "“我们需要谈谈。”\n他没有开口。Kennedy的哭声压住了风声。"
+      }
+    ],
+    "resultTexts": {
+      "S": "你站在三米外，一字一顿地问出了那个问题。\nJames的下颌绷紧了——他再也无法假装你不存在。",
+      "A": "你说出了Kennedy的名字。\n声音不够大，但足以让他的手指收紧了一下。",
+      "B": "你站在那里，没有开口。\n沉默比任何指控都更难忽视。",
+      "C": "风太大了，你的声音被吹散了。\n但你没有离开——这已经是一种回答。"
+    },
+    "copy": {
+      "bootTitle": "考验",
+      "bootSubtitle": "压住情绪，蓄力反击",
+      "startBtn": "开始考验",
+      "resultContinue": "继续",
+      "resultRetry": "再来一次"
+    },
+    "_template": "qte-hold-release",
+    "_htmlSize": 59123
+  },
+  "ep10": {
+    "character": {
+      "name": "Sylvia"
+    },
+    "attribute": "意志",
+    "episodeLabel": "EP 10",
+    "episodeTitle": "熄灭",
+    "coverImage": "bg-scene.jpg",
+    "theme": "dark",
+    "portraits": {
+      "left": "avatar-sylvia.png",
+      "right": "avatar-james.png"
+    },
+    "names": {
+      "left": "Sylvia",
+      "right": "James"
+    },
+    "narrative": [
+      {
+        "speaker": "James",
+        "text": "（声音撕裂）你做了什么？我感觉到了——我感觉到我的孩子死了。"
+      },
+      {
+        "speaker": "Sylvia",
+        "text": "我让他免于这一切。免于你。"
+      },
+      {
+        "speaker": "Sylvia",
+        "text": "（他的手悬在她颈侧，她的眼睛没有恐惧。）"
+      }
+    ],
+    "resultTexts": {
+      "S": "你当面说出了拒绝誓词——他后退了半步，眼里有什么东西裂开了。",
+      "A": "你的声音在第一个字之后断了，但明天在议事厅，你会说完。",
+      "B": "你把视线移开——不是因为怕，是因为已经没什么要给他了。",
+      "C": "他的手还悬在你颈侧，你的沉默成了他的筹码。"
+    },
+    "copy": {
+      "bootTitle": "考验",
+      "bootSubtitle": "在他扼住你咽喉的那一刻开口",
+      "startBtn": "开始考验",
+      "resultContinue": "继续",
+      "resultRetry": "再来一次"
+    },
+    "_template": "qte-hold-release",
+    "_htmlSize": 56640
+  },
+  "ep11": {
+    "character": {
+      "name": "Sylvia"
+    },
+    "attribute": "智慧",
+    "episodeLabel": "EP 11",
+    "episodeTitle": "撤不回",
+    "coverImage": "bg-scene.jpg",
+    "theme": "mystery",
+    "portraits": {
+      "left": "avatar-sylvia.png",
+      "right": "avatar-james.png"
+    },
+    "names": {
+      "left": "Sylvia",
+      "right": "James"
+    },
+    "narrative": [
+      {
+        "speaker": "Sylvia",
+        "text": "我，Sylvia，正式拒绝这段连结。公开宣誓，当着所有证人。"
+      },
+      {
+        "speaker": "James",
+        "text": "（Alpha命令）我命令你收回那些话。现在。"
+      },
+      {
+        "speaker": "Sylvia",
+        "text": "（从地面一节一节站起来）话已经说了。我不收回。"
+      }
+    ],
+    "resultTexts": {
+      "S": "你引用了审议规程——Kennedy在门口僵住了，James一个字也说不出来。",
+      "A": "你站在原地没有动——Cynthia的声音从席位传来，保护了你。",
+      "B": "你引用了规程但说不出条文号——他用你的话反过来压住了你。",
+      "C": "你的身体在Alpha命令余震下倒了——他等的就是这一刻。"
+    },
+    "copy": {
+      "bootTitle": "考验",
+      "bootSubtitle": "用规则而非武力赢得议事厅的战争",
+      "startBtn": "开始考验",
+      "resultContinue": "继续",
+      "resultRetry": "再来一次"
+    },
+    "_template": "parking-rush",
+    "_htmlSize": 42751
+  },
+  "ep12": {
+    "character": {
+      "name": "Sylvia"
+    },
+    "attribute": "意志",
+    "episodeLabel": "EP 12",
+    "episodeTitle": "等你了",
+    "coverImage": "bg-scene.jpg",
+    "theme": "dark",
+    "portraits": {
+      "left": "avatar-sylvia.png",
+      "right": "avatar-daisy.png"
+    },
+    "names": {
+      "left": "Sylvia",
+      "right": "Daisy"
+    },
+    "narrative": [
+      {
+        "speaker": "James",
+        "text": "今晚待在这里。Kennedy作为客人出席集会。你不许出现。"
+      },
+      {
+        "speaker": "Daisy",
+        "text": "如果你再在这里待一个晚上，Lyra撑不住。你也撑不住。"
+      },
+      {
+        "speaker": "Daisy",
+        "text": "Huxley在东部边界等你。包已经打好了。换班时路线是通的。"
+      }
+    ],
+    "resultTexts": {
+      "S": "你松开床沿，自己站直——高烧还在，但每一步都是你自己走的。",
+      "A": "你摔了一下，但你自己撑着站了起来。",
+      "B": "你握住了Daisy的手——她把你从窗台拉了出去。",
+      "C": "你还坐在地板上，Kennedy的笑声还在门缝里穿来穿去。"
+    },
+    "copy": {
+      "bootTitle": "考验",
+      "bootSubtitle": "从锁着的房间翻窗逃入黑暗",
+      "startBtn": "开始考验",
+      "resultContinue": "继续",
+      "resultRetry": "再来一次"
+    },
+    "_template": "lane-dash",
+    "_htmlSize": 47136
+  },
+  "ep12_minor": {
+    "character": {
+      "name": "Sylvia"
+    },
+    "attribute": "意志",
+    "episodeLabel": "EP 12",
+    "episodeTitle": "坐着别动",
+    "coverImage": "bg-scene.jpg",
+    "theme": "dark",
+    "portraits": {
+      "left": "avatar-sylvia.png",
+      "right": "avatar-kennedy.png"
+    },
+    "names": {
+      "left": "Sylvia",
+      "right": "Kennedy"
+    },
+    "narrative": [
+      {
+        "speaker": "Sylvia",
+        "text": "审议已在记录上。审议期间我有权出席任何公开程序。"
+      },
+      {
+        "speaker": "Sylvia",
+        "text": "这是程序。不是Alpha命令能推翻的。"
+      },
+      {
+        "speaker": "James",
+        "text": "（嗓子发紧，勉强地）……Kennedy。"
+      }
+    ],
+    "resultTexts": {
+      "S": "Kennedy不敢再看你，James叫不出她的名字——你是最后离开那张桌子的人。",
+      "A": "Cynthia提前休会保住了你的体面，所有人都看见了你的消耗。",
+      "B": "你示意Cynthia，带着尊严离开了——该赢的你已经赢了。",
+      "C": "你的手指在扶手上攥得泛白，后背的热一波一波涌上来。"
+    },
+    "copy": {
+      "bootTitle": "考验",
+      "bootSubtitle": "在议事厅的座位上坐到最后一刻",
+      "startBtn": "开始考验",
+      "resultContinue": "继续",
+      "resultRetry": "再来一次"
+    },
+    "_template": "red-light-green-light",
+    "_htmlSize": 51151
+  },
+  "ep13": {
+    "character": {
+      "name": "Sylvia"
+    },
+    "attribute": "意志",
+    "episodeLabel": "EP 13",
+    "episodeTitle": "走进去",
+    "coverImage": "bg-scene.jpg",
+    "theme": "nature",
+    "portraits": {
+      "left": "avatar-sylvia.png",
+      "right": "avatar-huxley.png"
+    },
+    "names": {
+      "left": "Sylvia",
+      "right": "Huxley"
+    },
+    "narrative": [
+      {
+        "speaker": "Huxley",
+        "text": "路线标好了。三个安全点。中立区有联络人接应。"
+      },
+      {
+        "speaker": "Huxley",
+        "text": "三年前你来银月的时候……我的内狼Karl先察觉了。我爱你。"
+      },
+      {
+        "speaker": "Huxley",
+        "text": "我什么都不求。先治好自己。如果有一天你准备好了……我会在那里。"
+      }
+    ],
+    "resultTexts": {
+      "S": "你一气呵成套上双肩——背包很重，但你站着，没有晃。每一步都是你自己的。",
+      "A": "肩带滑了一下，你咬牙重新拉上去——脚步不稳，但没有回头。",
+      "B": "Huxley替你把背包搭上肩膀——你站住了，走进了黑暗。",
+      "C": "你站在边界线前，月光落下来，你还没有迈出那一步。"
+    },
+    "copy": {
+      "bootTitle": "考验",
+      "bootSubtitle": "背起行囊独自踏过边界线",
+      "startBtn": "开始考验",
+      "resultContinue": "继续",
+      "resultRetry": "再来一次"
+    },
+    "_template": "maze-escape",
+    "_htmlSize": 62500
+  },
+  "ep13_minor": {
+    "character": {
+      "name": "Sylvia"
+    },
+    "attribute": "意志",
+    "episodeLabel": "EP 13",
+    "episodeTitle": "我自己走",
+    "coverImage": "bg-scene.jpg",
+    "theme": "nature",
+    "portraits": {
+      "left": "avatar-sylvia.png",
+      "right": "avatar-cynthia.png"
+    },
+    "names": {
+      "left": "Sylvia",
+      "right": "Cynthia"
+    },
+    "narrative": [
+      {
+        "speaker": "Huxley",
+        "text": "你今晚必须走。Lyra撑不过第二天了。"
+      },
+      {
+        "speaker": "Cynthia",
+        "text": "审议期间，宣誓人的身体状况归议会管辖。任何干预需要书面申请。"
+      },
+      {
+        "speaker": "Sylvia",
+        "text": "走吧。"
+      }
+    ],
+    "resultTexts": {
+      "S": "你的靴底踩上碎石，声音沉稳——高烧还在，但步子是直的。",
+      "A": "你扶住了树干，停了两秒，没有回头——脚步没有停。",
+      "B": "你靠了过去，Huxley的手臂抵上你的肩侧——你走到了边界。",
+      "C": "James的怒吼从豪宅方向传来，你的膝盖在碎石路上弯了一下。"
+    },
+    "copy": {
+      "bootTitle": "考验",
+      "bootSubtitle": "靠自己的双脚走到边界线",
+      "startBtn": "开始考验",
+      "resultContinue": "继续",
+      "resultRetry": "再来一次"
+    },
+    "_template": "conveyor-sort",
+    "_htmlSize": 42568
+  },
+  "ep14": {
+    "character": {
+      "name": "Sylvia"
+    },
+    "attribute": "意志",
+    "episodeLabel": "EP 14",
+    "episodeTitle": "快没了",
+    "coverImage": "bg-scene.jpg",
+    "theme": "nature",
+    "portraits": {
+      "left": "avatar-sylvia.png",
+      "right": "avatar-iris.png"
+    },
+    "names": {
+      "left": "Sylvia",
+      "right": "Iris"
+    },
+    "narrative": [
+      {
+        "speaker": "",
+        "text": "你踏过银月领地的边界线，走入树线。\n身后James的怒吼被森林吞没。三十天。"
+      },
+      {
+        "speaker": "",
+        "text": "溪流旁，你的腿突然软了。\n整个人侧倒在泥地上，背包压着你的背。"
+      },
+      {
+        "speaker": "Iris",
+        "text": "\"你是独狼吗？\"\n一双手稳稳扶住你的肩膀，没有任何压迫性。"
+      }
+    ],
+    "resultTexts": {
+      "S": "\"不再是了。\"\n你的声音平稳，Iris的目光里有什么东西变了。",
+      "A": "你开口说出了那两个字。\n声音很轻，但Iris听到了。",
+      "B": "你看向别处，没有回答。\n但你没有推开她的手——这已经是一种回应。",
+      "C": "你闭上了眼睛。\n但Iris没有松手。她会等。"
+    },
+    "copy": {
+      "bootTitle": "考验",
+      "bootSubtitle": "在黑暗中奔跑，躲避追兵",
+      "startBtn": "开始考验",
+      "resultContinue": "继续",
+      "resultRetry": "再来一次"
+    },
+    "_template": "lane-dash",
+    "_htmlSize": 48722
+  },
+  "ep15": {
+    "character": {
+      "name": "Sylvia"
+    },
+    "attribute": "意志",
+    "episodeLabel": "EP 15",
+    "episodeTitle": "活下去",
+    "coverImage": "bg-scene.jpg",
+    "theme": "nature",
+    "portraits": {
+      "left": "avatar-sylvia.png",
+      "right": "avatar-iris.png"
+    },
+    "names": {
+      "left": "Sylvia",
+      "right": "Iris"
+    },
+    "narrative": [
+      {
+        "speaker": "Iris",
+        "text": "撕裂还没愈合。但不会杀死你——如果你留下来。"
+      },
+      {
+        "speaker": "Iris",
+        "text": "一头母狼的价值和连结无关。和任何连结都无关。"
+      },
+      {
+        "speaker": "Iris",
+        "text": "第一步——先活下去。"
+      }
+    ],
+    "resultTexts": {
+      "S": "你给Kayden发了消息问Daisy的情况——你在自己还虚弱的时候仍在牵挂别人。",
+      "A": "你的拇指落在屏幕上，打了几个字又全删掉——那行消息还是没发出去。",
+      "B": "你把装置翻扣在夜柜上，转身面对墙壁。第二天早上你去找了Iris。",
+      "C": "你整晚都没合眼，Daisy被软禁的消息像石头一样压在胸口。"
+    },
+    "copy": {
+      "bootTitle": "考验",
+      "bootSubtitle": "在河谷的疗养小屋里重新呼吸",
+      "startBtn": "开始考验",
+      "resultContinue": "继续",
+      "resultRetry": "再来一次"
+    },
+    "_template": "stardew-fishing",
+    "_htmlSize": 51065
+  },
+  "ep16": {
+    "character": {
+      "name": "Sylvia"
+    },
+    "attribute": "意志",
+    "episodeLabel": "EP 16",
+    "episodeTitle": "回来了",
+    "coverImage": "bg-scene.jpg",
+    "theme": "nature",
+    "portraits": {
+      "left": "avatar-sylvia.png",
+      "right": "avatar-iris.png"
+    },
+    "names": {
+      "left": "Sylvia",
+      "right": "Iris"
+    },
+    "narrative": [
+      {
+        "speaker": "Sylvia",
+        "text": "Daisy被关起来了。因为我。"
+      },
+      {
+        "speaker": "Sylvia",
+        "text": "如果我现在回去——她的处境只会更糟。我留下。"
+      },
+      {
+        "speaker": "Sylvia",
+        "text": "（Lyra——健康的、完整的灰白色内狼——从她身体里分离出来，稳稳站住。）"
+      }
+    ],
+    "resultTexts": {
+      "S": "你没有转开脸，让Iris看见你哭——你不需要再藏起来了。",
+      "A": "眼泪落下的瞬间你按住了自己的嘴，但最终还是放下了手。",
+      "B": "你把脸转开了——Lyra的鼻尖轻轻抵在你手背上。",
+      "C": "你跪在草地上哭着，但你不让任何人看见。"
+    },
+    "copy": {
+      "bootTitle": "考验",
+      "bootSubtitle": "月光下Lyra归来的那个瞬间",
+      "startBtn": "开始考验",
+      "resultContinue": "继续",
+      "resultRetry": "再来一次"
+    },
+    "_template": "color-match",
+    "_htmlSize": 55191
+  },
+  "ep17": {
+    "character": {
+      "name": "Sylvia"
+    },
+    "attribute": "魅力",
+    "episodeLabel": "EP 17",
+    "episodeTitle": "准备好了",
+    "coverImage": "bg-scene.jpg",
+    "theme": "nature",
+    "portraits": {
+      "left": "avatar-sylvia.png",
+      "right": "avatar-iris.png"
+    },
+    "names": {
+      "left": "Sylvia",
+      "right": "Iris"
+    },
+    "narrative": [
+      {
+        "speaker": "Sylvia",
+        "text": "（信纸上最后一行：Kennedy走了。James完了。回来吧。）"
+      },
+      {
+        "speaker": "Sylvia",
+        "text": "（纸条上只有一个地址和一行字：随时你准备好了。我在这里。）"
+      },
+      {
+        "speaker": "Sylvia",
+        "text": "我准备好了。"
+      }
+    ],
+    "resultTexts": {
+      "S": "谢谢你。谢谢你从来没要求我成为什么。——Iris说：去成为一切吧。",
+      "A": "你张了张嘴说不出口——Iris轻声说：你不用说。该走了。",
+      "B": "你推开大门，没有停顿，没有回头。纸条还在你口袋里。",
+      "C": "你在门把上犹豫了很久，差点留了下来。"
+    },
+    "copy": {
+      "bootTitle": "考验",
+      "bootSubtitle": "向救命恩人好好道一声再见",
+      "startBtn": "开始考验",
+      "resultContinue": "继续",
+      "resultRetry": "再来一次"
+    },
+    "_template": "spotlight-seek",
+    "_htmlSize": 50001
+  },
+  "ep18": {
+    "character": {
+      "name": "Sylvia"
+    },
+    "attribute": "意志",
+    "episodeLabel": "EP 18",
+    "episodeTitle": "等着你",
+    "coverImage": "bg-scene.jpg",
+    "theme": "sweet",
+    "portraits": {
+      "left": "avatar-sylvia.png",
+      "right": "avatar-huxley.png"
+    },
+    "names": {
+      "left": "Sylvia",
+      "right": "Huxley"
+    },
+    "narrative": [
+      {
+        "speaker": "Huxley",
+        "text": "你看起来好多了。"
+      },
+      {
+        "speaker": "Sylvia",
+        "text": "你的白头发多了。"
+      },
+      {
+        "speaker": "Huxley",
+        "text": "我想好好来。每一步——你说了算。没有命令。没有压力。"
+      }
+    ],
+    "resultTexts": {
+      "S": "走吧。——你没有等他确认就推开了门。他跟上来了。",
+      "A": "走吧。——声音小了一号，但他说：我就在你身后。",
+      "B": "我们能就……在这里坐一会儿吗？——他没有催你。",
+      "C": "你的手指碰了碰口袋里的纸条，但你还没准备好站起来。"
+    },
+    "copy": {
+      "bootTitle": "考验",
+      "bootSubtitle": "在咖啡馆重逢后迈出第一步",
+      "startBtn": "开始考验",
+      "resultContinue": "继续",
+      "resultRetry": "再来一次"
+    },
+    "_template": "cannon-aim",
+    "_htmlSize": 54346
+  },
+  "ep19": {
+    "character": {
+      "name": "Sylvia"
+    },
+    "attribute": "意志",
+    "episodeLabel": "EP 19",
+    "episodeTitle": "月下",
+    "coverImage": "bg-scene.jpg",
+    "theme": "ocean",
+    "portraits": {
+      "left": "avatar-sylvia.png",
+      "right": "avatar-huxley.png"
+    },
+    "names": {
+      "left": "Sylvia",
+      "right": "Huxley"
+    },
+    "narrative": [
+      {
+        "speaker": "Huxley",
+        "text": "感觉怎么样？"
+      },
+      {
+        "speaker": "Sylvia",
+        "text": "对了。"
+      },
+      {
+        "speaker": "Huxley",
+        "text": "极光领地。Alpha Morgan在等。他们需要一个懂得治理领地的人。"
+      }
+    ],
+    "resultTexts": {
+      "S": "我们什么时候出发？——你连工资都没问。三年了，值得等。",
+      "A": "我确定。路上再告诉我。——他把地图折好递给你。",
+      "B": "你问了工作内容，问了Pack有多少人，然后说：好。我们什么时候出发？",
+      "C": "你盯着地图上那个陌生的名字，迟迟没有开口。"
+    },
+    "copy": {
+      "bootTitle": "考验",
+      "bootSubtitle": "满月下接受新的连结与远方",
+      "startBtn": "开始考验",
+      "resultContinue": "继续",
+      "resultRetry": "再来一次"
+    },
+    "_template": "qte-boss-parry",
+    "_htmlSize": 56209
+  },
+  "ep2": {
+    "character": {
+      "name": "Sylvia"
+    },
+    "attribute": "意志",
+    "episodeLabel": "EP 2",
+    "episodeTitle": "工具",
+    "coverImage": "bg-scene.jpg",
+    "theme": "dark",
+    "portraits": {
+      "left": "avatar-sylvia.png",
+      "right": "avatar-james.png"
+    },
+    "names": {
+      "left": "Sylvia",
+      "right": "James"
+    },
+    "narrative": [
+      {
+        "speaker": "Sylvia",
+        "text": "我需要一个答案，James。"
+      },
+      {
+        "speaker": "Luna Miller",
+        "text": "狼群需要继承人。你就是解决方案。"
+      },
+      {
+        "speaker": "Sylvia",
+        "text": "我听到了每一个字。我都记得。"
+      }
+    ],
+    "resultTexts": {
+      "S": "你和Daisy并肩记住了一切——你不再孤身一人。",
+      "A": "你的声音虽然颤抖，但Daisy听见了。",
+      "B": "你什么都没说，但你一个字也没忘。",
+      "C": "Luna Miller的话像烟一样散不掉，你的沉默被当作了顺从。"
+    },
+    "copy": {
+      "bootTitle": "考验",
+      "bootSubtitle": "在Alpha的命令下撑住不跪",
+      "startBtn": "开始考验",
+      "resultContinue": "继续",
+      "resultRetry": "再来一次"
+    },
+    "_template": "red-light-green-light",
+    "_htmlSize": 51094
+  },
+  "ep20": {
+    "character": {
+      "name": "Sylvia"
+    },
+    "attribute": "意志",
+    "episodeLabel": "EP 20",
+    "episodeTitle": "此地",
+    "coverImage": "bg-scene.jpg",
+    "theme": "energy",
+    "portraits": {
+      "left": "avatar-sylvia.png",
+      "right": "avatar-huxley.png"
+    },
+    "names": {
+      "left": "Sylvia",
+      "right": "Huxley"
+    },
+    "narrative": [
+      {
+        "speaker": "",
+        "text": "晨光射进来。\n桌上那摞档案最上面压着一封信。"
+      },
+      {
+        "speaker": "Sylvia",
+        "text": "“I knew you'd find it.”\n——Iris Blackwood"
+      },
+      {
+        "speaker": "Sylvia",
+        "text": "此地。就从这里开始。\n新的领地，新的方向。"
+      }
+    ],
+    "resultTexts": {
+      "S": "你念出了Iris的话，让它在你和Huxley之间落地。\n从今天起，你不再是谁的工具、棋子或替代品。",
+      "A": "你看完了那封信。\n新的领地、新的开始——你准备好了。",
+      "B": "你坐在桌前。\n档案上的字迹是你的——你已经开始了。",
+      "C": "晨光刺进你的眼睛。\n一个全新的早晨——至少方向是对的。"
+    },
+    "copy": {
+      "bootTitle": "考验",
+      "bootSubtitle": "在新领地找到你的方向",
+      "startBtn": "开始考验",
+      "resultContinue": "继续",
+      "resultRetry": "再来一次"
+    },
+    "_template": "maze-escape",
+    "_htmlSize": 64484
+  },
+  "ep3": {
+    "character": {
+      "name": "Sylvia"
+    },
+    "attribute": "意志",
+    "episodeLabel": "EP 3",
+    "episodeTitle": "替代品",
+    "coverImage": "bg-scene.jpg",
+    "theme": "dark",
+    "portraits": {
+      "left": "avatar-sylvia.png",
+      "right": "avatar-daisy.png"
+    },
+    "names": {
+      "left": "Sylvia",
+      "right": "Daisy"
+    },
+    "narrative": [
+      {
+        "speaker": "走廊声音",
+        "text": "Luna Miller拆散了他们。'Alpha的伴侣必须延续血脉'——她的原话。"
+      },
+      {
+        "speaker": "走廊声音",
+        "text": "然后月神赐予了James和Sylvia的命运之链。Luna Miller只是……利用了她。"
+      },
+      {
+        "speaker": "Sylvia",
+        "text": "（门缝的光打在她侧脸上，她盯着那条缝，一动不动。）"
+      }
+    ],
+    "resultTexts": {
+      "S": "你推开了门。Luna Miller第一次正视你的存在。",
+      "A": "你的手停在门板上，没有推下去，但你也没有离开。",
+      "B": "你一句不漏地听完了所有内容，门还没打开。",
+      "C": "你退回了走廊的阴影里，她们甚至不知道你来过。"
+    },
+    "copy": {
+      "bootTitle": "考验",
+      "bootSubtitle": "在黑暗走廊中辨别真相碎片",
+      "startBtn": "开始考验",
+      "resultContinue": "继续",
+      "resultRetry": "再来一次"
+    },
+    "_template": "conveyor-sort",
+    "_htmlSize": 42591
+  },
+  "ep4": {
+    "character": {
+      "name": "Sylvia"
+    },
+    "attribute": "意志",
+    "episodeLabel": "EP 4",
+    "episodeTitle": "打量",
+    "coverImage": "bg-scene.jpg",
+    "theme": "dark",
+    "portraits": {
+      "left": "avatar-sylvia.png",
+      "right": "avatar-cynthia.png"
+    },
+    "names": {
+      "left": "Sylvia",
+      "right": "Cynthia"
+    },
+    "narrative": [
+      {
+        "speaker": "Cynthia",
+        "text": "所有成员都知道了，James。每、一、个、人。"
+      },
+      {
+        "speaker": "Luna Miller",
+        "text": "够了。我来处理。都坐下。"
+      },
+      {
+        "speaker": "Sylvia",
+        "text": "（Cynthia的目光从她的脸移到隆起的腹部，又抬回来。）"
+      }
+    ],
+    "resultTexts": {
+      "S": "你走进书房坐了下来——如果这件事和你有关，你就该在场。",
+      "A": "你推门进去了，但主动权已经不在你手上。",
+      "B": "你和Cynthia对视了三秒，那个摇头不是否定，像是某种确认。",
+      "C": "你站在门外，Luna Miller的声音还在里面低低地继续。"
+    },
+    "copy": {
+      "bootTitle": "考验",
+      "bootSubtitle": "在权力棋局中找到自己的位置",
+      "startBtn": "开始考验",
+      "resultContinue": "继续",
+      "resultRetry": "再来一次"
+    },
+    "_template": "spotlight-seek",
+    "_htmlSize": 50004
+  },
+  "ep5": {
+    "character": {
+      "name": "Sylvia"
+    },
+    "attribute": "意志",
+    "episodeLabel": "EP 5",
+    "episodeTitle": "撑不住",
+    "coverImage": "bg-scene.jpg",
+    "theme": "dark",
+    "portraits": {
+      "left": "avatar-sylvia.png",
+      "right": "avatar-elara.png"
+    },
+    "names": {
+      "left": "Sylvia",
+      "right": "Elara"
+    },
+    "narrative": [
+      {
+        "speaker": "",
+        "text": "办公桌前，眩晕来得没有任何预兆。\n文件从桌边滑落，整个人随着椅子往侧面倒下去。"
+      },
+      {
+        "speaker": "Elara",
+        "text": "\"如果满月之前不解决，你会……死。\"\n陶罐被推到面前。小屋里只剩烛火轻轻晃动的声音。"
+      },
+      {
+        "speaker": "Sylvia",
+        "text": "不能崩溃。还有时间。\n一个满月——够了。"
+      }
+    ],
+    "resultTexts": {
+      "S": "你接过了真相，没有让它把你压垮。\n\"我的选项呢？全部。\"——Elara看你的眼神变了。",
+      "A": "你的手在发抖，但你没有放开陶罐。\n至少你知道了时限——一个满月。",
+      "B": "你坐在那里很久。\n恐惧没有消失，但你还在呼吸。",
+      "C": "你差点被这个消息击倒。\n但\"差点\"不是\"已经\"。"
+    },
+    "copy": {
+      "bootTitle": "考验",
+      "bootSubtitle": "在崩溃边缘维持意志",
+      "startBtn": "开始考验",
+      "resultContinue": "继续",
+      "resultRetry": "再来一次"
+    },
+    "_template": "will-surge",
+    "_htmlSize": 56117
+  },
+  "ep6": {
+    "character": {
+      "name": "Sylvia"
+    },
+    "attribute": "意志",
+    "episodeLabel": "EP 6",
+    "episodeTitle": "棋子",
+    "coverImage": "bg-scene.jpg",
+    "theme": "dark",
+    "portraits": {
+      "left": "avatar-sylvia.png",
+      "right": "avatar-lunamiller.png"
+    },
+    "names": {
+      "left": "Sylvia",
+      "right": "Luna Miller"
+    },
+    "narrative": [
+      {
+        "speaker": "Luna Miller",
+        "text": "Kennedy携带基因缺陷，永远不能生育。是我终结了那段关系。"
+      },
+      {
+        "speaker": "Sylvia",
+        "text": "然后月神把我赐给了他。"
+      },
+      {
+        "speaker": "Luna Miller",
+        "text": "一个解决方案。恰好在对的时间。"
+      }
+    ],
+    "resultTexts": {
+      "S": "你站起身说出了那句话——Luna Miller第一次真正看向你。",
+      "A": "你的声音断了一截，但Luna Miller的茶杯还是停在了半空。",
+      "B": "你一言不发地离开了书房，口袋里攥着那张折皱的纸。",
+      "C": "Luna Miller的视线已经移开了，你不过是一颗落子完毕的棋子。"
+    },
+    "copy": {
+      "bootTitle": "考验",
+      "bootSubtitle": "直面棋局操盘手的最后摊牌",
+      "startBtn": "开始考验",
+      "resultContinue": "继续",
+      "resultRetry": "再来一次"
+    },
+    "_template": "qte-boss-parry",
+    "_htmlSize": 56254
+  },
+  "ep7": {
+    "character": {
+      "name": "Sylvia"
+    },
+    "attribute": "意志",
+    "episodeLabel": "EP 7",
+    "episodeTitle": "嫉妒",
+    "coverImage": "bg-scene.jpg",
+    "theme": "dark",
+    "portraits": {
+      "left": "avatar-sylvia.png",
+      "right": "avatar-james.png"
+    },
+    "names": {
+      "left": "Sylvia",
+      "right": "James"
+    },
+    "narrative": [
+      {
+        "speaker": "Huxley",
+        "text": "（极低，只她能听见）呼吸。我在。"
+      },
+      {
+        "speaker": "Kennedy",
+        "text": "（走廊外）James，你真是不可理喻——"
+      },
+      {
+        "speaker": "Sylvia",
+        "text": "（她把椅子转向门的方向，坐下来，一字一句记在脑子里。）"
+      }
+    ],
+    "resultTexts": {
+      "S": "三次新月领地。集会上的气味。Elara的诊断。你准备好了。",
+      "A": "你没有说出一个字，但你记住了所有需要记住的。",
+      "B": "你关上了窗，把自己关进黑暗里，不想再听那些笑声。",
+      "C": "Kennedy的笑声穿过门缝，你抱着膝盖坐在地板上。"
+    },
+    "copy": {
+      "bootTitle": "考验",
+      "bootSubtitle": "在嫉妒的烈火中锻造武器",
+      "startBtn": "开始考验",
+      "resultContinue": "继续",
+      "resultRetry": "再来一次"
+    },
+    "_template": "cannon-aim",
+    "_htmlSize": 54365
+  },
+  "ep8": {
+    "character": {
+      "name": "Sylvia"
+    },
+    "attribute": "意志",
+    "episodeLabel": "EP 8",
+    "episodeTitle": "没有否认",
+    "coverImage": "bg-scene.jpg",
+    "theme": "dark",
+    "portraits": {
+      "left": "avatar-sylvia.png",
+      "right": "avatar-james.png"
+    },
+    "names": {
+      "left": "Sylvia",
+      "right": "James"
+    },
+    "narrative": [
+      {
+        "speaker": "",
+        "text": "深夜。主卧里只有庭院灯光的一条细线。\nJames推门进来，身上还带着Kennedy的气味。"
+      },
+      {
+        "speaker": "Sylvia",
+        "text": "\"这周。新月领地。三次。\"\n\"集会上你身上的味道。所有人都闻到了。\""
+      },
+      {
+        "speaker": "Sylvia",
+        "text": "\"我从来都不是你的伴侣。\n我是你母亲的解决方案。\""
+      }
+    ],
+    "resultTexts": {
+      "S": "你逼他亲口说出Kennedy也在受苦。\n他的下颌骨咬得咯咯响——但他没有否认。",
+      "A": "你说出了所有的证据，一条一条。\n他的沉默就是回答。",
+      "B": "你转身背对他。\n沉默比任何指控都更难忽视。",
+      "C": "你的话到了嘴边又咽回去。\n但你没有离开这个房间——这已经是一种态度。"
+    },
+    "copy": {
+      "bootTitle": "考验",
+      "bootSubtitle": "拉扯真相，逼他开口",
+      "startBtn": "开始考验",
+      "resultContinue": "继续",
+      "resultRetry": "再来一次"
+    },
+    "_template": "stardew-fishing",
+    "_htmlSize": 51254
+  },
+  "ep9": {
+    "character": {
+      "name": "Sylvia"
+    },
+    "attribute": "意志",
+    "episodeLabel": "EP 9",
+    "episodeTitle": "给我",
+    "coverImage": "bg-scene.jpg",
+    "theme": "dark",
+    "portraits": {
+      "left": "avatar-sylvia.png",
+      "right": "avatar-elara.png"
+    },
+    "names": {
+      "left": "Sylvia",
+      "right": "Elara"
+    },
+    "narrative": [
+      {
+        "speaker": "Sylvia",
+        "text": "我决定了。我不能把这个孩子带进一段破碎的连结。"
+      },
+      {
+        "speaker": "Elara",
+        "text": "断开的那一刻——James会立刻感应到。没有回头路。"
+      },
+      {
+        "speaker": "Sylvia",
+        "text": "我知道。"
+      }
+    ],
+    "resultTexts": {
+      "S": "给我。——声音平稳落地，没有一丝颤抖。你的意志是自己写的。",
+      "A": "给我。——声音小了半个音阶，但Elara还是蹲下打开了暗格。",
+      "B": "你没有开口，只是看着烛火。Elara替你做了选择。",
+      "C": "你的视线落在桌角那支烛火上，手没有动，嘴也没有开。"
+    },
+    "copy": {
+      "bootTitle": "考验",
+      "bootSubtitle": "在生死抉择前握紧自己的声音",
+      "startBtn": "开始考验",
+      "resultContinue": "继续",
+      "resultRetry": "再来一次"
+    },
+    "_template": "will-surge",
+    "_htmlSize": 55238
+  }
+}

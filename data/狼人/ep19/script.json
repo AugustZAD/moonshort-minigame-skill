@@ -1,0 +1,154 @@
+{
+  "ep_num": 19,
+  "variant": "mainline",
+  "current": {
+    "ep_num": 19,
+    "variant_kind": "mainline",
+    "output": {
+      "episode_id": "EP 19",
+      "episode_title": "月下",
+      "characters": [
+        "Sylvia",
+        "Huxley"
+      ],
+      "character_outfits": {
+        "Sylvia": "二十多岁女性，深色收腰长外套，深灰针织高领毛衣，黑色修身长裤，深棕色系带短靴，左手腕一根细皮绳手环。",
+        "Huxley": "三十岁左右男性，厚实深橄榄绿军事风外套，黑色圆领内搭，深色直筒裤，黑色登山靴，外套内袋有明显折叠纸张轮廓。"
+      },
+      "scene_locations": {
+        "中立区 咖啡馆": {
+          "location_id": "neutral_zone_cafe",
+          "parent_location_id": "neutral_zone_cafe",
+          "visual_prompt": "中立区小型咖啡馆，砖墙裸露，木质吧台，吊灯暖黄，窗边卡座，桌面有陶瓷杯与蜡烛，整体氛围低调私密，色调暖棕米白。"
+        },
+        "中立区 草地": {
+          "location_id": "neutral_zone_meadow",
+          "parent_location_id": "neutral_zone_meadow",
+          "visual_prompt": "开阔草地，无遮挡满月高悬，月光均匀铺洒，草地银白与深绿交织，远处树线轮廓低缓，夜风轻动草浪，空旷宁静，无人工建筑物。地面碎石小路延伸至草地边缘，两人脚印清晰可见。"
+        }
+      },
+      "pre_choice_script": "（场景：中立区 咖啡馆 出口 → 草地小路 — 夜，满月）\n（两扇玻璃门从内推开。Sylvia先迈出去，Huxley跟在半步之后。碎石路在月光下发白，两人都没有说话。）\n（特写 — 两双脚，一前一后踩在碎石上，节奏各自独立，却没有一方催促另一方。）\n\n（场景：中立区 草地 — 夜，满月，连续）\n（草地边缘，Huxley停下。Sylvia继续往前走了两步，走到草地中央，停住，仰头看满月。）\n\nHuxley: Kael's been waiting three years. But if you just want to stand here — that's enough.\n\n（Sylvia没有回答。她闭上眼睛，双臂垂落，指尖微微松开。）\n（特写 — 她的喉结轻轻滚动一下。嘴角极细微地动了一下，像是在回应什么只有她自己听得见的东西。）\n（她睁开眼，转头看向Huxley，点了一下头。）\n（Huxley的下颌轻轻收紧，随即松开。他闭上眼睛，片刻后睁开，直视着她。月光在两人之间铺开，没有震颤，没有灼烧，只是一种安静的、不可撤回的到位感。）\n（特写 — Sylvia的手，手指缓缓收拢，攥成一个松松的拳，然后完全放开，悬在身侧，不动了。）\n\nHuxley: （轻，像在确认）How does it feel?\n\nSylvia: （停顿一秒，声音很平，却清晰）Right.\n\n（Huxley从外套内袋取出一张折叠地图，展开，单手递到Sylvia面前。月光打在纸面上，北方有一处手写标记。）\n\nHuxley: （手指点在标记上）Aurora Pack. Alpha Morgan's waiting. They need someone who knows how to run a territory.\n\n（Sylvia低头看地图。特写 — 她的眼睛在那个陌生坐标上停住，眼睫没有颤，表情没有收紧。）\n（她抬起头，直视Huxley。）",
+      "choice_node": {
+        "type": "成长型",
+        "options": [
+          {
+            "id": "A",
+            "content": "Tell me more. What exactly do they need?",
+            "description": "地图还展开在Huxley手里，北方那个手写坐标在月光下清晰得像一道命令。你的眼睛停在那个陌生名字上，\"Aurora Pack\"——你连那片土地长什么样都不知道。你想把所有细节问清楚再开口，就像你一直以来的习惯：先确认安全，再迈步。",
+            "check": "无需检定"
+          },
+          {
+            "id": "B",
+            "content": "When do we leave?",
+            "description": "地图纸边被夜风轻轻掀起一角，Huxley的手指还压在那个北方标记上。你十个月前连自己的名字都快不认识了，现在你站在满月下的草地中央，Lyra在你胸腔里安静而清醒。那个坐标你一个字都不认识，但你的嘴已经先你的脑子动了。",
+            "check": "WIL（意志）10"
+          }
+        ]
+      },
+      "post_choice_outcomes": [
+        {
+          "reaction_id": "Reaction 1",
+          "trigger_condition": "选择选项 A",
+          "story_content": "（Huxley没有立刻回答。他低头看了一眼地图，食指在那个标记上停了一秒。）\n\nHuxley: Morgan runs the territory alone. Six months behind on admin. She needs someone who's done it before — and who won't flinch at the backlog.\n\n（Sylvia听着，视线没有离开那个坐标。她的手指轻轻碰了一下纸边，感受到折痕的厚度。）\n\nSylvia: And the Pack? How many?\n\nHuxley: Forty-three. Small. Loyal.\n\n（沉默了两秒。草地上的夜风把地图纸边再次掀起来，Sylvia用指腹压住。）\n\nSylvia: （声音平稳，没有迟疑）Okay. When do we leave?\n\n（Huxley把地图重新折好，递到她手里。两人并排站在月光下，满月高悬，草地银白，地图握在Sylvia掌心。）\n\n黑屏字幕：You folded the map and headed north.",
+          "butterfly_effect": "Sylvia gathers information before committing. Her caution is intact; WIL holds steady but registers no forward momentum."
+        },
+        {
+          "reaction_id": "Reaction 2",
+          "trigger_condition": "选择选项 B - 检定失败",
+          "story_content": "（话出了口，但声音比她预想的低了一个刻度，像是被什么压住了尾音。）\n（Huxley没有立刻接话。他看了她一眼，眼神里有什么东西在等待。）\n\nHuxley: （平静）You sure? You haven't even asked what the job is.\n\n（Sylvia的手指收紧了一下，地图纸边在她指间发出轻微的摩擦声。她低头看了一眼那个北方坐标，喉咙里有什么东西卡了一下。）\n\nSylvia: （重新抬起头，声音稳住了）I'm sure. Tell me on the way.\n\n（Huxley沉默了一秒，然后把地图折好，递到她手里。）\n\nHuxley: （轻）Fair enough.\n\n（两人并排站在月光下，满月高悬，草地银白，地图握在Sylvia掌心，夜风轻动草浪。）\n\n黑屏字幕：You folded the map and headed north.",
+          "butterfly_effect": "Sylvia's resolve surfaces but wavers under scrutiny. WIL shows movement without full consolidation."
+        },
+        {
+          "reaction_id": "Reaction 3",
+          "trigger_condition": "选择选项 B - 检定成功",
+          "story_content": "（Huxley愣了一秒。他的手指还压在地图上，眼睛抬起来，认真看了她一眼。）\n\nHuxley: （嘴角极轻地动了一下）You didn't even ask what the job pays.\n\nSylvia: （眼神清醒，嘴角微动）Does it matter?\n\n（Huxley没有再说话。他把地图折好，两手递到她面前——不是单手，是郑重的两手。）\n（Sylvia接过来，握在掌心。纸张还带着他外套内袋的温度。）\n\nHuxley: （轻，像是说给自己听）Three years. Worth the wait.\n\n（两人并排站在月光下，满月高悬，草地银白，地图握在Sylvia掌心，夜风轻动草浪。）\n\n黑屏字幕：You folded the map and headed north.",
+          "butterfly_effect": "Sylvia's unguarded decisiveness registers as genuine agency. WIL and CHA both gain traction entering the new territory."
+        }
+      ]
+    }
+  },
+  "next": {
+    "ep_num": 20,
+    "mainline": {
+      "ep_num": 20,
+      "variant_kind": "mainline",
+      "output": {
+        "episode_id": "EP 20",
+        "episode_title": "此地",
+        "characters": [
+          "Sylvia",
+          "Huxley",
+          "Daisy",
+          "Alpha Morgan"
+        ],
+        "character_outfits": {
+          "Sylvia": "二十多岁女性，深色修身长裤，厚实深橄榄绿户外夹克，内搭米白色圆领针织衫，深棕色系带踝靴，左手腕细银手链。",
+          "Huxley": "三十岁左右男性，深灰色厚呢大衣，黑色高领毛衣，深色直筒长裤，黑色皮靴。",
+          "Daisy": "二十多岁女性，酒红色羊毛大衣，黑色高领毛衣，深色紧身裤，黑色切尔西靴，颈间细金项链。",
+          "Alpha Morgan": "四十岁左右女性，深蓝色立领制服外套，同色系直筒长裤，黑色皮带束腰，黑色低跟皮靴，短发利落。"
+        },
+        "scene_locations": {
+          "北极光领地 边界": {
+            "location_id": null,
+            "parent_location_id": null,
+            "visual_prompt": "领地边界线，开阔地与密林交界处，地面覆薄雪，针叶林深绿连绵，天光清冷泛蓝，远处可见领地主屋屋顶轮廓，边界感明确，无围栏，仅以地势区分内外。"
+          },
+          "北极光领地 主屋 办公室": {
+            "location_id": null,
+            "parent_location_id": null,
+            "visual_prompt": "简洁功能性办公室，浅木色实木桌面，桌上积压厚厚一摞档案文件，两把对向木椅，窗外针叶林，自然光冷白直射，墙面浅灰，无多余装饰，整体风格干净克制。"
+          },
+          "北极光领地 北侧开阔地": {
+            "location_id": null,
+            "parent_location_id": null,
+            "visual_prompt": "宽阔雪地，无遮挡夜空，北极光大片铺展，绿色与白色光带在黑暗中流动涌动，地面积雪反光呈蓝白色，远处针叶林剪影低沉，空旷寂静，无人工建筑。"
+          },
+          "北极光领地 主屋 书桌": {
+            "location_id": null,
+            "parent_location_id": null,
+            "visual_prompt": "室内书桌一角，浅木色桌面，摊开的档案文件，一封折叠信纸置于文件最上层，晨光从侧窗斜射而入，光线柔和偏暖，窗外针叶林树梢透光，室内安静整洁。"
+          }
+        },
+        "pre_choice_script": "（场景：北极光领地 边界 — 日）\n（字幕：数日后）\n（Sylvia 和 Huxley 并排走到边界线前停下。对面，Daisy 已经等在那里了。）\n（Daisy 没有跑过来，没有哭。她从头到脚把 Sylvia 打量了一圈，目光最后落在她脸上，停住。）\n\nDaisy: You look different.\n\nSylvia: Different how?\n\nDaisy: (顿了一下，认真) You never used to look at people like that. Like you're not afraid of anything.\n\n（Sylvia 没有说话。她抬手把 Daisy 拉过来，两人抱了一下，快而有力，像是把一年的话都压进这一个动作里。）\n\n（场景：北极光领地 主屋 办公室 — 日）\n（字幕：【Alpha Morgan：北极光领地 Alpha，以平等理念立领】）\n（Alpha Morgan 把半摞积压的行政档案推到桌子对面，眼神直接，不带客套。）\n\nAlpha Morgan: Six months behind. You want the job or not?\n\n（Sylvia 看了看那摞档案。她拉开椅子，坐下，翻开第一页。）\n\nSylvia: I'll start today.\n\n（Morgan 扬了扬眉——她显然没想到连一秒都没有犹豫。）\n\n（场景：北极光领地 北侧开阔地 — 夜）\n（Sylvia 独自站在开阔地上，仰着头。北极光在天幕上大片展开，绿与白在黑暗中缓慢流动。）\n（Huxley 走过来，站在她身边，没有开口。）\n\nSylvia: (看着天，慢) Three years ago, I thought fate gave me everything I could have.\n\nHuxley: And now?\n\nSylvia: (停顿，清晰) Now I know. That wasn't fate. That was a cage.\n\n（Huxley 把手覆上她的手背。Sylvia 没有缩回去——她把手翻过来，反握住他。两人都没有再说话。北极光的光在两只交握的手上流过。）\n\n（场景：北极光领地 主屋 书桌 — 次日清晨）\n（字幕：次日清晨）\n（晨光斜射进来。Sylvia 坐在桌前，翻开那摞档案。最上面压着一封信，她抽出来，展开。）\n（特写——信纸上一行字，落款：Iris Blackwood。）\n\nSylvia: (轻声，念出来) \"I knew you'd find it.\"\n\n（她把信叠好，握在手里，没有立刻放下。",
+        "choice_node": {
+          "type": "成长型",
+          "options": [
+            {
+              "id": "A",
+              "content": "Fold the letter away. There's work to do.",
+              "description": "信纸的折痕压在你指尖。Iris 的字迹你认得出——她从不多说一个字。你把信叠好，压进口袋，翻开档案的下一页。Huxley 还没坐下来，办公室里只有你一个人，和那摞六个月没人动过的文件。",
+              "check": "无需检定"
+            },
+            {
+              "id": "B",
+              "content": "Read it out loud to Huxley.",
+              "description": "Huxley 就坐在你对面，手里拿着另一份文件还没翻开。Iris 的那句话还停在你嘴边——\"I knew you'd find it.\" 你一个人藏了太久太多东西了。信纸在你手里，晨光从侧窗打进来，他抬起眼看你。",
+              "check": "WIL（意志）8"
+            }
+          ]
+        },
+        "post_choice_outcomes": [
+          {
+            "reaction_id": "反应一",
+            "trigger_condition": "选择选项 A",
+            "story_content": "（Sylvia 把信叠好，塞进外衣口袋，低下头，翻开档案的下一页。）\n（Huxley 在她对面坐下，拿起另一份文件，开始翻。没有问，没有等。）\n（两人并排坐在桌前，各自低头。窗外晨光打进来，针叶林的树影在地板上拉出长线。没有誓词，没有命令。）\n\n黑屏字幕：This is where you belong. Not because fate said so — because you chose it.",
+            "butterfly_effect": "Sylvia keeps Iris's words private. The letter becomes a sealed anchor rather than a shared one. WIL consolidates inward; CHA toward Huxley holds steady but does not deepen."
+          },
+          {
+            "reaction_id": "反应二",
+            "trigger_condition": "选择选项 B - 检定失败",
+            "story_content": "（Sylvia 张了张嘴，目光落在信纸上，又移开。）\n\nSylvia: (轻，像是自言自语) She said... she knew I'd find it.\n\n（Huxley 抬起眼，等着。Sylvia 把信叠好，放进口袋，没有再说下去。）\n\nHuxley: (平静，不追问) Okay.\n\n（他低下头，继续翻文件。Sylvia 看了他一秒，也低下头。）\n（两人并排坐在桌前，各自低头翻看档案，窗外晨光打进来。没有誓词，没有命令。）\n\n黑屏字幕：This is where you belong. Not because fate said so — because you chose it.",
+            "butterfly_effect": "Sylvia reaches toward Huxley but pulls back at the threshold. WIL shows strain at the point of vulnerability; CHA toward Huxley remains unchanged."
+          },
+          {
+            "reaction_id": "反应三",
+            "trigger_condition": "选择选项 B - 检定成功",
+            "story_content": "（Sylvia 抬起头，看向 Huxley。）\n\nSylvia: She said, \"I knew you'd find it.\"\n\n（Huxley 放下手里的文件，认真地看着她。）\n\nHuxley: Sounds like she always did.\n\nSylvia: (停顿，轻) Yeah. She did.\n\n（她把信叠好，放进外衣口袋，手在口袋外面按了一下，然后松开。）\n（Huxley 拿起另一份文件，递给她。Sylvia 接过来，低下头。）\n（两人并排坐在桌前，各自低头翻看档案，窗外晨光打进来。没有誓词，没有命令。）\n\n黑屏字幕：This is where you belong. Not because fate said so — because you chose it.",
+            "butterfly_effect": "Sylvia speaks Iris's words aloud and lets them land between her and Huxley. CHA and WIL each register a measured gain; the bond carries a new layer of witnessed history."
+          }
+        ]
+      }
+    },
+    "minor_mainline": null
+  }
+}

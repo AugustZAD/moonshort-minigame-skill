@@ -1,0 +1,145 @@
+{
+  "ep_num": 16,
+  "variant": "mainline",
+  "current": {
+    "ep_num": 16,
+    "variant_kind": "mainline",
+    "output": {
+      "episode_id": "EP 16",
+      "episode_title": "回来了",
+      "characters": [
+        "Sylvia",
+        "Iris Blackwood"
+      ],
+      "character_outfits": {
+        "Sylvia": "二十多岁女性，深色针织高领毛衣，深灰色直筒长裤，黑色系带皮靴，左手腕一圈细麻绳编织手环。",
+        "Iris Blackwood": "三十岁左右女性，橄榄绿宽版衬衫外套，米白色长裤，棕色厚底踝靴，颈间一枚简约圆形银质吊坠。"
+      },
+      "scene_locations": {
+        "河谷领地 豪宅 客厅": {
+          "location_id": "river_valley_manor_living_room",
+          "parent_location_id": "river_valley_manor",
+          "visual_prompt": "宽敞客厅，浅色石材地面，棉麻质感沙发，落地窗外夜色深沉，室内壁灯暖光低亮，木桌上摊开一张折叠纸条，空间安静，无其他人。"
+        },
+        "河谷领地 行政室": {
+          "location_id": null,
+          "parent_location_id": "river_valley_manor",
+          "visual_prompt": "简洁行政办公空间，浅木色桌面，摊开的多份文件，台灯暖光，桌角叠放意见表，窗外隐约可见庭院植被，整体色调米白暖棕，光线集中于桌面。"
+        },
+        "河谷领地 疗养草地": {
+          "location_id": null,
+          "parent_location_id": "river_valley_manor",
+          "visual_prompt": "开阔草地，月光铺洒地面，草叶银白，远处树线低缓，无人工照明，夜风轻动，空旷宁静，地面草叶上有水珠反光。"
+        }
+      },
+      "pre_choice_script": "（场景：河谷领地 豪宅 客厅 — 日）\n（特写 — Sylvia 手里攥着一张折叠纸条，纸边已被手汗浸湿。她的嘴唇抿紧，喉结滚动了一下。）\n（Iris 站在她侧方两步外，没有开口。）\n\nSylvia: （声音压低，像在说给自己听）Daisy's locked in. Because of me.\n\nIris: What are you going to do?\n\n（Sylvia 把纸条攥进拳心。她抬头，眼眶发红，但眼神是清醒的。）\n\nSylvia: If I go back now — it gets worse for her.\n\n（她把纸条放在桌上，手慢慢松开，没有再看它。）\n\nSylvia: I'm staying.\n\n字幕：三个月后\n\n（场景：河谷领地 行政室 — 日）\n（Sylvia 坐在桌前，面前摊开几份文件。一名领地成员走进来，把意见表放在她桌角。她点点头，拿起来认真翻看。）\n（特写 — 文件上密密麻麻的批注，全是她的笔迹。）\n\n（场景：河谷领地 疗养草地 — 夜）\n（月光铺在草地上。Sylvia 一个人坐在地面，双腿盘起，双手放在膝上，眼睛闭着。她的嘴唇微动，没有声音发出——只是在轻唤。等了很久，什么都没有。她没有站起来，继续坐着。）\n（忽然，她的手指收紧，按住地面。）\n（特写 — 草地上，一道银灰色的轮廓从她身体里分离出来，四肢落地，稳稳站住。健康的狼，毛色清亮，呼吸平稳，和她对视。）\n（Sylvia 的膝盖慢慢弯下去，跪在地上。她的肩膀开始抖，眼泪直接落在草叶上，没有捂脸，没有出声，就那样哭着。）\n（脚步声。Iris 走过来，在她身边蹲下，没有说话，只是陪着。）",
+      "choice_node": {
+        "type": "成长型",
+        "options": [
+          {
+            "id": "A",
+            "content": "Turn away. Don't let Iris see you like this.",
+            "description": "Lyra 就站在你面前，毛色清亮，四肢稳稳踩着草地。你的肩膀还在抖，眼泪已经砸湿了膝盖前的草叶。Iris 就蹲在你旁边，你感觉到她的影子落在你身上——你把脸偏开，背对着她。",
+            "check": "无需检定"
+          },
+          {
+            "id": "B",
+            "content": "Stay. Let her see.",
+            "description": "Iris 蹲下来的时候没有说话，也没有伸手。Lyra 的呼吸声就在你面前，稳的像一块压舱石。你的手还按在草地上，指尖是湿的——你没有动，也没有把脸转开。",
+            "check": "WIL（意志）10"
+          }
+        ]
+      },
+      "post_choice_outcomes": [
+        {
+          "reaction_id": "反应一",
+          "trigger_condition": "选择选项 A",
+          "story_content": "（Sylvia 把脸转开，肩膀绷紧，眼泪还在流，但她不让人看见。）\n（Iris 没有强迫。她就那样蹲在旁边，沉默着，直到 Sylvia 的肩膀慢慢停止颤抖。）\n（Lyra 走近一步，低头，把鼻尖轻轻抵在 Sylvia 的手背上。Sylvia 的手指动了一下，没有缩回去。）\n（片刻后——）\n\nIris: （轻声）You already know how much longer.\n\n（Sylvia 没有说话。她点了点头，抬起脸，看向正上方。）\n（特写 — 月亮，圆而清亮，还在原处。定格。）\n\n黑屏字幕：Lyra came back. So did you.",
+          "butterfly_effect": "Sylvia accepts comfort only through Lyra's presence, not through human witness. WIL holds steady but gains no forward momentum."
+        },
+        {
+          "reaction_id": "反应二",
+          "trigger_condition": "选择选项 B - 检定失败",
+          "story_content": "（Sylvia 没有转开脸。但眼泪一落，她的手就抬起来按住了自己的嘴——堵住那个快要出声的瞬间。）\n（Iris 看见了。她没有说话，也没有靠近，只是把手放在了 Sylvia 旁边的草地上，就那样陪着。）\n（Lyra 在她们中间站着，呼吸平稳，毛色在月光里发亮。）\n（Sylvia 的手慢慢从嘴边放下来。她没有擦脸。）\n\nIris: （轻声）You already know how much longer.\n\n（Sylvia 没有说话。她点了点头，抬起脸，看向正上方。）\n（特写 — 月亮，圆而清亮，还在原处。定格。）\n\n黑屏字幕：Lyra came back. You cried for a long time. But this time, it wasn't from pain.",
+          "butterfly_effect": "Sylvia allows herself to be seen mid-breakdown but instinctively suppresses her voice. WIL gains a marginal increment; emotional openness remains guarded."
+        },
+        {
+          "reaction_id": "反应三",
+          "trigger_condition": "选择选项 B - 检定成功",
+          "story_content": "（Sylvia 没有动。眼泪继续落，她的手还按在草地上，指节陷进潮湿的土里。）\n（Iris 蹲在她旁边，没有说话，伸出手替Sylvia擦掉眼泪。Lyra 走近，把头低下来，轻轻靠在 Sylvia 的肩侧。）\n（Sylvia 闭上眼睛，深吸一口气，把那口气慢慢呼出去。她的肩膀最后抖了一下，然后松了。）\n\nIris: （轻声）You already know how much longer.\n\n（Sylvia 睁开眼。她没有擦脸，直接抬起头，看向正上方，眼眶还是红的，但眼神是定的。）\n\nSylvia: （很轻，像只是说给月亮听）Yeah.\n\n（特写 — 月亮，圆而清亮，还在原处。定格。）\n\n黑屏字幕：Lyra came back. You let Iris watch you cry. You don't need to hide anymore.",
+          "butterfly_effect": "Sylvia lets herself be witnessed without retreating. WIL and CHA both register a meaningful gain; her capacity for genuine connection takes one step forward."
+        }
+      ]
+    }
+  },
+  "next": {
+    "ep_num": 17,
+    "mainline": {
+      "ep_num": 17,
+      "variant_kind": "mainline",
+      "output": {
+        "episode_id": "EP 17",
+        "episode_title": "准备好了",
+        "characters": [
+          "Sylvia",
+          "Iris Blackwood"
+        ],
+        "character_outfits": {
+          "Sylvia": "二十多岁女性，深色长发松散披肩，穿着朴素深色长外套，深灰色修身长裤，黑色系带靴，外衣右侧口袋微微鼓起一个折叠纸条的轮廓，肩背深色大背包。",
+          "Iris Blackwood": "三十岁左右女性，米白色宽松针织毛衣，浅卡其色直筒长裤，棕色皮质低跟踝靴，颈间细绳挂一枚小型黑色石质吊坠。"
+        },
+        "scene_locations": {
+          "河谷领地 疗养草地": {
+            "location_id": null,
+            "parent_location_id": "river_valley_manor",
+            "visual_prompt": "开阔草地，月光铺洒，草叶银白，远处树线低缓，夜风轻动，地面草丛间有露水反光，一只灰白色大型狼静立其中，四肢有力，毛色完整，无人工建筑物。"
+          },
+          "河谷领地 豪宅 客厅": {
+            "location_id": "river_valley_manor_living_room",
+            "parent_location_id": "river_valley_manor",
+            "visual_prompt": "宽敞客厅，浅色石材地面，棉麻质感沙发，落地窗引入充足自然光，窗边摆一把单人椅，椅旁小茶几，书架与绿植点缀，整体温暖开阔，光线明亮柔和。"
+          }
+        },
+        "pre_choice_script": "（场景：河谷领地 疗养草地 — 夜）\n（月光铺满草地。Sylvia跪在月光里，Lyra——完整的、健康的灰白色内狼——安静站在她面前。Iris在她身边蹲着陪她。）\n\n（Sylvia抬起头，点了一下。月亮还在原处。）\n\n字幕：七个月后\n\n（场景：河谷领地 豪宅 客厅 — 日）\n（Sylvia 坐在窗边，手里握着一封信，纸张边缘已经被反复摩挲起皱。她把信读完，放在腿上，沉默了几秒。）\n\n（特写 — 信纸上最后一行清晰可见：\"Kennedy left. James is finished. Come back.\"）\n\n（Sylvia 站起来，走向沙发旁的背包，蹲下来，拉开底层夹层的拉链。她从里面取出一张折叠了很多次的纸条，展开。）\n\n（特写 — 纸条上只有一个地址，和一行字：\"Whenever you're ready. I'm here.\"）\n\n（Sylvia 的手指按住那行字，停了两秒，然后把纸条折好，放进外衣口袋。）\n\n（她拿起背包，走向走廊。Iris 从走廊另一端迎面走来，在她面前停下，看了她一眼，看了她手里的背包一眼。）\n\nSylvia: (直视 Iris，声音平稳) I'm ready.\n\nIris: (嘴角动了一下，点头) Then go.",
+        "choice_node": {
+          "type": "成长型",
+          "options": [
+            {
+              "id": "A",
+              "content": "Step out without looking back.",
+              "description": "Iris说了\"then go\"，大门就在你面前。这个地方救了你的命，Iris从来没问过你为什么来。但你知道——如果现在回头，你可能会留下来。你的手推上门把。",
+              "check": "无需检定"
+            },
+            {
+              "id": "B",
+              "content": "Turn around. Say goodbye to Iris properly.",
+              "description": "Iris站在走廊里看着你。十个月前她从溪边泥地里把你扶起来的时候，你连自己的名字都快说不出来。你的手在门把上，背包的重量压着肩膀。你转过身。",
+              "check": "CHA（魅力）8"
+            }
+          ]
+        },
+        "post_choice_outcomes": [
+          {
+            "reaction_id": "反应一",
+            "trigger_condition": "选择选项 A",
+            "story_content": "（Sylvia推开大门，阳光铺在她脸上。她迈过门槛，脚步稳，没有停顿，没有回头。）\n（门在身后合上，发出一声轻响。）\n（特写——她外衣口袋处，纸条的折痕轮廓透过布料隐约可见。她的手垂在身侧，指节放松。定格。）\n\n黑屏字幕：The note is still in your pocket. You know where to go.",
+            "butterfly_effect": "Sylvia's departure is clean and self-contained. Her bond with Iris remains warm but unspoken; WIL carries forward steady, with no new relational anchor established."
+          },
+          {
+            "reaction_id": "反应二",
+            "trigger_condition": "选择选项 B - 检定失败",
+            "story_content": "（Sylvia转过身。Iris还站在原地，神情平静，等着她。）\n（Sylvia张了张嘴，停了一拍。）\n\nSylvia: （声音比预想的低，有些涩）I don't know how to say it.\n\nIris: （轻声）You don't have to. It's time to say goodbye.\n\n（沉默了两秒。Sylvia点了一下头，重新转向门口。她推开门，阳光打在她脸上。）\n（特写——她外衣口袋处，纸条的折痕轮廓透过布料隐约可见。她的手垂在身侧，指节放松。定格。）\n\n黑屏字幕：The note is still in your pocket. You know where to go.",
+            "butterfly_effect": "The farewell was attempted but left incomplete. Sylvia's connection with Iris holds; CHA gains no traction, but WIL remains stable."
+          },
+          {
+            "reaction_id": "反应三",
+            "trigger_condition": "选择选项 B - 检定成功",
+            "story_content": "（Sylvia转过身。Iris还站在原地，神情平静，等着她。）\n\nSylvia: （直视她，声音平稳而清楚）Thank you. For not asking me to be anything.\n\n（Iris没有立刻说话。她看了Sylvia一秒，嘴角轻轻动了一下。）\n\nIris: （低声）Go be everything. I will always wish you well.\n\n（Sylvia点头。）\n\nSylvia:Goodbye.\n\n(Sylvia重新转向门口，推开门，阳光打在她脸上。）\n（特写——她外衣口袋处，纸条的折痕轮廓透过布料隐约可见。她的手垂在身侧，指节放松。定格。）\n\n黑屏字幕：The note is still in your pocket. You know where to go.",
+            "butterfly_effect": "Sylvia names what Iris gave her and receives it fully. CHA and WIL both register a quiet gain; her capacity to acknowledge genuine care has been restored."
+          }
+        ]
+      }
+    },
+    "minor_mainline": null
+  }
+}
