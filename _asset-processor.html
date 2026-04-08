@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>Asset Processor</title></head>
+<body>
+<canvas id="c" style="display:none;"></canvas>
+<div id="status">Processing...</div>
+<div id="output"></div>
+<script>
+const BASE = window.location.origin;
+const STATUS = document.getElementById('status');
+const OUTPUT = document.getElementById('output');
+
+// Results stored here for external reading
+window.__RESULTS__ = {};
+
+function loadImg(src) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => resolve(img);
+    img.onerror = reject;
+    img.src = BASE + '/' + src;
+  });
+}
+
+// Remove white-ish background with aggressive edge cleanup
+function removeWhiteBg(imageData) {
+  const d = imageData.data;
+  const w = imageData.width, h = imageData.height;
+
+  // Pass 1: mark white / near-white pixels transparent
+  for (let i = 0; i < d.length; i += 4) {
+    const r = d[i], g = d[i+1], b = d[i+2];
+    const max = Math.max(r, g, b), min = Math.min(r, g, b);
+    const L = (max + min) / 2;
+    const sat = max === min ? 0 : (max - min) / (L < 128 ? (max + min) : (510 - max - min));
+
+    if (L > 225 && sat < 0.10) {
+      d[i+3] = 0;    // pure white → gone
+    } else if (L > 195 && sat < 0.18) {
+      d[i+3] = Math.round(Math.max(0, ((255 - L) / 60) * 255));
+    } else if (L > 165 && sat < 0.14) {
+      d[i+3] = Math.min(d[i+3], Math.round(Math.max(0, ((255 - L) / 90) * 255)));
+    }
+  }
+
+  // Pass 2-4: 3 rounds of edge erosion to kill white fringe
+  for (let pass = 0; pass < 3; pass++) {
+    const alpha = new Uint8Array(w * h);
+    for (let i = 0; i < alpha.length; i++) alpha[i] = d[i * 4 + 3];
+
+    for (let y = 1; y < h - 1; y++) {
+      for (let x = 1; x < w - 1; x++) {
+        const idx = y * w + x;
+        if (alpha[idx] === 0) continue;
+        let tCount = 0;
+        for (let dy = -1; dy <= 1; dy++) {
+          for (let dx = -1; dx <= 1; dx++) {
+            if (dx === 0 && dy === 0) continue;
+            if (alpha[(y+dy)*w + (x+dx)] < 30) tCount++;
+          }
+        }
+        if (tCount >= 4) {
+          d[idx * 4 + 3] = Math.round(d[idx * 4 + 3] * 0.15);
+        } else if (tCount >= 2) {
+          d[idx * 4 + 3] = Math.round(d[idx * 4 + 3] * 0.6);
+        }
+      }
+    }
+  }
+
+  // Pass 5: darken remaining edge pixels to reduce white halo
+  const finalAlpha = new Uint8Array(w * h);
+  for (let i = 0; i < finalAlpha.length; i++) finalAlpha[i] = d[i * 4 + 3];
+  for (let y = 1; y < h - 1; y++) {
+    for (let x = 1; x < w - 1; x++) {
+      const idx = y * w + x;
+      if (finalAlpha[idx] === 0 || finalAlpha[idx] > 240) continue;
+      // Semi-transparent pixel → darken RGB to prevent white halo
+      const factor = 0.7;
+      d[idx*4]   = Math.round(d[idx*4]   * factor);
+      d[idx*4+1] = Math.round(d[idx*4+1] * factor);
+      d[idx*4+2] = Math.round(d[idx*4+2] * factor);
+    }
+  }
+
+  return imageData;
+}
+
+// Crop character to upper body (top N% of content area)
+function cropUpperBody(canvas, ratio) {
+  // Find content bounds (non-transparent)
+  const ctx = canvas.getContext('2d');
+  const id = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const d = id.data;
+  let top = canvas.height, bottom = 0, left = canvas.width, right = 0;
+  for (let y = 0; y < canvas.height; y++) {
+    for (let x = 0; x < canvas.width; x++) {
+      if (d[(y * canvas.width + x) * 4 + 3] > 20) {
+        if (y < top) top = y;
+        if (y > bottom) bottom = y;
+        if (x < left) left = x;
+        if (x > right) right = x;
+      }
+    }
+  }
+
+  const contentH = bottom - top;
+  const cropH = Math.round(contentH * ratio);
+  const cropBottom = top + cropH;
+
+  // Add some horizontal padding
+  const pad = 15;
+  const cropLeft = Math.max(0, left - pad);
+  const cropRight = Math.min(canvas.width, right + pad);
+  const cropW = cropRight - cropLeft;
+
+  const out = document.createElement('canvas');
+  out.width = cropW;
+  out.height = cropH;
+  const outCtx = out.getContext('2d');
+  outCtx.drawImage(canvas, cropLeft, top, cropW, cropH, 0, 0, cropW, cropH);
+  return out;
+}
+
+// Process background: crop to portrait center
+function processBackground(img) {
+  const targetW = 393, targetH = 736;
+  // Source is landscape. We want the center-bottom area (parking lot + cars)
+  const srcAspect = img.width / img.height;
+  const tgtAspect = targetW / targetH;
+
+  const c = document.createElement('canvas');
+  c.width = targetW;
+  c.height = targetH;
+  const ctx = c.getContext('2d');
+
+  // Fill black
+  ctx.fillStyle = '#040810';
+  ctx.fillRect(0, 0, targetW, targetH);
+
+  // Scale source to fill width, position center-vertically with offset toward bottom
+  const scaledH = Math.round(targetW / srcAspect);
+  const offsetY = Math.round((targetH - scaledH) * 0.35); // bias toward top area
+  ctx.drawImage(img, 0, offsetY, targetW, scaledH);
+
+  // Gradient overlay: dark at top and bottom
+  const grad = ctx.createLinearGradient(0, 0, 0, targetH);
+  grad.addColorStop(0, 'rgba(4,8,16,0.85)');
+  grad.addColorStop(0.15, 'rgba(4,8,16,0.3)');
+  grad.addColorStop(0.5, 'rgba(4,8,16,0.0)');
+  grad.addColorStop(0.75, 'rgba(4,8,16,0.15)');
+  grad.addColorStop(1.0, 'rgba(4,8,16,0.95)');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, targetW, targetH);
+
+  // Blue tint overlay
+  ctx.fillStyle = 'rgba(8,16,40,0.25)';
+  ctx.fillRect(0, 0, targetW, targetH);
+
+  return c;
+}
+
+async function processCharacter(src, name, upperRatio) {
+  STATUS.textContent = 'Loading ' + name + '...';
+  const img = await loadImg(src);
+
+  const c = document.createElement('canvas');
+  c.width = img.width;
+  c.height = img.height;
+  const ctx = c.getContext('2d');
+  ctx.drawImage(img, 0, 0);
+
+  STATUS.textContent = 'Removing background for ' + name + '...';
+  const imgData = ctx.getImageData(0, 0, c.width, c.height);
+  removeWhiteBg(imgData);
+  ctx.putImageData(imgData, 0, 0);
+
+  STATUS.textContent = 'Cropping ' + name + ' upper body...';
+  const cropped = cropUpperBody(c, upperRatio);
+
+  // Scale down to reasonable game size (max 300px wide)
+  const maxW = 300;
+  const scale = cropped.width > maxW ? maxW / cropped.width : 1;
+  const finalW = Math.round(cropped.width * scale);
+  const finalH = Math.round(cropped.height * scale);
+
+  const final = document.createElement('canvas');
+  final.width = finalW;
+  final.height = finalH;
+  final.getContext('2d').drawImage(cropped, 0, 0, finalW, finalH);
+
+  return final.toDataURL('image/png');
+}
+
+async function main() {
+  try {
+    // Process background
+    STATUS.textContent = 'Processing background...';
+    const bgImg = await loadImg('data/ep5/background/20260320-121814.jpg');
+    const bgCanvas = processBackground(bgImg);
+    window.__RESULTS__.bg = bgCanvas.toDataURL('image/jpeg', 0.92);
+    STATUS.textContent = 'Background done (' + window.__RESULTS__.bg.length + ' chars)';
+
+    // Process Avery (upper 55% - head to waist)
+    window.__RESULTS__.avery = await processCharacter('data/ep5/character/20260320-121745.jpg', 'Avery', 0.55);
+    STATUS.textContent = 'Avery done (' + window.__RESULTS__.avery.length + ' chars)';
+
+    // Process Aiden (upper 50% - head to chest, he's taller)
+    window.__RESULTS__.aiden = await processCharacter('data/ep5/character/20260320-121810.jpg', 'Aiden', 0.50);
+    STATUS.textContent = 'Aiden done (' + window.__RESULTS__.aiden.length + ' chars)';
+
+    window.__RESULTS__.done = true;
+    STATUS.textContent = 'All assets processed! Auto-saving...';
+
+    // Auto-POST to save server if running
+    async function autoSave(name, dataUrl) {
+      var parts = dataUrl.split(',');
+      var format = parts[0].indexOf('jpeg') !== -1 ? 'jpeg' : 'png';
+      try {
+        var resp = await fetch('http://localhost:3334/save/' + name, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ data: parts[1], format: format }),
+        });
+        var json = await resp.json();
+        return json.ok ? 'saved' : 'err';
+      } catch(e) { return 'no-server'; }
+    }
+    var r1 = await autoSave('bg', window.__RESULTS__.bg);
+    var r2 = await autoSave('avery', window.__RESULTS__.avery);
+    var r3 = await autoSave('aiden', window.__RESULTS__.aiden);
+    STATUS.textContent = 'Done! bg=' + r1 + ' avery=' + r2 + ' aiden=' + r3;
+  } catch(e) {
+    STATUS.textContent = 'ERROR: ' + e.message;
+    window.__RESULTS__.error = e.message;
+  }
+}
+
+main();
+</script>
+</body></html>
