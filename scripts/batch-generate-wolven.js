@@ -69,16 +69,39 @@ class NarrativeScene extends Phaser.Scene {
     if (!lines.length) { this.scene.start('BootScene'); return; }
     var idx = 0;
     var shell = document.getElementById('game-shell');
-
-    // Shell UI stays visible behind overlay
+    var bridgeSubtitle = (CTX.copy && CTX.copy.bootSubtitle) || '';
+    var charName = (CTX.character && CTX.character.name) || '';
+    var attrName = CTX.attribute || '';
 
     function showLine() {
       var old = document.getElementById('narrative-overlay');
       if (old) old.remove();
+
+      // After all dialogue lines: show bridge card
       if (idx >= lines.length) {
+        if (bridgeSubtitle) {
+          idx = -1; // mark bridge shown
+          var overlay = document.createElement('div');
+          overlay.className = 'narrative-overlay';
+          overlay.id = 'narrative-overlay';
+          overlay.style.background = 'rgba(0,0,0,0.92)';
+          overlay.innerHTML =
+            '<div style="font-size:12px;letter-spacing:3px;color:rgba(255,255,255,0.5);margin-bottom:12px;">—— ' + (charName ? charName + '的' : '') + attrName + '考验 ——</div>' +
+            '<div style="font-size:22px;font-weight:900;color:#fff;text-align:center;line-height:1.5;margin-bottom:20px;">' + bridgeSubtitle + '</div>' +
+            '<div class="tap-hint">点击开始考验</div>';
+          overlay.addEventListener('pointerup', function() {
+            overlay.style.opacity = '0';
+            overlay.style.transition = 'opacity 0.5s';
+            setTimeout(function() { overlay.remove(); self.scene.start('BootScene'); }, 500);
+          });
+          shell.appendChild(overlay);
+          return;
+        }
         self.scene.start('BootScene');
         return;
       }
+      if (idx < 0) { self.scene.start('BootScene'); return; }
+
       var line = lines[idx];
       var overlay = document.createElement('div');
       overlay.className = 'narrative-overlay';
@@ -547,7 +570,8 @@ function generateGame(ep, templateId) {
       ['🐟 Caught: ', '🐟 捕获: '],
     ],
     'lane-dash': [
-      ['Tap LEFT or RIGHT to switch lanes.<br>Dodge falling obstacles to survive.<br>Speed increases as you progress!', '点击左右切换车道。<br>躲避障碍生存下去。<br>速度越来越快！'],
+      ['Tap LEFT or RIGHT to switch lanes.<br>Dodge falling obstacles to survive.<br>Speed increases as you progress!', '点击左右切换车道。<br>躲避障碍继续前进。<br>速度越来越快！'],
+      ['3-LANE SPRINT', '极速冲刺'],
       ['Swipe to dodge obstacles!', sub || '在黑暗中奔跑'],
       ['Dodged ', '躲避 '],
     ],
@@ -565,12 +589,13 @@ function generateGame(ep, templateId) {
       ['Tap the correct color name', '点击正确的颜色名'],
     ],
     'red-light-green-light': [
-      ['Reach 100m to get S rank!<br>Hold RUN on GREEN, STOP on RED.<br>Yellow flash is a bluff \\u2014 keep running!<br>Red violation pushes you back -5/-8/-12m', '达到100m获S级！<br>绿灯长按跑，红灯松手停。<br>黄灯是虚晃——继续跑！<br>红灯违规后退 -5/-8/-12m'],
+      ['Reach 100m to get S rank!<br>Hold RUN on GREEN, STOP on RED.<br>Yellow flash is a bluff — keep running!<br>Red violation pushes you back -5/-8/-12m<br>Combos reward +5m / +10m bonus<br>Quick release before RED = +3m', '达到100m获S级！<br>绿灯长按跑，红灯松手停。<br>黄灯是虚晃——继续跑！<br>红灯违规后退 -5/-8/-12m<br>连击奖励 +5m / +10m<br>红灯前松手 = +3m'],
       ['TRAFFIC LIGHT SPRINT', '红绿灯冲刺'],
       ['STAMINA', '体力'],
       ['STOP!', '停！'],
       ['GO!', '走！'],
       ['READY...', sub || '准备...'],
+      ['RUN', '跑'],
     ],
     'qte-boss-parry': [
       ['Choose PARRY, DODGE, or COUNTER<br>Match the attack type<br>Build combo for bonus!', '选择格挡、闪避或反击<br>匹配对方攻击类型<br>连击获得加成！'],
@@ -579,7 +604,8 @@ function generateGame(ep, templateId) {
       ['Counter \\u2192 ', '应对 → '],
     ],
     'cannon-aim': [
-      ['Drag to aim, tap FIRE to shoot.<br>Big balloon: <b>2pt</b> (no combo)<br>Medium: <b>20pt</b> (builds combo)<br>Small gold (top): <b>50pt</b> (builds combo)<br>Only medium & gold build your combo multiplier!', '拖动瞄准，点击发射。<br>大目标：<b>2分</b>（无连击）<br>中目标：<b>20分</b>（触发连击）<br>小金色（顶部）：<b>50分</b>（触发连击）<br>只有中、金目标累积连击！'],
+      ['Drag to aim, tap FIRE to shoot.<br>🎯 Big balloon: <b>2pt</b> (no combo)<br>🎯 Medium: <b>20pt</b> (builds combo)<br>🎯 Small gold (top): <b>50pt</b> (builds combo)<br>Only medium & gold build your combo multiplier!', '拖动瞄准，点击发射。<br>🎯 大目标：<b>2分</b>（无连击）<br>🎯 中目标：<b>20分</b>（触发连击）<br>🎯 小金色（顶部）：<b>50分</b>（触发连击）<br>只有中、金目标累积连击！'],
+      ['FIRING RANGE', '精准射击'],
     ],
   };
 

@@ -259,7 +259,7 @@
   <div class="stamina-area hidden" id="stamina-area"><span class="stamina-label">体力</span><div class="stamina-track"><div class="stamina-fill" id="stamina-fill" style="width:100%"></div></div></div>
   <div class="combo-text hidden" id="combo-text"></div>
   <div class="switch-bar-area hidden" id="switch-bar-area"><div class="switch-bar-track"><div class="switch-bar-fill" id="switch-bar-fill" style="width:100%"></div></div></div>
-  <div class="rules-card hidden" id="rules-card"><h2>红绿灯冲刺</h2><p>Reach 100m to get S rank!<br>Hold RUN on GREEN, STOP on RED.<br>Yellow flash is a bluff — keep running!<br>Red violation pushes you back -5/-8/-12m<br>Combos reward +5m / +10m bonus<br>Quick release before RED = +3m</p></div>
+  <div class="rules-card hidden" id="rules-card"><h2>红绿灯冲刺</h2><p>达到100m获S级！<br>绿灯长按跑，红灯松手停。<br>黄灯是虚晃——继续跑！<br>红灯违规后退 -5/-8/-12m<br>连击奖励 +5m / +10m<br>红灯前松手 = +3m</p></div>
   <div class="grade-overlay hidden" id="grade-overlay"><div class="grade-letter pop-in" id="grade-letter"></div><div class="grade-score" id="grade-score"></div></div>
   <div class="stars-row hidden" id="stars-row"></div>
   <div class="result-info hidden" id="result-info"><div class="attr-mod" id="attr-mod"></div><div class="stats"><span id="stat-combo"></span><span id="stat-hits"></span></div></div>
@@ -444,16 +444,39 @@ class NarrativeScene extends Phaser.Scene {
     if (!lines.length) { this.scene.start('BootScene'); return; }
     var idx = 0;
     var shell = document.getElementById('game-shell');
-
-    // Shell UI stays visible behind overlay
+    var bridgeSubtitle = (CTX.copy && CTX.copy.bootSubtitle) || '';
+    var charName = (CTX.character && CTX.character.name) || '';
+    var attrName = CTX.attribute || '';
 
     function showLine() {
       var old = document.getElementById('narrative-overlay');
       if (old) old.remove();
+
+      // After all dialogue lines: show bridge card
       if (idx >= lines.length) {
+        if (bridgeSubtitle) {
+          idx = -1; // mark bridge shown
+          var overlay = document.createElement('div');
+          overlay.className = 'narrative-overlay';
+          overlay.id = 'narrative-overlay';
+          overlay.style.background = 'rgba(0,0,0,0.92)';
+          overlay.innerHTML =
+            '<div style="font-size:12px;letter-spacing:3px;color:rgba(255,255,255,0.5);margin-bottom:12px;">—— ' + (charName ? charName + '的' : '') + attrName + '考验 ——</div>' +
+            '<div style="font-size:22px;font-weight:900;color:#fff;text-align:center;line-height:1.5;margin-bottom:20px;">' + bridgeSubtitle + '</div>' +
+            '<div class="tap-hint">点击开始考验</div>';
+          overlay.addEventListener('pointerup', function() {
+            overlay.style.opacity = '0';
+            overlay.style.transition = 'opacity 0.5s';
+            setTimeout(function() { overlay.remove(); self.scene.start('BootScene'); }, 500);
+          });
+          shell.appendChild(overlay);
+          return;
+        }
         self.scene.start('BootScene');
         return;
       }
+      if (idx < 0) { self.scene.start('BootScene'); return; }
+
       var line = lines[idx];
       var overlay = document.createElement('div');
       overlay.className = 'narrative-overlay';
@@ -516,7 +539,7 @@ class GameScene extends Phaser.Scene {
     this.switchTimer = this.greenDurationBase + Math.random() * 1000; this.switchTimerMax = this.switchTimer;
     clearBtnArea();
     var runBtn = document.createElement('div'); runBtn.className = 'btn-candy full';
-    runBtn.innerHTML = '<div class="base"></div><div class="glass"></div><div class="highlight"></div><div class="glow"></div><div class="label" style="font-size:20px">&#127939; HOLD TO RUN</div>';
+    runBtn.innerHTML = '<div class="base"></div><div class="glass"></div><div class="highlight"></div><div class="glow"></div><div class="label" style="font-size:20px">&#127939; HOLD TO 跑</div>';
     this._runBtn = runBtn;
     runBtn.addEventListener('pointerdown', function(e) { e.preventDefault(); audio.tap(); if (self.isOver) return; if (!self.audioStarted) { audio.unlock(); audio.bgm('action'); self.audioStarted = true; } self._holding = true; self.running = true; runBtn.classList.add('holding'); });
     runBtn.addEventListener('pointerup', function(e) { e.preventDefault(); if (self.running && self.light === 'green' && self.switchTimer <= 400 && !self.fakeOutActive) { self.applyDistance(3); showToast(self, 'Quick! +3m', '#4FECA2', W / 2, 480); audio.tick(); } self._holding = false; self.running = false; runBtn.classList.remove('holding'); });
