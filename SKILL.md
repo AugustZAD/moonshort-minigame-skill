@@ -55,6 +55,7 @@ Ask only if the information is genuinely missing and affects implementation.
 | Attribute | character stat being tested | echoed from URL param |
 | Device features | camera / microphone / gyroscope / none | none |
 | Narrative layer | pre-game dialogue, in-game story beats, flavor text | none |
+| Episode continuity | **本集 + 下一集**剧情衔接（从 `data/<story>/ep{N}/script.json` 读取 current + next） | 只有本集 |
 | Difficulty target | how hard should S-rank be to reach | moderate |
 
 Map the mechanic to the closest **archetype** or design a novel one:
@@ -117,9 +118,10 @@ End-to-end workflow for producing a **story-driven customized mini-game** from e
 | **色调覆写** | ❌ 模板默认色 | ✅ ATTR_THEMES 覆写匹配剧情氛围 |
 | **candy 卡片色** | ❌ 粉色默认 | ✅ 覆写为暗色/暖色等 |
 | **游戏内文案** | 中文化 | 中文化 + 剧情化（"在黑暗中寻找线索"） |
+| **游戏内素材** | ❌ 程序化色块 | ✅ 按模板分级：高价值模板生成精灵/图标替换色块（见 Step 2c） |
 | **BGM 风格** | 属性默认 | 按场景氛围覆写 |
-| **增量工作** | 基准 (~16 min) | +~10 min (+35% token) |
-| **模板改动** | ~100 行 | +~36 行增量 |
+| **增量工作** | 基准 (~16 min) | +~15 min (+50% token，含素材生成) |
+| **模板改动** | ~100 行 | +~50 行增量（含 Phaser 素材加载） |
 
 **询问用户时可提供的参考信息**:
 - 普通定制化适合：剧情氛围与模板默认风格一致的场景
@@ -131,16 +133,148 @@ End-to-end workflow for producing a **story-driven customized mini-game** from e
 - **不要一律用 `-dark`**。按场景氛围选择：`-sweet`(甜蜜)、`-warm`(温暖)、`-noir`(暗黑)、`-neon`(赛博)、`-tense`(紧张) 等
 - 示例：甜蜜约会 → `ep-8_scene01-sweet`，校园对峙 → `ep-6_scene01-noir`
 
+**深度定制化核心原则**:
+- **不改原模板 UI/UX 布局**。标题栏、头像、VS、HP 条、仪表盘、按钮位置全部保持原样
+- 只通过 `window.__EPISODE_CTX__` 注入数据（角色名、标题、背景图、主题色）
+- **配色优先用 kmeans 动态取色**：设 `CTX.coverImage` 后模板自动从背景图 kmeans 聚类提取主色，生成完整 theme。若提取结果饱和度/亮度不够（`ps<0.60` 或 `pl` 超范围），自动 fallback 到 `CTX.theme` 指定的 7 preset 之一
+- 7 个 preset theme 作为 fallback：combat/mystery/nature/dark/sweet/ocean/energy
+- `CTX.coverImage` 同时控制背景淡显（cover-layer opacity 0.20）和动态取色，一举两得
+
 **深度定制化额外步骤**:
-1. 在 EP 常量中添加 `backgrounds` 配置（见 EP 常量结构）
-2. 覆写 `ATTR_THEMES` 中对应属性的色值（bgBase/primary/trackBg 等）
-3. 覆写 `CANDY.cardPink` / `cardPinkLt` 为匹配色
-4. 将所有 `setBackgroundColor + drawDotPattern` 替换为 `drawSceneBg` 调用
+1. 注入 `window.__EPISODE_CTX__`（见下方 CTX 注入结构）
+2. 从 7 个 V3 theme 中选匹配剧情氛围的主题色（可被 coverImage 动态取色覆盖）
+3. 设置 `CTX.portraits` 使用 Step 2b 生成的 tight headshot 头像
+4. 设置 `CTX.names` 替换默认 Player/Boss 为角色名
 5. 根据剧情氛围覆写 `bgmStyle`（如紧张场景强制 `tense`）
 6. 游戏内提示文案剧情化
 7. **游戏机制隐喻重新包装**：将模板默认的机制描述替换为剧情化隐喻（如 stardew-fishing "钓鱼" → "心跳同步"），包括计数器 emoji/标签、进度条标签、状态提示文案、combo 描述
-8. **ResultScene 增加剧情结语**：按 S/A/B/C 四档编写不同剧情描述文案（如 S:"你们的心跳完美同步" / C:"心跳快得乱了节奏"）
+8. **ResultScene 增加剧情结语**：按 S/A/B/C 四档编写不同剧情描述文案（如 S:"你们的心跳完美同步" / C:"心跳快得乱了节奏"）。**结语用 narrative overlay 展示**（点"继续"后弹出全屏叠层，点击淡出），不要内联在结算 UI 里（会与按钮重叠）。**不要加下集预告**——结语只聚焦本集情感收束
 9. **按钮/色系可自由调整**：色系不必严格按四大属性（ATK/WIL/INT/CHA）分配，可参考 `packs/attribute-archetypes/STYLE-POLISH-SKILL.md` 自定义 PALETTE、CANDY、按钮渐变色等，让色调完全服务于剧情氛围
+10. **游戏内素材融合**（见 Step 2c）：根据模板融合价值分级，高价值模板（lane-dash/maze-escape/spotlight-seek/qte-boss-parry）必须生成游戏内精灵/图标替换默认色块；中价值模板（stardew-fishing/will-surge/conveyor-sort）推荐生成隐喻物件图标；低价值模板（color-match/red-light-green-light/qte-hold-release/parking-rush）保持程序化渲染
+
+**⚠️ V3 模板必须注入的三大组件**（V3 模板本身不内置这些功能，必须每集手动注入）:
+
+> **原则：V3 模板是纯游戏引擎，不含叙事层。深度定制时必须补齐以下三个组件，否则就是半成品。不要跳过任何一个。不要等用户提醒。**
+
+**组件 A — NarrativeScene（叙事开场 + 结束对话）**:
+- V3 模板只有 `BootScene → GameScene → ResultScene`，**不含 NarrativeScene**
+- 必须注入: ① narrative-overlay CSS（`</style>` 前）② NarrativeScene 类（`class BootScene` 前）③ Phaser config scene 数组加 `NarrativeScene`
+- Scene 顺序改为: `[NarrativeScene, BootScene, GameScene, ResultScene]`
+- NarrativeScene 用于**开场叙事**：自动读取 `CTX.narrative[]`，逐句点击推进，最后淡出进 BootScene
+- 若 `CTX.narrative` 为空，直接跳到 BootScene（兼容无叙事场景）
+- **结束语不用 NarrativeScene**，而是在 ResultScene create() 开头以 overlay 形式展示 `CTX.resultTexts[rating]`（按评级区分内容更有意义）
+- **完整游戏流程**: NarrativeScene(开场) → BootScene → GameScene → ResultScene(评级结语overlay → 结算UI)
+- CSS:
+  ```css
+  .narrative-overlay { position:absolute;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.85);z-index:50;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:40px 32px;cursor:pointer; }
+  .narrative-overlay .narrator { font-weight:800;font-size:14px;color:var(--primary-light,#C4B5FD);letter-spacing:2px;text-transform:uppercase;margin-bottom:16px; }
+  .narrative-overlay .line { font-weight:700;font-size:16px;color:#fff;text-align:center;line-height:1.6;max-width:320px; }
+  .narrative-overlay .tap-hint { position:absolute;bottom:60px;font-weight:700;font-size:12px;color:rgba(255,255,255,0.4);letter-spacing:2px; }
+  ```
+
+**组件 B — initShellDOM 升级（头像图片加载 + 名字）**:
+- V3 模板的 `initShellDOM()` 默认只设置首字母（如 "S"、"⚡"），**不加载头像图片**
+- 必须替换/升级 `initShellDOM()` 为以下版本，使其从 `CTX.portraits` 读取图片 URL:
+  ```javascript
+  function initShellDOM() {
+    $('title-text').textContent = EPISODE_LABEL + ': ' + EPISODE_TITLE;
+    if (CTX.portraits) {
+      ['left','right'].forEach(function(side) {
+        var el = $('portrait-' + side);
+        if (el && CTX.portraits[side]) {
+          el.textContent = '';
+          el.style.backgroundImage = 'url(' + CTX.portraits[side] + ')';
+          el.style.backgroundSize = 'cover';
+          el.style.backgroundPosition = 'center top';
+        }
+      });
+    }
+    if (CTX.names) {
+      var nl = $('name-left'), nr = $('name-right');
+      if (nl && CTX.names.left) nl.textContent = CTX.names.left;
+      if (nr && CTX.names.right) nr.textContent = CTX.names.right;
+    }
+  }
+  ```
+- **注意**: 仅 `will-surge`、`qte-hold-release`、`qte-boss-parry` 三个模板有 portrait DOM 元素，其他 9 个模板无 portrait 区域
+
+**组件 C — ResultScene 结语 overlay（结算 UI 之前展示）**:
+- V3 模板的 ResultScene 只有评级+分数，**不含剧情结语展示**
+- **结语必须在结算画面之前展示**，不要放在"继续"按钮之后
+- 在 ResultScene `create()` 开头注入：先显示 resultTexts overlay，点击后再调用 `showSettlement()` 展示结算 UI
+- 将结算 UI 的渲染逻辑提取为 `showSettlement(T, rating, modifier)` 方法
+  ```javascript
+  create() {
+    // ... 计算 rating, modifier
+    if (CTX.resultTexts && CTX.resultTexts[rating]) {
+      // 先隐藏所有 UI，显示结语 overlay
+      var overlay = document.createElement('div');
+      overlay.className = 'narrative-overlay';
+      overlay.innerHTML = '...' + CTX.resultTexts[rating] + '...<tap-hint>点击查看结算</tap-hint>';
+      overlay.addEventListener('pointerup', function() {
+        overlay.remove();
+        self.showSettlement(T, rating, modifier);
+      });
+    } else {
+      this.showSettlement(T, rating, modifier);
+    }
+  }
+  showSettlement(T, rating, modifier) {
+    // 原来 create() 中的结算 UI 渲染逻辑
+    // "继续"按钮直接 notifyGameComplete，不再弹 overlay
+  }
+  ```
+- ResultScene 全屏矩形 alpha 设为 `0.85`（半透明），让背景图透出来
+- **完整体验流程**: 游戏结束 → 结束语(narrativeOutro) → 评级结语(resultTexts) → 结算UI(评级/星/分数) → 继续
+
+**全文案中文化清单**（每集必须全部替换，不留英文）:
+
+| 位置 | 英文默认 | 中文替换 |
+|------|---------|---------|
+| BootScene 按钮 | START | 开始考验 |
+| BootScene 解锁按钮 | UNLOCK S TIER 🌙 50 | 解锁 S 级 🌙 50 |
+| BootScene 副标题 | Challenge | 考验 |
+| BootScene 说明文案 | Tap to push back... | 剧情化中文描述 |
+| GameScene COPY 对象 | 全英文 | 通过 `CTX.copy` 覆写为剧情化中文 |
+| ResultScene 按钮 | CONTINUE / REPLAY | 继续 / 再来一次 |
+| ResultScene stats | Waves: / Position: | 中文标签 |
+| NarrativeScene 提示 | TAP TO CONTINUE | 点击继续 |
+| ResultScene 结语提示 | — | 点击结束 |
+
+**CTX.copy 字段**（覆写模板 COPY 对象的英文默认值）:
+```javascript
+"copy": {
+  "gameTitle": "意志涌动",           // 或剧情化隐喻名
+  "hint": "连续点击抵抗真相的冲击",    // BootScene dialogue
+  "buttonLabel": "抵抗 ✊",          // GameScene 主按钮
+  "statusHolding": "撑住了",         // 进度良好状态
+  "statusNeutral": "坚守防线",       // 中性状态
+  "statusLosing": "快撑不住了...",   // 进度不佳
+  "surgeWarning": "⚡ 真相冲击 ⚡",  // 冲击波来临（will-surge）
+  "surgeDefeated": "冲击抵御成功"    // 冲击波击退
+}
+```
+每个模板的 COPY 字段不同，需按模板查看默认英文值后逐个覆写。
+
+**素材生成不可省略清单**:
+
+| 素材 | 要求 | 不可用替代 |
+|------|------|-----------|
+| 头像 `avatar-*.png` | 每集必须用 ZenMux Gemini 生成 tight headshot → 绿幕抠图 → 200×200 | ❌ 不可用全身参考图代替（72px圆框里只能看到胸口） |
+| 背景图 `bg-scene.jpg` | 必须用 `sharp.resize(800).jpeg({quality:55})` 真正转为 JPEG | ❌ 不可 PNG 改扩展名（canvas drawImage 会失败导致 kmeans 取色无效） |
+| 背景图格式验证 | 处理后用 `file` 命令或 `sharp.metadata()` 确认 format='jpeg' | ❌ 不可跳过验证 |
+
+**kmeans 动态取色注意事项**:
+- `file://` 协议下 canvas 跨域限制会导致 `drawImage` 失败 → kmeans 取色失效 → 回退到 preset theme
+- **必须通过 `http://localhost` 访问**才能正常取色
+- 验证方式: `preview_inspect` 检查 `--primary` CSS 变量值是否与 preset 默认值不同
+- **resolveTheme 门卫条件已放宽**：原条件 `L>0.40 && L<0.75 && S>0.60` 对暗色背景太严格（如狼人杀场景 L≈0.3），已改为 `L>0.18 && L<0.82 && S>0.30`
+- **paletteToTheme 配色映射**（已优化，避免同色相血条不可区分）：
+  - `playerHp` → `p.primary`（主色，最醒目）
+  - `opponentHp` → `p.secondary`（不同色相，与玩家血条形成对比）
+  - `strokeDark` → `darken(p.accent, 0.25)`
+  - 当背景图色相单一时（如全蓝），extractPalette 的 hueBonus 和 diversity 筛选能选出不同色相的 secondary
+- **CTX 叙事文案**：`narrative`（开场白）+ `resultTexts`（按 S/A/B/C 评级的结语，在结算UI之前展示）。不要搞两层结语，一层按评级区分即可
 
 ### Step 1: 需求分析 & 模板选取
 
@@ -151,10 +285,32 @@ End-to-end workflow for producing a **story-driven customized mini-game** from e
 | Input | Format | Example |
 |-------|--------|---------|
 | 剧情/场景描述 | 自然语言 | "纹身坏男孩找女主麻烦，运动男挺身保护她" |
-| 人物参考图 | PNG/JPG (1-3张) | `data/ep6/character/aiden.jpg` |
-| 背景图 | JPG | `data/ep6/background/bedroom.jpg` |
+| **剧本包（current + next）** | `data/<story>/ep{N}/script.json` | `data/狼人/ep5/script.json`（含 EP5 + EP6 完整剧情与所有变体） |
+| 人物参考图 | PNG/JPG (1-3张) | `data/狼人/ep5/character/Sylvia.png` |
+| 背景图 | JPG / PNG | `data/狼人/ep5/background/银月领地 治疗师小屋.png` |
 | 叙事对白 (可选) | JSON array | `[{speaker, text, portraitUrl?}]` |
 | 游戏机制偏好 (可选) | 关键词 | QTE, 对抗, 闪避 |
+
+> **剧本包结构**：每个 `ep{N}/` 目录含 `script.json` = `{ ep_num, variant, current, next }`。`current` 是本集完整剧本（pre_choice_script / choice_node / post_choice_outcomes），`next` 是下一集所有变体（mainline + minor_mainline）。带 minor_mainline 的集会有独立的 `ep{N}_minor/` 平行目录。
+
+#### Step 1.5: 上下集衔接考量（**新**）
+
+定制化时必须同时参考 `current` 和 `next` 两集剧情，而不仅是本集：
+
+| 考量点 | 如何用 `current` | 如何用 `next` |
+|--------|-----------------|--------------|
+| NarrativeScene 开场基调 | 本集场景/人物情绪定主调 | 无 |
+| GameScene 机制隐喻 | 本集冲突类型选模板 | 无 |
+| ResultScene 结语 tone | 本集 choice_node 的对照结果 | **关键**：S/A/B/C 档结语要为 next 的剧情走向埋钩子；避免和下集开头情绪断裂 |
+| 情绪承接 | 本集收尾情绪 | next 开场情绪——若差距大，ResultScene 要做过渡铺垫 |
+| 角色关系弧线 | 本集新增/变化的关系 | next 是否延续/反转，决定本集结语留白还是收口 |
+| BGM/色调 | 本集氛围定主色 | 若 next 氛围急剧反转，本集结语色可微调向 next 靠拢 |
+
+**checklist**（开始写代码前过一遍）:
+- [ ] 已读 `current.pre_choice_script` + `current.choice_node` + `current.post_choice_outcomes`
+- [ ] 已读 `next.mainline.pre_choice_script`（至少前半段）
+- [ ] ResultScene 的 S/A/B/C 四档结语**至少有一档**显式呼应 next 的开场
+- [ ] 若本集有 minor_mainline 变体，确认当前做的是哪一条分支（看 `script.json.variant`）
 
 4. **模板选取**（从 `packs/attribute-archetypes/` 12 模板中选取）:
 
@@ -176,6 +332,12 @@ End-to-end workflow for producing a **story-driven customized mini-game** from e
 
    **示例**: "坏男孩找女主麻烦，男二保护她" → 关键词: 打架、保护别人、近身对抗 → ATK → `qte-boss-parry`
 
+   **Step 1d: 防连续重复检查**
+   - **相邻两集不得使用同一个模板**。批量定制时先列出全部集的模板分配表，逐对检查
+   - 12 个模板覆盖 21 集必然有复用，但要**交错排列**：如 EP1=hold-release, EP2=will-surge, EP3=red-light, EP4=color-match...
+   - 若某属性（如 WIL）出现频率高，在该属性 3 个模板间轮换，不要连续用同一个
+   - 最终分配表应尽可能多地覆盖 12 个模板（目标 ≥10/12）
+
 5. 读取选中模板的源码：`packs/attribute-archetypes/games/<game-id>/index.html`
 
 ### Step 2: 素材准备 (~10 min)
@@ -190,13 +352,183 @@ End-to-end workflow for producing a **story-driven customized mini-game** from e
    - 人物表情必须匹配剧情 (躲藏→紧张, 战斗→愤怒, 浪漫→温柔)
    - **即使有其他 EP 的素材可复用，表情/姿势不匹配时必须重新生成**。紧张表情的角色图放在甜蜜场景里会破坏沉浸感，省不了这个步骤
    - 甜蜜/浪漫场景建议 prompt 关键词: gentle smile, blushing cheeks, hands clasped shyly, warm caring expression, soft romantic pose
+
+   **1b. 头像素材生成（portrait 圆框用）**:
+   - 模板中 72px 圆形 portrait 框**必须用 tight headshot（大头照）**，全身/半身图在小圆框里只能看到胸口，完全无法辨认
+   - **统一 prompt 模板**（所有角色用同一个，保证构图一致）:
+     ```
+     "Based on this character, generate a tight headshot portrait
+     (face and neck only, very close crop, face fills 80% of the image).
+     Same character face, same hair color and style.
+     Expression: <匹配剧情的表情描述>.
+     Solid bright green #00FF00 chroma key background.
+     No other objects, no body."
+     ```
+   - 用 `--input` 传入全身参考图保证角色一致性
+   - **每集所有角色必须用同一 prompt 模板生成**，只替换表情描述部分，确保构图/裁剪统一
+
 2. **绿幕抠图**: sharp chroma key removal → 验证 `hasAlpha: true`
    - chroma key 阈值: `g > 120 && g > r * 1.3 && g > b * 1.3` (纯绿→透明)
    - 边缘羽化: 近绿区域按 greenness 比例设置 alpha + 去绿溢 (`g = g*0.7 + max(r,b)*0.3`)
    - **验证**: 合成到白底 (`sharp composite`) 检查边缘干净度，确认 `hasAlpha: true`
+
+   **2b. 头像后处理 pipeline（portrait 圆框用）**:
+   ```
+   绿幕 headshot → chroma key → sharp.trim(threshold:10) → 等比缩放到 200x200 → 居中填充
+   ```
+   - `trim()` 去掉透明边缘，消除不同角色构图差异
+   - 缩放时留 10% 边距 (`scale * 0.90`)，避免贴边
+   - 垂直方向偏上放置 (`topOffset = (size - h) * 0.25`)，保证圆框裁切时脸在中心
+   - 输出文件命名: `avatar-<name>.png`（**ASCII 短名**，避免中文路径问题）
+
 3. **背景图**: 直接使用提供的背景图
+   - **压缩为 JPEG**（`sharp.resize(800).jpeg({quality:55})`），控制在 30-60KB
+   - **文件名用 ASCII 短名**（如 `bg-cemetery.jpg`），避免中文+空格路径在 `file://` 或部分 WebView 中加载失败
+
+   **2c. 游戏内素材生成（GameScene Phaser 画布用）**:
+
+   不同模板的 Phaser 游戏区可用 AI 生成素材替换默认的程序化色块，提升沉浸感。按融合价值分三档：
+
+   **🔴 高价值（必须生成）— 素材直接构成游戏核心体验**:
+
+   | 模板 | 替换目标 | 需生成素材 | 尺寸 |
+   |------|---------|-----------|------|
+   | **lane-dash** | 玩家色块矩形 → 角色奔跑精灵 | `sprite-player-run.png` | 64×64 |
+   | | 红色障碍矩形 → 追兵/狼影/路障 | `sprite-obstacle.png` | 64×64 |
+   | **maze-escape** | 白色圆形玩家 → 角色俯视Q版头 | `sprite-player.png` | 40×40 |
+   | | 程序化幽灵 → 狼形/暗影追踪者 | `sprite-ghost.png` | 40×40 |
+   | | 程序化钥匙 → 故事道具（信物/月光钥匙） | `sprite-key.png` | 30×30 |
+   | | 程序化出口 → 光门/逃生出口 | `sprite-exit.png` | 40×40 |
+   | **spotlight-seek** | 暗色格子 → 目标角色正面头像 | `target-<name>.png` | 72×72 |
+   | | 空格子 → 干扰剪影（其他角色模糊影子） | `decoy-1~3.png` | 72×72 |
+   | **qte-boss-parry** | 色块 Boss 圆形 → 攻击姿势剪影 | `sprite-boss-attack.png` | 80×80 |
+   | | 纯文字按钮 → 动作图标 | `icon-parry/dodge/block.png` | 32×32 |
+
+   **🟡 中价值（推荐生成）— 增加剧情代入感**:
+
+   | 模板 | 替换目标 | 需生成素材 | 尺寸 |
+   |------|---------|-----------|------|
+   | **stardew-fishing** | 鱼 emoji 🐟 → 剧情隐喻物件 | `sprite-catch.png`（如真相碎片/内狼/信件） | 30×30 |
+   | **will-surge** | 程序化发光核心 → 狼族徽记/月亮符号 | `sprite-core.png` | 70×70 |
+   | **conveyor-sort** | 包裹 emoji → 故事相关分类物件 | `item-<type>.png`×4（如信件/证据/草药/地图） | 44×34 |
+
+   **🟢 低价值（保持程序化渲染）— 加图片反而降低可读性**:
+
+   | 模板 | 不加素材的理由 |
+   |------|---------------|
+   | **color-match** | 玩法核心是颜色辨识，图片干扰判断 |
+   | **red-light-green-light** | 核心是节奏感知，视觉越简洁越好 |
+   | **qte-hold-release** | 已有 portrait + gauge 提供叙事感，蓄力条是交互焦点 |
+   | **parking-rush** | 空间谜题，抽象方块更清晰 |
+
+   **游戏内素材 Prompt 模板**:
+
+   ```
+   # 角色精灵 (Sprite) — lane-dash / maze-escape 用
+   [--input 传入角色参考图]
+   "Based on this character, generate a small chibi/SD game sprite.
+   [Side view / Top-down view] pose: [running / standing / attacking].
+   Expression: [desperate / determined / gentle].
+   Simple clean anime style, minimal detail, suitable for 64x64 display.
+   Solid bright green #00FF00 chroma key background.
+   Single character only, no other objects, no text."
+
+   # 物件图标 (Icon) — stardew-fishing / conveyor-sort / maze-escape 用
+   "Simple flat icon of a [wolf paw print / crescent moon / sealed letter /
+   glass potion bottle], clean vector style, single object centered,
+   solid bright green #00FF00 background, no shadow, no text.
+   Suitable for 40x40 pixel display."
+
+   # 游戏内头像 (Game Portrait) — spotlight-seek 用
+   [--input 传入角色参考图]
+   "Based on this character, generate a front-facing portrait
+   (face only, centered, face fills 90% of frame).
+   Expression: [menacing / worried / warm smile].
+   Solid bright green #00FF00 chroma key background.
+   No body, no accessories, no text."
+
+   # 剪影 (Silhouette) — spotlight-seek 干扰项 / lane-dash 障碍用
+   "Dark shadowy silhouette of an anime [wolf / running figure /
+   hooded person], pure black with slight purple edge glow,
+   transparent background PNG style on green #00FF00 background.
+   Mysterious, ominous feel. 64x64 scale."
+   ```
+
+   **游戏内素材后处理 pipeline**:
+   ```
+   绿幕素材 → chroma key 抠图（同 Step 2 标准流程）
+     → sharp.trim(threshold:10)        # 去透明边缘
+     → sharp.resize(targetW, targetH, { fit:'contain', background: transparent })
+     → 输出到 game/ 目录: sprite-xxx.png / icon-xxx.png / target-xxx.png
+   ```
+
+   **Phaser 集成方式**:
+   ```javascript
+   // BootScene preload — 加载游戏内素材
+   this.load.image('player', 'sprite-player-run.png');
+   this.load.image('obstacle', 'sprite-obstacle.png');
+
+   // GameScene create — 替换程序化图形
+   // 原: this.add.rectangle(x, y, 40, 64, 0xffffff)
+   // 改: this.add.image(x, y, 'player').setDisplaySize(40, 64)
+   ```
 
 > 详细 pipeline 见下方 **Asset Generation & Processing Pipeline** 章节。
+
+   **2d. 素材校验 checklist（生成后强制执行）**:
+
+   > **每个 ep 的素材必须全部通过以下校验才能进入 Step 3。批量生成时对所有 ep 逐一检查。不通过 = 不合格，必须返回 Step 2 重新处理。**
+
+   **自动校验脚本**（在项目根目录运行）：
+   ```bash
+   for ep in data/<story>/ep*/game; do
+     echo "=== $(basename $(dirname $ep)) ==="
+     # 1. 头像校验
+     for avatar in "$ep"/avatar-*.png; do
+       [ -f "$avatar" ] || continue
+       node -e "
+         const s=require('sharp');
+         s('$avatar').metadata().then(m=>{
+           const ok = m.width===200 && m.height===200 && m.hasAlpha;
+           console.log('  '+'$(basename $avatar)'+': '+m.width+'x'+m.height+' alpha='+m.hasAlpha+' '+(ok?'✓ PASS':'✗ FAIL'));
+         })
+       "
+     done
+     # 2. 背景图校验
+     for bg in "$ep"/bg-scene.jpg "$ep"/bg-*.jpg; do
+       [ -f "$bg" ] || continue
+       node -e "
+         const s=require('sharp');
+         s('$bg').metadata().then(m=>{
+           const sizeKB = require('fs').statSync('$bg').size/1024;
+           const ok = m.format==='jpeg' && m.width<=800 && sizeKB<80;
+           console.log('  '+'$(basename $bg)'+': '+m.width+'x'+m.height+' '+m.format+' '+Math.round(sizeKB)+'KB '+(ok?'✓ PASS':'✗ FAIL'));
+         })
+       "
+     done
+   done
+   ```
+
+   **校验清单**：
+
+   | # | 素材 | 合格标准 | 不合格常见原因 |
+   |---|------|---------|-------------|
+   | 1 | `avatar-*.png` 尺寸 | **200×200** | 用了全身参考图（768×1376），没跑 headshot pipeline |
+   | 2 | `avatar-*.png` alpha | **hasAlpha = true** | 没走绿幕 chroma key 抠图 |
+   | 3 | `avatar-*.png` 文件大小 | **< 100KB** | 全身图原图 ~1MB，说明没做 trim+缩放 |
+   | 4 | `avatar-*.png` 是 headshot | **人脸占画面 80%+** | 全身/半身图在 72px 圆框里只能看到胸口 |
+   | 5 | `bg-scene.jpg` 格式 | **format = jpeg**（真正的 JPEG） | PNG 改扩展名为 .jpg，canvas drawImage 会失败 |
+   | 6 | `bg-scene.jpg` 尺寸 | **width ≤ 800, < 80KB** | 没跑 `sharp.resize(800).jpeg({quality:55})` |
+   | 7 | `bg-main.png` 不存在于 game/ | game/ 里应只有处理后的 bg-scene.jpg | bg-main.png 是原图（~1.4MB），不应出现在 game/ |
+   | 8 | 游戏内精灵（高价值模板） | `sprite-*.png` / `icon-*.png` 存在 | 高价值模板（lane-dash/maze-escape/spotlight-seek/qte-boss-parry）必须有精灵文件 |
+   | 9 | 游戏内精灵 alpha | **hasAlpha = true** | 没走绿幕抠图 pipeline |
+   | 10 | 表情匹配剧情 | 目视检查：表情与场景氛围一致 | 跨 ep 复用素材时紧张表情出现在甜蜜场景 |
+
+   **批量素材处理要点**：
+   - **不可直接把参考图复制为 avatar**。每个角色每集必须经过完整 pipeline：ZenMux headshot 生成 → 绿幕抠图 → trim → 200×200 居中
+   - **跨 ep 复用头像时**：如果同一角色在不同 ep 的情绪相近（都是紧张），可以复用同一个处理后的 200×200 headshot。但如果情绪不同（紧张 vs 温柔），必须用不同的表情重新生成
+   - **bg-main.png 是原图，bg-scene.jpg 是处理后的**：game/ 目录下只应存在 bg-scene.jpg（已压缩转码），bg-main.png 应留在 ep 根目录不进 game/
+   - **素材处理应脚本化**：写一个 `scripts/process-ep-assets.js` 统一处理，避免手动操作遗漏。脚本应接受 ep 目录作为参数，自动完成 headshot 裁剪 + 抠图 + 背景图转码
 
 ### Step 3: 音频集成 (~10 min)
 
@@ -216,15 +548,51 @@ Freesound API 搜索 → 下载预览 → FreesoundAudio 类集成
 
 ### Step 4: 游戏实现 (~30 min)
 
-1. **基于 Step 1 选中的模板起步**: 复制 `packs/attribute-archetypes/games/<game-id>/index.html` 到 `games/<new-game-id>/`，在此基础上改编
-2. **Scene 顺序**: `BootScene` → `NarrativeScene` → `GameScene` → `ResultScene`
-3. **叙事开场 overlay**: 支持 `CTX.narrative` 自定义对白, 点击推进, 最后一句淡出
+1. **基于 Step 1 选中的模板起步**: 复制 `packs/attribute-archetypes/games/<game-id>/index-v3.html` 到 `data/<story>/ep{N}/game/index.html`，在此基础上注入
+2. **注入三大组件**（深度定制化必须，见上方 ⚠️ 节）: NarrativeScene 类+CSS → initShellDOM 升级 → ResultScene 结语 overlay
+3. **Scene 顺序**: `NarrativeScene` → `BootScene` → `GameScene` → `ResultScene`（NarrativeScene 在最前，V3 模板默认不含需手动加入 scene 数组）
+4. **叙事开场**: NarrativeScene 读取 `CTX.narrative` 自定义对白, 点击推进, 最后一句淡出进 BootScene
+5. **全文案中文化**: 注入 `CTX.copy` 覆写 COPY 对象 + 替换 BootScene/ResultScene 中硬编码的英文按钮/标签（见中文化清单）
 4. **核心机制**:
    - 每个阶段必须有 **有意义的决策** (不是无脑点击)
    - 操作错误必须有 **明确惩罚** (tension 增加, 扣分, 屏幕震动)
    - 关键资源 (耐力/时间) 必须是 **有限的**
 5. **音频**: BGM 首次交互后播放全程循环; SFX 绑定游戏事件; 处理 AudioContext suspended
 6. **角色素材**: `this.load.image()` 在线加载; 保持原始宽高比
+
+### Step 4b: 批量生成工作流（多集定制化）
+
+> **此步骤适用于一次性定制多集（≥3 集）游戏的场景。单集定制跳过此步。**
+
+**⚠️ 批量生成的核心陷阱：脚本只替换数据，不替换代码。** 上一次翻车就是因为批量脚本只注入了 CTX 数据块，但没有注入三大组件（NarrativeScene 类 / CSS / ResultScene overlay），导致 ep3-ep20 全部缺少开头结尾衔接。
+
+**强制工作顺序**（不可调换）：
+
+1. **先完成 1 个标杆 ep 的完整深度定制**（含三大组件注入 + 浏览器验证通过）
+2. **验证标杆 ep** — 在浏览器中确认：开场叙事可点击推进 → 游戏正常 → 结语 overlay 在结算前展示 → 中文按钮
+3. **以验证通过的标杆 ep 作为母版**运行批量脚本
+4. **批量脚本必须保留母版的所有代码结构**，只替换 CTX 数据块和少量文本；不可用 regex 意外破坏 NarrativeScene 类或 CSS
+5. **脚本运行后立即执行 Step 7b 校验**，不通过则报错中断
+
+**批量脚本 generateGame() 末尾必须包含校验**：
+```javascript
+// 生成后强制校验 — 缺一不可
+const REQUIRED_CHECKS = [
+  ['class NarrativeScene',        '组件A: NarrativeScene 类'],
+  ['narrative-overlay',           '组件A: narrative-overlay CSS'],
+  ['NarrativeScene, BootScene',   'Scene 数组含 NarrativeScene'],
+  ['resultTexts[rating]',         '组件C: resultTexts overlay'],
+  ['backgroundImage',             '组件B: initShellDOM 头像加载'],
+];
+for (const [needle, label] of REQUIRED_CHECKS) {
+  if (!html.includes(needle)) throw new Error(`EP${ep} 缺少 ${label}`);
+}
+```
+
+**模板多样性强制规则**：
+- 全集覆盖 ≥10/12 种模板，单模板使用 ≤3 次
+- 相邻集（epN 与 epN+1）**禁止**使用同一模板
+- 脚本生成前打印模板分配表，人工确认后再运行
 
 ### Step 5: 难度调校 (~15 min)
 
@@ -264,6 +632,84 @@ Freesound API 搜索 → 下载预览 → FreesoundAudio 类集成
 5. `preview_eval` → 程序化验证机制 (热区/冷区/惩罚/评分门槛)
 6. `preview_console_logs` → 无 JS 错误
 
+### Step 7b: 批量生成后强制校验（多集定制化必须）
+
+> **每次批量生成后必须执行此校验。不通过则不允许提交或标记完成。**
+
+**自动校验脚本**（对所有生成的 ep 逐一检查）：
+```bash
+# 在项目根目录运行
+for f in data/<story>/ep*/game/index.html; do
+  echo "=== $f ==="
+  grep -c "class NarrativeScene"   "$f" | xargs -I{} echo "  NarrativeScene class: {}"
+  grep -c "narrative-overlay"      "$f" | xargs -I{} echo "  narrative-overlay CSS: {}"
+  grep -c "NarrativeScene, Boot"   "$f" | xargs -I{} echo "  Scene array OK: {}"
+  grep -c "resultTexts\[rating\]"  "$f" | xargs -I{} echo "  resultTexts overlay: {}"
+  grep -c "backgroundImage"        "$f" | xargs -I{} echo "  Portrait loading: {}"
+  grep -c "开始考验\|继续\|再来一次" "$f" | xargs -I{} echo "  Chinese copy: {}"
+done
+```
+
+**校验清单**（每项必须 >0，否则该 ep 不合格）：
+
+| # | 检查项 | grep 关键词 | 不通过说明 |
+|---|--------|------------|-----------|
+| 1 | NarrativeScene 类存在 | `class NarrativeScene` | 开场叙事不会显示 |
+| 2 | narrative-overlay CSS | `.narrative-overlay` | overlay 无样式，显示为裸文本 |
+| 3 | Scene 数组含 NarrativeScene | `NarrativeScene, BootScene` | 游戏跳过叙事直接开始 |
+| 4 | resultTexts overlay 代码 | `resultTexts[rating]` | 结算前无剧情结语 |
+| 5 | initShellDOM 加载头像 | `backgroundImage` | 头像框只显示首字母 |
+| 6 | 中文按钮文案 | `开始考验` 或 `继续` | 按钮还是英文 START/CONTINUE |
+| 7 | drawSceneBg（如有背景图） | `drawSceneBg` | 背景图不会渲染到各 Scene |
+
+**素材校验**（与代码校验同等重要，同时执行）：
+
+```bash
+# 素材校验脚本 — 在代码校验之后立即运行
+for ep in data/<story>/ep*/game; do
+  echo "=== $(basename $(dirname $ep)) ==="
+  # 头像: 必须 200x200 + hasAlpha
+  for a in "$ep"/avatar-*.png; do
+    [ -f "$a" ] || continue
+    node -e "require('sharp')('$a').metadata().then(m=>{
+      const ok=m.width===200&&m.height===200&&m.hasAlpha;
+      const kb=Math.round(require('fs').statSync('$a').size/1024);
+      console.log('  avatar: '+m.width+'x'+m.height+' alpha='+m.hasAlpha+' '+kb+'KB '+(ok?'✓':'✗ FAIL'))
+    })"
+  done
+  # 背景图: 必须真 JPEG + ≤800px + <80KB
+  [ -f "$ep/bg-scene.jpg" ] && node -e "require('sharp')('$ep/bg-scene.jpg').metadata().then(m=>{
+    const kb=Math.round(require('fs').statSync('$ep/bg-scene.jpg').size/1024);
+    const ok=m.format==='jpeg'&&m.width<=800&&kb<80;
+    console.log('  bg: '+m.width+'x'+m.height+' '+m.format+' '+kb+'KB '+(ok?'✓':'✗ FAIL'))
+  })"
+  # bg-main.png 不应在 game/ 里
+  [ -f "$ep/bg-main.png" ] && echo "  ✗ FAIL: bg-main.png 原图不应在 game/ 目录"
+done
+```
+
+| # | 素材检查项 | 合格标准 | 不合格 = 没跑素材 pipeline |
+|---|-----------|---------|--------------------------|
+| 8 | 头像尺寸 | 200×200 | 768×1376 = 全身原图，没做 headshot |
+| 9 | 头像 alpha | hasAlpha = true | false = 没走绿幕抠图 |
+| 10 | 头像文件大小 | < 100KB | ~1MB = 原图未处理 |
+| 11 | bg-scene.jpg 格式 | format=jpeg, width≤800, <80KB | PNG 改扩展名 / 未压缩 |
+| 12 | bg-main.png 不在 game/ | game/ 只有处理后素材 | 原图泄漏到 game/ 目录 |
+| 13 | 高价值模板有游戏精灵 | sprite-*.png 存在 | lane-dash/maze-escape 等没有精灵文件 |
+
+**抽样浏览器验证**（至少 3 个 ep，覆盖首/中/尾）：
+1. 打开 ep → 看到开场叙事 overlay → 点击推进 2-3 句 → 淡出进游戏
+2. 完成游戏 → 看到评级结语 overlay → 点击后看到结算 UI
+3. 按钮全部为中文
+4. 头像圆框显示**图片**（非首字母），图片是大头照不是胸口截断
+5. 背景图可见（淡显 opacity 0.20），不是纯色
+
+**模板多样性验证**：
+```bash
+# 检查模板分配：统计各模板使用次数，确认 ≥10 种且无相邻重复
+grep -l "cannon-aim\|color-match\|conveyor-sort\|lane-dash\|maze-escape\|..." data/<story>/ep*/game/index.html
+```
+
 ### Step 8: 收尾 & 更新
 
 1. Update `list.md` if game inventory changed.
@@ -292,7 +738,11 @@ games/<game-id>/
 | 选取 | 凭感觉选模板不查 manifest | 必须读 selection-manifest.json 的 keywordsZh 匹配 |
 | 部署 | OSS 资源 URL 404 | 先 `oss-upload.js` 上传，再替换 HTML 中的 URL |
 | 部署 | 跨域问题 | OSS Bucket 必须设 public-read ACL |
-| 叙事 | 全身人物图在小圆框里裁切怪异 | 大卡片(240x320)+顶部锚点; 小框干脆不放 |
+| 叙事 | 全身人物图在小圆框里裁切怪异 | 72px portrait 圆框**必须用 tight headshot 大头照**，不要全身/半身。用 Step 2b pipeline 统一生成 |
+| 素材 | 各角色头像构图/裁剪不统一 | 所有角色用**同一个 prompt 模板**只替换表情描述，再经 trim→居中 pipeline 统一化 |
+| 素材 | 图片路径含中文/空格导致 file:// 或 WebView 加载失败 | 压缩后重命名为 ASCII 短名（`avatar-sylvia.png`, `bg-cemetery.jpg`），放在 `game/` 同目录 |
+| 深度定制 | 改了按钮布局/仪表盘位置导致 UI 混乱 | **不改原模板 UI/UX 布局**，只通过 `CTX` 注入数据 + 选 theme 配色 |
+| 深度定制 | 背景图 opacity 设太高，UI 不可读 | V3 cover-layer 默认 `opacity: 0.20` 已是合适的淡显效果，不要超过 0.25 |
 | 叙事 | NarrativeScene 结束后 GameScene 的 isOver 导致 win 回调跳过 | 加 `_winning` 标记位，win 路径绕过 `finishGame` |
 | 叙事 | 白底人物 JPG 和深色背景冲突 | 白底只配浅/奶油背景; 或用绿幕流程抠图 |
 | 叙事 | ResultScene 强塞人物头像效果差 | 不合适就不放——"搞不好就别放" |
@@ -309,6 +759,36 @@ games/<game-id>/
 | 深度定制 | 游戏机制文案还是英文/模板默认 | 计数器 emoji、进度条标签、状态文案、combo 描述全部替换为剧情化隐喻（如钓鱼→心跳同步） |
 | 深度定制 | ResultScene 只有冰冷的评分数字 | 增加 `resultTexts` 按 S/A/B/C 四档展示不同剧情结语，让结算有情感共鸣 |
 | 深度定制 | 色系死板跟属性走，甜蜜场景用了暗色 | 色系服务于剧情氛围，不必按四大属性分配；参考 `STYLE-POLISH-SKILL.md` 自由调整 |
+| 深度定制 | ResultScene 结语文字和按钮重叠 | 结语用 **narrativeOutro** 在结算前展示（GameScene→NarrativeScene→ResultScene），不要放在 ResultScene 的"继续"按钮后 |
+| 深度定制 | ResultScene 背景图消失 | ResultScene 的全屏矩形要设 `alpha: 0.85`（半透明），不是 `1`（不透明），否则盖住 cover-layer |
+| 深度定制 | 结尾加了下集预告剧透 | **不要加下集预告**。结语只聚焦本集情感收束，不剧透下集内容 |
+| 深度定制 | 不用 kmeans 动态取色，手选 preset 配色不搭 | 优先用 `CTX.coverImage` 触发 kmeans 动态取色，让配色自动匹配背景图氛围；preset theme 只作 fallback |
+| 深度定制 | 所有模板都不加游戏内素材，全是色块 | 按 Step 2c 分级：高价值模板（lane-dash/maze-escape/spotlight-seek/qte-boss-parry）**必须**生成精灵替换色块 |
+| 深度定制 | color-match/parking-rush 等低价值模板硬加图片 | 抽象机制的模板保持程序化渲染，加图片反而降低可读性和游戏性 |
+| 深度定制 | 游戏内精灵太大/太小导致碰撞判定异常 | 精灵用 `setDisplaySize()` 匹配原色块尺寸，不改碰撞体 hitArea |
+| 深度定制 | 游戏内精灵没走绿幕流程，白底残留 | 所有游戏内素材统一走 Step 2 绿幕→抠图 pipeline |
+| 选取 | 批量定制 21 集全用同一个模板 | **必须**按 Step 1a-1d 为每集独立选模板，相邻集不得重复，目标覆盖 ≥10/12 模板 |
+| 深度定制 | 直接用 character/ 全身图当头像，72px 圆框只能看到胸口 | 头像**必须每集用 ZenMux 生成 tight headshot**，走完绿幕→抠图→200×200 pipeline，不可跳过 |
+| 深度定制 | 背景图 PNG 直接改扩展名为 .jpg | 必须用 `sharp.resize(800).jpeg({quality:55})` **真正转码**为 JPEG；否则 canvas drawImage 失败导致 kmeans 取色无效 |
+| 批量素材 | 把全身参考图直接复制为 avatar-xxx.png | 每个头像**必须走完整 pipeline**：ZenMux headshot → 绿幕抠图 → trim → 200×200 居中（见 Step 2b） |
+| 批量素材 | 所有 ep 复用同一张头像，不管表情是否匹配 | 情绪相近可复用；情绪不同（紧张 vs 温柔）必须重新生成 headshot |
+| 批量素材 | bg-main.png 原图直接放进 game/ 目录 | 原图留在 ep 根目录；game/ 只放 `sharp.resize(800).jpeg({quality:55})` 处理后的 bg-scene.jpg |
+| 批量素材 | 素材处理全靠手动，批量时忘了跑 | 写 `scripts/process-ep-assets.js` 脚本统一处理，批量生成流程中自动调用 |
+| 批量素材 | 生成后不校验素材规格 | 必须执行 Step 2d 校验脚本，所有 avatar 200×200 + alpha + <100KB 才算通过 |
+| 批量生成 | 脚本只替换 CTX 数据，不注入三大组件代码 | 必须以**验证通过的标杆 ep** 作为母版；脚本只替换 CTX 块和文本，不可破坏已有的 NarrativeScene/CSS/overlay 代码（见 Step 4b） |
+| 批量生成 | 先批量生成，再手动修标杆 ep，不回头更新其他 ep | 强制顺序：先完成+验证标杆 ep → 再批量生成 → 再 Step 7b 校验全部 ep |
+| 批量生成 | 批量生成后不校验，直接标记完成 | 必须执行 Step 7b 校验脚本，所有 ep 通过后才能继续 |
+| 批量生成 | 全集用同一个模板（如 21 集全用 qte-hold-release） | 必须覆盖 ≥10/12 模板，单模板 ≤3 次，相邻集不重复（见 Step 4b 模板多样性规则） |
+| 批量生成 | cannon-aim 等模板被过度使用（5+ 次） | 单模板上限 3 次；若超出则重新分配，优先补充未使用的模板 |
+| 深度定制 | V3 模板没有 NarrativeScene，跳过不加 | V3 模板**必须注入三大组件**：NarrativeScene 类 + initShellDOM 升级 + ResultScene 结语 overlay（见深度定制化额外步骤 ⚠️ 节） |
+| 深度定制 | initShellDOM 只显示首字母（"S"/"⚡"），没加载头像图片 | 必须替换 initShellDOM 为升级版，通过 `CTX.portraits` 设置 `backgroundImage`（见组件 B） |
+| 深度定制 | ResultScene 点"继续"后没有剧情结语，直接结束 | 必须注入 narrative overlay 读取 `CTX.resultTexts[rating]`（见组件 C） |
+| 深度定制 | 按钮/文案留着英文默认值（START/CONTINUE/Challenge） | 全部替换为中文：开始考验/继续/再来一次/考验；通过 `CTX.copy` 覆写模板 COPY 对象 |
+| 深度定制 | kmeans 取色在本地 file:// 打开时不生效 | `file://` 下 canvas 跨域限制导致 drawImage 失败；**必须通过 localhost 访问验证**取色效果 |
+| 深度定制 | 暗色背景图 kmeans 取色失败回退到 preset | resolveTheme 门卫条件原为 `L>0.40 S>0.60` 对暗色图太严格；已放宽至 `L>0.18 S>0.30` |
+| 深度定制 | 我方/对方血条颜色太接近分不清 | paletteToTheme 已改：playerHp→primary, opponentHp→**secondary**（不同色相），strokeDark→darken(accent) |
+| 深度定制 | 结语在结算画面之后展示（点"继续"才弹出） | `resultTexts` 必须在结算UI**之前**展示：ResultScene create() 开头弹 overlay，点击后才渲染结算UI |
+| 深度定制 | 设计了两层结语（narrativeOutro + resultTexts） | **只用一层 `resultTexts`**（按 S/A/B/C 区分），不要加 narrativeOutro，两层连续点击体验差 |
 
 ## Episode Skin Pattern (叙事包装)
 
@@ -317,15 +797,68 @@ games/<game-id>/
 模板是已经调优的游戏引擎，**不要大改**。Episode 只添加叙事外壳：
 
 ```
-BootScene → [NarrativeScene] → GameScene → ResultScene
+NarrativeScene(开场白) → BootScene → GameScene → ResultScene(评级结语overlay → 结算UI)
 ```
 
 - **NarrativeScene** 是唯一新增 Scene（视觉小说对话过场）
 - **普通定制化**: 模板改动仅两行 (BootScene START 目标 + Phaser config scene 数组)
-- **深度定制化**: 额外 ~36 行 (drawSceneBg 函数 + 色值覆写 + 背景加载)
-- 资产通过 `EP` 常量注入，不影响模板逻辑
+- **深度定制化（V3 模板）**: 只需注入 `window.__EPISODE_CTX__`，**不改模板 UI/UX 布局**
+- V3 模板内置 `coverImage` 背景 + 动态 palette 提取 + 7 preset theme，不需要自建 `drawSceneBg`
+- 资产通过 `CTX` / `EP` 常量注入，不影响模板逻辑
 
-### EP 常量结构
+### V3 CTX 注入结构（深度定制化首选）
+
+V3 模板（`index-v3.html`）通过 `window.__EPISODE_CTX__` 注入定制数据，模板代码零改动：
+
+```javascript
+window.__EPISODE_CTX__ = {
+  character: { name: 'Sylvia' },        // 主角名（显示在属性文案中）
+  attribute: '意志',                     // 属性中文名
+  episodeLabel: 'EP 1',                 // 标题栏前缀
+  episodeTitle: '沉默的力量',            // 标题栏标题
+  coverImage: 'bg-scene.jpg',          // 背景图（必须真正 JPEG，不可 PNG 改扩展名）
+  theme: 'dark',                        // 7 选 1 fallback: combat/mystery/nature/dark/sweet/ocean/energy
+  portraits: {                          // 72px 圆框头像（必须用 Step 2b tight headshot，不可用全身图）
+    left: 'avatar-sylvia.png',          // 200×200 透明 PNG，ZenMux 生成 → 绿幕抠图 → trim → 居中
+    right: 'avatar-james.png'
+  },
+  names: { left: 'Sylvia', right: 'James' },  // 替换默认 Player/Boss
+  narrative: [                              // 开场对白（2-3句，点击推进，最后淡出进 BootScene）
+    { speaker: 'Sylvia', text: '他跪在新坟旁，双臂揽着另一个女人。\n而我挺着七个月的肚子，站在三米外。' },
+    { speaker: '', text: '风把Kennedy的哭声送过来。\nJames的手一直没有松开。' },
+    { speaker: 'Sylvia', text: '压住情绪。在正确的时机开口。' }
+  ],
+  resultTexts: {                            // S/A/B/C 四档剧情结语（ResultScene 开头 overlay 展示，在结算UI之前）
+    S: '你的沉默比任何质问都响。James终于无法忽视你的存在——\n你不需要他的答案了。',
+    A: '你站在那里，记住了一切。\n下一次对峙，你不会再沉默。',
+    B: '风还在吹。你站在原地没有离开，\n但心里已经开始记录每一个细节。',
+    C: '你的声音被风压住了。\n但至少——你没有转身离开。'
+  },
+  copy: {                                   // 覆写模板 COPY 对象（全中文化 + 剧情化隐喻）
+    gameTitle: '沉默的力量',                  // 替换模板默认英文标题
+    hint: '长按蓄力，压住内心的波澜',          // BootScene dialogue（中文 + 剧情化）
+    buttonLabel: '蓄力 ✊',                  // GameScene 主按钮
+    statusHolding: '撑住了',                 // 每个模板字段不同，需逐个查看替换
+    statusNeutral: '坚守防线',
+    statusLosing: '快撑不住了...'
+  }
+};
+```
+
+**配色机制**: `coverImage` 设置后，模板自动 kmeans 聚类提取背景图 primary/accent/secondary 三组色，分别映射到不同 UI 元素（playerHp→primary, opponentHp→secondary, strokeDark→darken(accent)），确保色相对比明显。门卫条件已放宽至 `L>0.18 && S>0.30`，暗色背景也能正常取色。若仍不达标，自动 fallback 到 `theme` 字段指定的 preset。不想动态取色时，不设 `coverImage`，仅用 `theme`。
+
+**结语展示**: `resultTexts` 的内容通过 narrative overlay 展示（点"继续"后弹出全屏叠层，点击淡出），不要内联在结算 UI 里。**不要加下集预告**。
+
+**资源文件全部放在 `game/` 同目录下**，使用 ASCII 短名：
+```
+data/<story>/ep{N}/game/
+  index.html         # 模板副本 + CTX 注入
+  bg-cemetery.jpg     # 背景图（800px JPEG, 30-60KB）
+  avatar-sylvia.png   # 大头照头像（200x200 PNG, 40-60KB）
+  avatar-james.png
+```
+
+### EP 常量结构（旧版 V1/V2 模板）
 
 **普通定制化** — 基础字段:
 
@@ -1229,7 +1762,7 @@ ZENMUX_API_KEY=$KEY node scripts/zenmux-image.js \
   --prompt "Generate this exact same character in a [DESIRED POSE]. Place on a SOLID BRIGHT GREEN (#00FF00) chroma key background. Full body view, anime style." \
   --input data/ep5/character/reference.jpg \
   --out data/ep5/processed/character_green.png \
-  --model google/gemini-2.5-flash-image
+  --model google/gemini-3.1-flash-image-preview
 ```
 
 **Prompt guidelines for pose generation**:
@@ -1241,11 +1774,7 @@ ZENMUX_API_KEY=$KEY node scripts/zenmux-image.js \
 - **NO objects or props** — no weapons, furniture, vehicles, animals, or handheld items. The character should be standing/posing with empty hands unless the prop is integral to the character's identity (e.g., a signature accessory).
 - Never ask for scene elements (cars, rain, buildings) — those go in the game background
 
-**Available models** (via `scripts/zenmux-image.js`):
-| Model | Speed | Quality | Use Case |
-|-------|-------|---------|----------|
-| `google/gemini-2.5-flash-image` | Fast | Good | Default, pose generation |
-| `google/gemini-3-pro-image-preview` | Slow | Best | High-quality hero assets |
+**Image model** (via `scripts/zenmux-image.js`): `google/gemini-3.1-flash-image-preview`
 
 **ZenMux Vertex AI Protocol**:
 - Endpoint: `POST https://zenmux.ai/api/vertex-ai/v1beta/models/{model}:generateContent`
@@ -1403,8 +1932,7 @@ ZENMUX_API_KEY=sk-...    # ZenMux proxy for Gemini models (game selection, copy 
 |------|-------|----------------|
 | Game selection (LLM) | `google/gemini-3.1-pro-preview` | `scripts/build-episode-game.js` |
 | Copy generation | `google/gemini-2.5-flash` | `scripts/build-episode-game.js` |
-| Image generation | `google/gemini-2.5-flash-image` | `scripts/zenmux-image.js` |
-| High-quality image | `google/gemini-3-pro-image-preview` | `scripts/zenmux-image.js` |
+| Image generation | `google/gemini-3.1-flash-image-preview` | `scripts/zenmux-image.js` |
 
 ---
 

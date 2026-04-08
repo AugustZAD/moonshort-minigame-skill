@@ -8,16 +8,12 @@
  * Usage:
  *   node scripts/zenmux-image.js --prompt "a cat" --out out.png
  *   node scripts/zenmux-image.js --prompt "remove background" --input char.jpg --out char_nobg.png
- *   node scripts/zenmux-image.js --prompt "..." --model google/gemini-3-pro-image-preview --out hq.png
+ *   node scripts/zenmux-image.js --prompt "..." --out hq.png
  *
  * Environment:
  *   ZENMUX_API_KEY   Required
  *
- * Models:
- *   google/gemini-2.5-flash-image         (fast, cheap)
- *   google/gemini-2.5-flash-image-free    (free tier)
- *   google/gemini-3-pro-image-preview     (highest quality)
- *   google/gemini-3-pro-image-preview-free
+ * Model: google/gemini-3.1-flash-image-preview
  */
 
 'use strict';
@@ -38,15 +34,12 @@ function getArg(flag) {
 const PROMPT  = getArg('--prompt');
 const INPUT   = getArg('--input');
 const OUT     = getArg('--out') || 'generated.png';
-const MODEL   = getArg('--model') || 'google/gemini-2.5-flash-image';
+const MODEL   = getArg('--model') || 'google/gemini-3.1-flash-image-preview';
 const API_KEY = process.env.ZENMUX_API_KEY;
 
 if (!PROMPT) {
   console.error('Usage: ZENMUX_API_KEY=... node scripts/zenmux-image.js --prompt "..." [--input img.jpg] [--out out.png] [--model ...]');
-  console.error('\nModels:');
-  console.error('  google/gemini-2.5-flash-image          (fast, default)');
-  console.error('  google/gemini-3-pro-image-preview      (best quality)');
-  console.error('  google/gemini-3-pro-image-preview-free (free tier)');
+  console.error('\nModel: google/gemini-3.1-flash-image-preview (default)');
   process.exit(1);
 }
 if (!API_KEY) {
