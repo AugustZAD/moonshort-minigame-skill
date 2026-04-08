@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no,viewport-fit=cover">
-<title>精准射击</title>
+<title>迈出第一步</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700;800;900&display=swap" rel="stylesheet">
@@ -225,7 +225,7 @@
   <div id="phaser-container"></div>
 
   <!-- Title bar -->
-  <div class="title-bar"><span class="title-text" id="title-text">精准射击</span></div>
+  <div class="title-bar"><span class="title-text" id="title-text">迈出第一步</span></div>
 
   <!-- Info strip -->
   <div class="info-strip hidden" id="info-strip">
@@ -240,7 +240,7 @@
   <div class="combo-text hidden" id="combo-text"></div>
 
   <!-- Rules card -->
-  <div class="rules-card hidden" id="rules-card"><h2>精准射击</h2><p>在咖啡馆重逢后迈出第一步<br>🎯 Big balloon: <b>2pt</b> (no combo)<br>🎯 Medium: <b>20pt</b> (builds combo)<br>🎯 Small gold (top): <b>50pt</b> (builds combo)<br>Only medium & gold build your combo multiplier!</p></div>
+  <div class="rules-card hidden" id="rules-card"><h2>迈出第一步</h2><p>在咖啡馆重逢后迈出第一步<br>🎯 Big balloon: <b>2pt</b> (no combo)<br>🎯 Medium: <b>20pt</b> (builds combo)<br>🎯 Small gold (top): <b>50pt</b> (builds combo)<br>Only medium & gold build your combo multiplier!</p></div>
 
   <!-- Grade overlay -->
   <div class="grade-overlay hidden" id="grade-overlay"><div class="grade-letter pop-in" id="grade-letter"></div><div class="grade-score" id="grade-score"></div></div>
@@ -309,7 +309,7 @@ var params = new URLSearchParams(window.location.search);
 var ATTRIBUTE = CTX.attribute || params.get('attribute') || 'Agility';
 var DISPLAY_ATTRIBUTE = (CTX.character && CTX.character.name ? CTX.character.name + '\u7684' : '') + ATTRIBUTE;
 var EPISODE_LABEL = CTX.episodeLabel || params.get('episodeLabel') || '';
-var EPISODE_TITLE = CTX.episodeTitle || params.get('episodeTitle') || '精准射击';
+var EPISODE_TITLE = CTX.episodeTitle || params.get('episodeTitle') || '迈出第一步';
 
 var W = 393, H = 852, ROUND_SECONDS = 30;
 var RATING_THRESHOLDS = { S: 420, A: 280, B: 170, C: 80 };

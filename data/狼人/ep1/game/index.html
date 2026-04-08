@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no,viewport-fit=cover">
-<title>QTE 蓄力释放</title>
+<title>QTE 压住心跳</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700;800;900&display=swap" rel="stylesheet">
@@ -327,7 +327,7 @@
 
   <!-- Title bar -->
   <div class="title-bar">
-    <span class="title-text" id="title-text">EP 8: 蓄力释放</span>
+    <span class="title-text" id="title-text">EP 8: 压住心跳</span>
   </div>
 
   <!-- Portraits -->
@@ -432,7 +432,7 @@ var params = new URLSearchParams(window.location.search);
 var ATTRIBUTE = CTX.attribute || params.get('attribute') || 'Willpower';
 var DISPLAY_ATTRIBUTE = (CTX.character && CTX.character.name ? CTX.character.name + '\u7684' : '') + ATTRIBUTE;
 var EPISODE_LABEL = CTX.episodeLabel || params.get('episodeLabel') || 'EP 8';
-var EPISODE_TITLE = CTX.episodeTitle || params.get('episodeTitle') || '蓄力释放';
+var EPISODE_TITLE = CTX.episodeTitle || params.get('episodeTitle') || '压住心跳';
 
 var W = 393, H = 852;
 var ROUND_SECONDS = 30;
@@ -916,8 +916,8 @@ class BootScene extends Phaser.Scene {
     $('dialogue').textContent = '压住情绪，蓄力反击';
 
     $('gauge-center').innerHTML =
-      '<div style="font-weight:900;font-size:20px;color:' + T.primary + ';margin-bottom:8px;">考验规则</div>' +
-      '<div style="font-weight:700;font-size:14px;color:#ccc;line-height:1.8;text-align:center">长按蓄力，在目标区域松手<br>时机精准 = 高伤害<br>过早或过晚 = 失败</div>';
+      '<div style="font-weight:900;font-size:20px;color:' + T.primary + ';margin-bottom:8px;">压住心跳</div>' +
+      '<div style="font-weight:700;font-size:14px;color:#ccc;line-height:1.8;text-align:center">长按蓄力，在正确时机开口<br>太早暴露情绪，太晚错过窗口<br>精准释放 = 致命一击</div>';
 
     var gfx = this.add.graphics().setDepth(3);
     var cx = W / 2, cy = 440, r = 120;

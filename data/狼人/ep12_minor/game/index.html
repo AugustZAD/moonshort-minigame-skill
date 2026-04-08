@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no,viewport-fit=cover">
-<title>红绿抉择</title>
+<title>坐到最后</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700;800;900&display=swap" rel="stylesheet">
@@ -248,7 +248,7 @@
   <img id="cover-layer" src="" alt="">
 
   <div id="phaser-container"></div>
-  <div class="title-bar"><span class="title-text" id="title-text">红绿抉择</span></div>
+  <div class="title-bar"><span class="title-text" id="title-text">坐到最后</span></div>
   <div class="info-strip hidden" id="info-strip">
     <div class="left"><span class="score-label">DIST</span><span class="score-val" id="score-value">0m</span><span class="score-delta" id="score-delta"></span></div>
     <div class="right"><span class="timer-val" id="timer-value">36s</span></div>
@@ -319,7 +319,7 @@ var params = new URLSearchParams(window.location.search);
 var ATTRIBUTE = CTX.attribute || params.get('attribute') || 'Willpower';
 var DISPLAY_ATTRIBUTE = (CTX.character && CTX.character.name ? CTX.character.name + '\u7684' : '') + ATTRIBUTE;
 var EPISODE_LABEL = CTX.episodeLabel || params.get('episodeLabel') || '';
-var EPISODE_TITLE = CTX.episodeTitle || params.get('episodeTitle') || '红绿抉择';
+var EPISODE_TITLE = CTX.episodeTitle || params.get('episodeTitle') || '坐到最后';
 var W = 393, H = 852, ROUND_SECONDS = 36;
 var RATING_THRESHOLDS = { S: 100, A: 75, B: 50, C: 25 };
 var MODIFIER_BY_RATING = { S: 3, A: 1, B: 0, C: -1 };

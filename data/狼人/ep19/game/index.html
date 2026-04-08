@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no,viewport-fit=cover">
-<title>QTE 正面对决</title>
+<title>QTE 满月之约</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700;800;900&display=swap" rel="stylesheet">
@@ -384,7 +384,7 @@
 
   <!-- Title bar -->
   <div class="title-bar">
-    <span class="title-text" id="title-text">EP 8: 正面对决</span>
+    <span class="title-text" id="title-text">EP 8: 满月之约</span>
   </div>
 
   <!-- Portraits -->
@@ -511,7 +511,7 @@ const params = new URLSearchParams(window.location.search);
 const ATTRIBUTE = CTX.attribute || params.get('attribute') || 'Agility';
 const DISPLAY_ATTRIBUTE = (CTX.character && CTX.character.name ? CTX.character.name + '\u7684' : '') + ATTRIBUTE;
 const EPISODE_LABEL = CTX.episodeLabel || params.get('episodeLabel') || 'EP 8';
-const EPISODE_TITLE = CTX.episodeTitle || params.get('episodeTitle') || '正面对决';
+const EPISODE_TITLE = CTX.episodeTitle || params.get('episodeTitle') || '满月之约';
 
 const W = 393;
 const H = 852;
@@ -1187,7 +1187,7 @@ class BootScene extends Phaser.Scene {
     updateHpBar('right', 1);
 
     setCircleContent(
-      '<div class="rule-title">考验规则</div>' +
+      '<div class="rule-title">满月之约</div>' +
       '<div class="rule-desc">Parry = Slash<br>Dodge = Heavy<br>Block = Burst</div>'
     );
 

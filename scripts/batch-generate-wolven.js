@@ -44,6 +44,32 @@ const TEMPLATE_MAP = {
   ep20: 'maze-escape',
 };
 
+// ── Per-episode story-themed game title + rules (replaces generic template names) ─
+const STORY_GAME = {
+  ep1:  { title: '压住心跳', rules: '长按蓄力，在正确时机开口<br>太早暴露情绪，太晚错过窗口<br>精准释放 = 致命一击' },
+  ep2:  { title: '不跪的理由', rules: '绿灯时前进，红灯时停下<br>在Alpha的注视下保持镇定<br>撑过100步 = 证明自己' },
+  ep3:  { title: '碎片拼图', rules: '将走廊里听到的碎片分类<br>真相和谎言混在一起<br>速度越来越快，别选错' },
+  ep4:  { title: '权力棋盘', rules: '记住关键人物的位置<br>灯光熄灭后精准锁定<br>在人群中找到你的棋子' },
+  ep5:  { title: '撑住', rules: '意志被一波波冲击<br>每一次点击都是在说"我还在"<br>坚持到最后一秒' },
+  ep6:  { title: '最后摊牌', rules: '判断Luna的每一步棋<br>格挡、闪避、还是反击？<br>精准应对才能翻盘' },
+  ep7:  { title: '锻造武器', rules: '瞄准嫉妒中的真相<br>小目标更难但更致命<br>每一发都是你的筹码' },
+  ep8:  { title: '拉扯真相', rules: '追踪他话语里的节奏<br>拉住不放，逼他松口<br>填满进度条 = 他开口了' },
+  ep9:  { title: '握紧声音', rules: '在生死抉择前保持冷静<br>压力波一波接一波<br>你的声音不能颤抖' },
+  ep10: { title: '最后一口气', rules: '他扼住你的咽喉<br>长按蓄力，在窒息前开口<br>这句话只有一次机会' },
+  ep11: { title: '规则战争', rules: '在议事厅的压力中调度资源<br>用程序而非武力<br>每一步都必须精准' },
+  ep12: { title: '翻窗逃离', rules: '在黑暗走廊中躲避追兵<br>左右闪避，不能停下<br>高烧中跑向唯一的出口' },
+  ep12_minor: { title: '坐到最后', rules: '在座位上承受所有压力<br>绿灯时可以喘息<br>红灯时一动不动' },
+  ep13: { title: '踏过边界', rules: '背着行囊穿越迷宫<br>找到钥匙，跑向自由<br>追兵就在身后' },
+  ep13_minor: { title: '独自前行', rules: '将混乱的信息分类<br>哪些是真的，哪些是干扰<br>靠自己走到边界线' },
+  ep14: { title: '黑暗奔逃', rules: '在树线间躲避追兵<br>左右闪避，越跑越快<br>撑到Iris出现的那一刻' },
+  ep15: { title: '重新呼吸', rules: '追踪呼吸的节奏<br>保持在平稳区域<br>让身体慢慢愈合' },
+  ep16: { title: '月光辨认', rules: '在月光下辨认归来的面孔<br>看清楚，别被情绪干扰<br>每一次判断都是答案' },
+  ep17: { title: '道别的勇气', rules: '在人群中找到那个人<br>记住位置，精准锁定<br>这是最后一次说谢谢' },
+  ep18: { title: '迈出第一步', rules: '瞄准重逢后的每一个时刻<br>大的容易，小的珍贵<br>连击 = 你们的默契' },
+  ep19: { title: '满月之约', rules: '在月光下回应新的连结<br>判断每一个信号<br>精准应对 = 接受远方' },
+  ep20: { title: '找到方向', rules: '在新领地的迷宫中探索<br>找到钥匙，推开那扇门<br>这一次，没有人追你' },
+};
+
 // ── Narrative overlay CSS ───────────────────────────────────────────────────
 const NARRATIVE_CSS = `
   .narrative-overlay { position:absolute;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.85);z-index:50;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:40px 32px;cursor:pointer; }
@@ -310,6 +336,7 @@ if (errors.length) {
 function generateGame(ep, templateId) {
   const ctx = allCtx[ep];
   if (!ctx) throw new Error('No CTX data for ' + ep);
+  const storyGame = STORY_GAME[ep];
 
   const ctxClean = { ...ctx };
   delete ctxClean._template;
@@ -497,8 +524,9 @@ function generateGame(ep, templateId) {
 
   const rules = GAME_RULES_CN[templateId];
   if (rules) {
-    // Replace GAME RULE title
-    html = html.replace(/>GAME RULE</g, '>' + rules.title + '<');
+    // Use story-themed title if available
+    var ruleTitle = (storyGame ? storyGame.title : rules.title);
+    html = html.replace(/>GAME RULE</g, '>' + ruleTitle + '<');
     // Replace rule description lines (varies per template, try common patterns)
     const rulePatterns = [
       // Formatted multi-line in BootScene
@@ -515,8 +543,10 @@ function generateGame(ep, templateId) {
       'qte-boss-parry': 'Choose PARRY, DODGE, or COUNTER<br>Match the attack type<br>Build combo for bonus!',
     };
     const origRuleText = RULE_TEXT_MAP[templateId];
+    // Use story-themed rules if available, otherwise generic Chinese
+    const finalRules = (storyGame ? storyGame.rules : rules.rules);
     if (origRuleText && html.includes(origRuleText)) {
-      html = html.replace(origRuleText, rules.rules);
+      html = html.replace(origRuleText, finalRules);
     }
 
     // Apply extra text replacements
@@ -527,18 +557,11 @@ function generateGame(ep, templateId) {
     }
   }
 
-  // Replace Challenge suffix and game titles
+  // ── Story-themed game identity ──────────────────────────────────────────────
+  // Replace Challenge suffix
   html = html.replace(/' Challenge'/g, "' 考验'");
   html = html.replace(/" Challenge"/g, '" 考验"');
   html = html.replace(/Challenge</g, '考验<');
-  // Game title replacements
-  const TITLE_CN = {
-    'qte-hold-release': '蓄力释放', 'will-surge': '意志冲击', 'conveyor-sort': '传送分拣',
-    'spotlight-seek': '聚光搜寻', 'cannon-aim': '精准射击', 'stardew-fishing': '心弦拉扯',
-    'qte-boss-parry': '正面对决', 'red-light-green-light': '红绿抉择', 'lane-dash': '极速闪避',
-    'maze-escape': '迷宫逃脱', 'parking-rush': '紧急调度', 'color-match': '颜色辨析',
-  };
-  const titleCn = TITLE_CN[templateId];
   const TITLE_EN = {
     'qte-hold-release': 'Hold Release', 'will-surge': 'Will Surge', 'conveyor-sort': 'Conveyor Sort',
     'spotlight-seek': 'Spotlight Seek', 'cannon-aim': 'Cannon Aim', 'stardew-fishing': 'Stardew Fishing',
@@ -546,8 +569,33 @@ function generateGame(ep, templateId) {
     'lane-dash': 'Lane Dash', 'maze-escape': 'Maze Escape', 'parking-rush': 'Parking Rush',
     'color-match': 'Color Match',
   };
-  if (titleCn && TITLE_EN[templateId]) {
-    html = html.replace(new RegExp(TITLE_EN[templateId], 'g'), titleCn);
+  // Also replace any Chinese generic titles we set earlier
+  const TITLE_CN_GENERIC = {
+    'qte-hold-release': '蓄力释放', 'will-surge': '意志冲击', 'conveyor-sort': '传送分拣',
+    'spotlight-seek': '聚光搜寻', 'cannon-aim': '精准射击', 'stardew-fishing': '心弦拉扯',
+    'qte-boss-parry': '正面对决', 'red-light-green-light': '红绿抉择', 'lane-dash': '极速闪避',
+    'maze-escape': '迷宫逃脱', 'parking-rush': '紧急调度', 'color-match': '颜色辨析',
+  };
+  if (storyGame) {
+    // Replace English template title → story title
+    if (TITLE_EN[templateId]) {
+      html = html.replace(new RegExp(TITLE_EN[templateId], 'g'), storyGame.title);
+    }
+    // Also replace generic Chinese title (some templates already have Chinese in HTML)
+    if (TITLE_CN_GENERIC[templateId]) {
+      html = html.replace(new RegExp(TITLE_CN_GENERIC[templateId], 'g'), storyGame.title);
+    }
+    // Also replace <h2> titles in rules cards
+    const H2_TITLES = {
+      'cannon-aim': 'FIRING RANGE', 'red-light-green-light': '红绿灯冲刺',
+      'lane-dash': '极速冲刺', 'parking-rush': 'Parking Rush',
+      'qte-boss-parry': 'Boss Parry', 'maze-escape': 'Maze Escape',
+    };
+    if (H2_TITLES[templateId]) {
+      html = html.replace(new RegExp(H2_TITLES[templateId], 'g'), storyGame.title);
+    }
+  } else if (TITLE_EN[templateId]) {
+    html = html.replace(new RegExp(TITLE_EN[templateId], 'g'), TITLE_CN_GENERIC[templateId]);
   }
 
   // Template-specific boot scene descriptions (full block replacements)

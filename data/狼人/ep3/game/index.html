@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no,viewport-fit=cover">
-<title>传送分拣</title>
+<title>碎片拼图</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700;800;900&display=swap" rel="stylesheet">
@@ -124,7 +124,7 @@
 <div id="game-shell">
   <img id="cover-layer" src="" alt="">
   <div id="phaser-container"></div>
-  <div class="title-bar"><span class="title-text" id="title-text">传送分拣</span></div>
+  <div class="title-bar"><span class="title-text" id="title-text">碎片拼图</span></div>
   <div class="hud-row" id="hud-row"><span class="hud-item score-hud" id="hud-score">0</span><span class="hud-item combo-hud" id="hud-combo"></span><span class="hud-item timer-hud" id="hud-timer">40s</span></div>
   <div class="sort-legend" id="sort-legend"></div>
   <div class="combo-text hidden" id="combo-text"></div>
@@ -133,7 +133,7 @@
   <div class="stars-row hidden" id="stars-row"></div>
   <div class="result-info hidden" id="result-info"><div class="attr-mod" id="attr-mod"></div><div class="stats"><span id="stat-combo"></span><span id="stat-hits"></span></div></div>
   <div class="boot-card hidden" id="boot-card" style="position:absolute;top:380px;left:0;width:100%;text-align:center;z-index:12;">
-    <div style="font-weight:900;font-size:28px;color:var(--primary);margin-bottom:8px;">传送分拣</div>
+    <div style="font-weight:900;font-size:28px;color:var(--primary);margin-bottom:8px;">碎片拼图</div>
     <div style="font-weight:700;font-size:14px;color:#64748B;margin-bottom:24px;" id="boot-subtitle">考验</div>
     <div style="font-weight:700;font-size:13px;color:#E2E8F0;line-height:2;">拖动到对应分类区。<br>速度递增！小心干扰项。</div>
   </div>
@@ -191,7 +191,7 @@ var CTX=window.__EPISODE_CTX__||{};var params=new URLSearchParams(window.locatio
 var ATTRIBUTE=CTX.attribute||params.get('attribute')||'Wisdom';
 var DISPLAY_ATTRIBUTE=(CTX.character&&CTX.character.name?CTX.character.name+'\u7684':'')+ATTRIBUTE;
 var EPISODE_LABEL=CTX.episodeLabel||params.get('episodeLabel')||'';
-var EPISODE_TITLE=CTX.episodeTitle||params.get('episodeTitle')||'传送分拣';
+var EPISODE_TITLE=CTX.episodeTitle||params.get('episodeTitle')||'碎片拼图';
 var W=393,H=852,ROUND_SECONDS=40;
 var RATING_THRESHOLDS={S:400,A:300,B:210,C:130};var MODIFIER_BY_RATING={S:3,A:1,B:0,C:-1};
 
@@ -371,7 +371,7 @@ update:function(time,delta){if(this.isOver)return;this.timeLeft=Math.max(0,this.
 
 var ResultScene=new Phaser.Class({Extends:Phaser.Scene,initialize:function(){Phaser.Scene.call(this,'ResultScene');},
 init:function(data){this.finalScore=data.score||0;this.maxCombo=data.maxCombo||0;this.hits=data.hits||0;this.misses=data.misses||0;},
-create:function(){this.children.removeAll(true);this.cameras.main.resetFX();var self=this;var T=window.__V3_THEME__;this.add.rectangle(W/2,H/2,W,H,hexToInt(T.bg),1).setDepth(0);var rating=getRating(this.finalScore);var modifier=getModifier(rating);var modText=modifier>0?'+'+modifier:String(modifier);var GC={S:T.gold,A:T.primary,B:T.primaryLight,C:'#888'};setVisible('boot-card',false);setVisible('hud-row',false);setVisible('sort-legend',false);setVisible('combo-text',false);setVisible('hint-text',false);setVisible('score-display',false);setVisible('stars-row',true);setVisible('result-info',true);var sr=$('stars-row');sr.style.top='540px';$('result-info').style.top='590px';var gt=this.add.text(W/2,320,rating,{fontFamily:'Montserrat',fontSize:'96px',fontStyle:'900',color:GC[rating],stroke:'#000',strokeThickness:4}).setOrigin(0.5).setDepth(10).setScale(0);this.tweens.add({targets:gt,scaleX:1,scaleY:1,duration:400,ease:'Back.easeOut',delay:100});this.add.text(W/2,410,'传送分拣',{fontFamily:'Montserrat',fontSize:'16px',fontStyle:'700',color:'rgba(255,255,255,0.45)'}).setOrigin(0.5).setDepth(10);this.add.text(W/2,450,'Score: '+this.finalScore,{fontFamily:'Montserrat',fontSize:'28px',fontStyle:'900',color:'#fff',stroke:'#000',strokeThickness:2}).setOrigin(0.5).setDepth(10);if(rating==='S'){spawnParticles(this,W/2,400,hexToInt(T.gold),16,600);audio.success();setTimeout(function(){audio.success();},100);}else if(rating==='A'){audio.success();}sr.innerHTML='';var sc={S:4,A:3,B:2,C:1}[rating];for(var i=0;i<4;i++){var s=document.createElement('span');s.className='star '+(i<sc?'filled':'empty');s.textContent='\u2605';s.style.animationDelay=(0.2+i*0.08)+'s';sr.appendChild(s);}$('attr-mod').textContent=DISPLAY_ATTRIBUTE+' '+modText;$('stat-combo').textContent='Combo: '+this.maxCombo;$('stat-hits').textContent='Sorted: '+this.hits+'/'+this.misses;clearBtnArea();$('btn-area').appendChild(makeCandyButton('继续','full',18,function(){notifyGameComplete({rating:rating,score:self.finalScore,attribute:ATTRIBUTE,modifier:modifier,gameId:'conveyor-sort',maxCombo:self.maxCombo,hits:self.hits,misses:self.misses});self.time.delayedCall(600,function(){self.scene.start('BootScene');});}));$('btn-area').appendChild(makeCandyButton('再来一次','full',18,function(){self.scene.start('BootScene');}));}});
+create:function(){this.children.removeAll(true);this.cameras.main.resetFX();var self=this;var T=window.__V3_THEME__;this.add.rectangle(W/2,H/2,W,H,hexToInt(T.bg),1).setDepth(0);var rating=getRating(this.finalScore);var modifier=getModifier(rating);var modText=modifier>0?'+'+modifier:String(modifier);var GC={S:T.gold,A:T.primary,B:T.primaryLight,C:'#888'};setVisible('boot-card',false);setVisible('hud-row',false);setVisible('sort-legend',false);setVisible('combo-text',false);setVisible('hint-text',false);setVisible('score-display',false);setVisible('stars-row',true);setVisible('result-info',true);var sr=$('stars-row');sr.style.top='540px';$('result-info').style.top='590px';var gt=this.add.text(W/2,320,rating,{fontFamily:'Montserrat',fontSize:'96px',fontStyle:'900',color:GC[rating],stroke:'#000',strokeThickness:4}).setOrigin(0.5).setDepth(10).setScale(0);this.tweens.add({targets:gt,scaleX:1,scaleY:1,duration:400,ease:'Back.easeOut',delay:100});this.add.text(W/2,410,'碎片拼图',{fontFamily:'Montserrat',fontSize:'16px',fontStyle:'700',color:'rgba(255,255,255,0.45)'}).setOrigin(0.5).setDepth(10);this.add.text(W/2,450,'Score: '+this.finalScore,{fontFamily:'Montserrat',fontSize:'28px',fontStyle:'900',color:'#fff',stroke:'#000',strokeThickness:2}).setOrigin(0.5).setDepth(10);if(rating==='S'){spawnParticles(this,W/2,400,hexToInt(T.gold),16,600);audio.success();setTimeout(function(){audio.success();},100);}else if(rating==='A'){audio.success();}sr.innerHTML='';var sc={S:4,A:3,B:2,C:1}[rating];for(var i=0;i<4;i++){var s=document.createElement('span');s.className='star '+(i<sc?'filled':'empty');s.textContent='\u2605';s.style.animationDelay=(0.2+i*0.08)+'s';sr.appendChild(s);}$('attr-mod').textContent=DISPLAY_ATTRIBUTE+' '+modText;$('stat-combo').textContent='Combo: '+this.maxCombo;$('stat-hits').textContent='Sorted: '+this.hits+'/'+this.misses;clearBtnArea();$('btn-area').appendChild(makeCandyButton('继续','full',18,function(){notifyGameComplete({rating:rating,score:self.finalScore,attribute:ATTRIBUTE,modifier:modifier,gameId:'conveyor-sort',maxCombo:self.maxCombo,hits:self.hits,misses:self.misses});self.time.delayedCall(600,function(){self.scene.start('BootScene');});}));$('btn-area').appendChild(makeCandyButton('再来一次','full',18,function(){self.scene.start('BootScene');}));}});
 
 initShellDOM();
 var DPR=Math.min(window.devicePixelRatio||1,3);

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no,viewport-fit=cover">
-<title>迷宫逃脱</title>
+<title>找到方向</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700;800;900&display=swap" rel="stylesheet">
@@ -223,7 +223,7 @@
   <div id="phaser-container"></div>
 
   <div class="title-bar" id="title-bar">
-    <span class="title-text" id="title-text">迷宫逃脱</span>
+    <span class="title-text" id="title-text">找到方向</span>
   </div>
 
   <div class="maze-info hidden" id="maze-info">
@@ -321,7 +321,7 @@ var params = new URLSearchParams(window.location.search);
 var ATTRIBUTE = CTX.attribute || params.get('attribute') || 'Wisdom';
 var DISPLAY_ATTRIBUTE = (CTX.character && CTX.character.name ? CTX.character.name + '\u7684' : '') + ATTRIBUTE;
 var EPISODE_LABEL = CTX.episodeLabel || params.get('episodeLabel') || '';
-var EPISODE_TITLE = CTX.episodeTitle || params.get('episodeTitle') || '迷宫逃脱';
+var EPISODE_TITLE = CTX.episodeTitle || params.get('episodeTitle') || '找到方向';
 
 var W = 393, H = 852;
 var ROUND_SECONDS = 40;
