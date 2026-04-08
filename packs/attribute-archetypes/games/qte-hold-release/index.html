@@ -602,7 +602,7 @@ class GameScene extends Phaser.Scene {
     }).setOrigin(0.5).setDepth(11);
 
     // ── Main card (candy style) ──
-    const cardY = 350;
+    const cardY = 310;
     const cardW = 340;
     const cardH = 350;
 
@@ -610,7 +610,7 @@ class GameScene extends Phaser.Scene {
     drawGoldCorners(this, W / 2, cardY, cardW, cardH, 7, 17);
 
     // ── Cue circle ──
-    const cueY = 255;
+    const cueY = 220;
     this.cueCircleBg = this.add.circle(W / 2, cueY, 65, CC.trackBg, 1).setDepth(17);
     this.cueCircleRing = this.add.circle(W / 2, cueY, 65).setDepth(17)
       .setStrokeStyle(5, CC.trackBorder).setFillStyle(0, 0);
@@ -621,14 +621,14 @@ class GameScene extends Phaser.Scene {
     }).setOrigin(0.5).setDepth(18);
 
     // ── Power meter ──
-    this.add.text(W / 2, 355, 'Power Meter', {
+    this.add.text(W / 2, 315, 'Power Meter', {
       fontFamily: 'Nunito', fontSize: '14px', fontStyle: '700', color: PALETTE.textDark
     }).setOrigin(0.5).setDepth(17);
 
     // Meter track
     const meterX = W / 2 - 130;
     const meterW = 260;
-    const meterY = 380;
+    const meterY = 340;
     const meterH = 22;
 
     const meterTrack = this.add.graphics().setDepth(17);
@@ -651,23 +651,23 @@ class GameScene extends Phaser.Scene {
     this.chargeFillGfx = this.add.graphics().setDepth(19);
 
     // ── Hint ──
-    this.hintText = this.add.text(W / 2, 415, 'Hold to charge, release in the green zone!', {
+    this.hintText = this.add.text(W / 2, 370, 'Hold to charge, release in the green zone!', {
       fontFamily: 'Patrick Hand', fontSize: '16px', color: PALETTE.textMuted
     }).setOrigin(0.5).setDepth(17);
 
     // ── Combo display ──
-    this.comboText = this.add.text(W / 2, 445, '', {
+    this.comboText = this.add.text(W / 2, 400, '', {
       fontFamily: 'Nunito', fontSize: '18px', fontStyle: '900', color: PALETTE.primary
     }).setOrigin(0.5).setDepth(18);
 
     // ── Overheat warning ──
-    this.overheatText = this.add.text(W / 2, 475, '', {
+    this.overheatText = this.add.text(W / 2, 430, '', {
       fontFamily: 'Nunito', fontSize: '16px', fontStyle: '900', color: PALETTE.danger
     }).setOrigin(0.5).setDepth(18);
 
     // ── HOLD button (puffy candy style) ──
     this.holdBtn = makeButton(this, {
-      x: W / 2, y: H - 100, w: 244, h: 58, label: 'HOLD', fontSize: 26,
+      x: W / 2, y: H - 120, w: 244, h: 58, label: 'HOLD', fontSize: 26,
       onDown: () => {
         if (this.isOver) return;
         this.charging = true;
@@ -736,11 +736,11 @@ class GameScene extends Phaser.Scene {
 
       const isPerfect = Math.abs(this.charge - this.targetCenter) < this.targetWidth * 0.25;
       if (isPerfect) {
-        showToast(this, '\u2726 Perfect! +' + gain, PALETTE.success, W / 2, 205);
-        spawnParticles(this, W / 2, 255, CC.accentGold, 8, 400);
+        showToast(this, '\u2726 Perfect! +' + gain, PALETTE.success, W / 2, 170);
+        spawnParticles(this, W / 2, 220, CC.accentGold, 8, 400);
         this.cueText.setText('\u2726');
       } else {
-        showToast(this, 'Good! +' + gain, PALETTE.primary, W / 2, 205);
+        showToast(this, 'Good! +' + gain, PALETTE.primary, W / 2, 170);
         this.cueText.setText('GOOD');
       }
       this.cueText.setColor(PALETTE.success);
@@ -772,7 +772,7 @@ class GameScene extends Phaser.Scene {
     this.cueCircleRing.setStrokeStyle(5, CC.danger);
     this.cueCircleBg.setFillStyle(hexToInt(blendHex(PALETTE.danger, '#ffffff', 0.7)), 1);
 
-    showToast(this, 'Miss! -' + penalty, PALETTE.danger, W / 2, 205);
+    showToast(this, 'Miss! -' + penalty, PALETTE.danger, W / 2, 170);
     audio.fail();
     damageFlash(this);
     screenShake(this, 0.008);
@@ -848,7 +848,7 @@ class GameScene extends Phaser.Scene {
         this.cueText.setColor(PALETTE.danger);
         this.cueCircleRing.setStrokeStyle(5, CC.danger);
         this.cueCircleBg.setFillStyle(hexToInt(blendHex(PALETTE.danger, '#ffffff', 0.7)), 1);
-        showToast(this, 'Overcharged! -' + penalty, PALETTE.danger, W / 2, 205);
+        showToast(this, 'Overcharged! -' + penalty, PALETTE.danger, W / 2, 170);
         audio.fail();
         damageFlash(this);
         screenShake(this, 0.012);

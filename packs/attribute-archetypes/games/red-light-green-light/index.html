@@ -661,7 +661,7 @@ class GameScene extends Phaser.Scene {
     }).setOrigin(0.5).setDepth(16);
 
     // Main action card
-    const cardY = 295;
+    const cardY = 260;
     const cardW = 320;
     const cardH = 240;
     drawCandyCard(this, W / 2, cardY, cardW, cardH, hexToInt(CANDY.cardPink), 14);
@@ -698,16 +698,16 @@ class GameScene extends Phaser.Scene {
     }).setOrigin(0.5).setDepth(20);
 
     // Combo display
-    this.comboText = this.add.text(W / 2, 448, '', {
+    this.comboText = this.add.text(W / 2, 418, '', {
       fontFamily: 'Nunito', fontSize: '20px', fontStyle: '900', color: PALETTE.primary,
       stroke: '#ffffff', strokeThickness: 2
     }).setOrigin(0.5).setDepth(20);
 
     // Stamina bar
-    this.staminaBar = createStaminaBar(this, W / 2, 488, 260, 18, CC.secondary, 'Stamina', 10);
+    this.staminaBar = createStaminaBar(this, W / 2, 462, 260, 18, CC.secondary, 'Stamina', 10);
 
     // RUN button — puffy candy, large
-    const btnY = H - 80;
+    const btnY = H - 100;
     this.runBtn = makeButton(this, {
       x: W / 2, y: btnY, w: 240, h: 72, label: '\u{1F3C3} RUN', fontSize: 28,
       onTap: () => {}

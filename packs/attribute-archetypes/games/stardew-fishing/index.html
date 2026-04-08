@@ -400,7 +400,7 @@ class GameScene extends Phaser.Scene {
     this.score = 0;
     this.timeLeft = ROUND_SECONDS;
     this.isOver = false;
-    this.trackTop = 245;
+    this.trackTop = 210;
     this.trackHeight = 320;
     this.fishY = this.trackTop + this.trackHeight * 0.45;
     this.fishV = 120;
@@ -460,7 +460,7 @@ class GameScene extends Phaser.Scene {
 
     // ── Main game card (candy style) ──
     const cardCX = W / 2;
-    const cardCY = 413;
+    const cardCY = 378;
     const cardW = 330;
     const cardH = 370;
 
@@ -485,29 +485,29 @@ class GameScene extends Phaser.Scene {
     this.hookGfx = this.add.graphics().setDepth(8);
 
     // ── Catch progress bar (candy style) ──
-    this.catchBar = createHealthBar(this, 260, 375, 140, 20, CC.primary, 'Catch', 10);
+    this.catchBar = createHealthBar(this, 260, 340, 140, 20, CC.primary, 'Catch', 10);
 
     // ── Status/Combo text ──
-    this.statusText = this.add.text(260, 425, 'Track the fish', {
+    this.statusText = this.add.text(260, 390, 'Track the fish', {
       fontFamily: 'Patrick Hand', fontSize: '18px', color: PALETTE.textMuted
     }).setOrigin(0.5).setDepth(18);
 
-    this.comboText = this.add.text(260, 453, '', {
+    this.comboText = this.add.text(260, 418, '', {
       fontFamily: 'Nunito', fontSize: '20px', fontStyle: '900', color: PALETTE.primary,
       stroke: '#ffffff', strokeThickness: 2
     }).setOrigin(0.5).setDepth(18);
 
     // ── Difficulty indicator ──
-    this.add.text(260, 490, 'Fish Speed', {
+    this.add.text(260, 460, 'Fish Speed', {
       fontFamily: 'Nunito', fontSize: '12px', fontStyle: '700', color: PALETTE.textMuted
     }).setOrigin(0.5).setDepth(10);
     this.diffBarGfx = this.add.graphics().setDepth(10);
     this.add.graphics().setDepth(9).fillStyle(CC.trackBg, 1)
-      .fillRoundedRect(190, 502, 140, 8, 4);
+      .fillRoundedRect(190, 472, 140, 8, 4);
 
     // ── Hold Reel button (candy style, uses pointerdown/up for hold mechanic) ──
     const btnX = W / 2;
-    const btnY = H - 80;
+    const btnY = H - 100;
     const btnW = 240;
     const btnH = 62;
     const btnR = 22;
@@ -694,7 +694,7 @@ class GameScene extends Phaser.Scene {
     if (diffRatio > 0.7) diffCol = CC.danger;
     else if (diffRatio > 0.4) diffCol = CC.warning;
     this.diffBarGfx.fillStyle(diffCol, 1);
-    this.diffBarGfx.fillRoundedRect(190, 502, 140 * diffRatio, 8, 4);
+    this.diffBarGfx.fillRoundedRect(190, 472, 140 * diffRatio, 8, 4);
 
     if (this.catchProgress >= 1) { this.onFishCaught(); }
     if (this.timeLeft <= 0) this.finishGame('time');

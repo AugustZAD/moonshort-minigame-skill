@@ -659,7 +659,7 @@ class GameScene extends Phaser.Scene {
     }).setOrigin(0.5).setDepth(11);
 
     // ── Main parking area card (candy style) ──
-    const parkCardY = 360;
+    const parkCardY = 310;
     const parkCardW = 340;
     const parkCardH = 280;
 
@@ -667,7 +667,7 @@ class GameScene extends Phaser.Scene {
     drawGoldCorners(this, W / 2, parkCardY, parkCardW, parkCardH, 7, 17);
 
     // Streak display
-    this.streakText = this.add.text(W / 2, 220, 'Streak 0', {
+    this.streakText = this.add.text(W / 2, 190, 'Streak 0', {
       fontFamily: 'Nunito', fontSize: '16px', fontStyle: '700', color: PALETTE.textMuted
     }).setOrigin(0.5).setDepth(18);
 
@@ -675,23 +675,23 @@ class GameScene extends Phaser.Scene {
     this.laneGraphics = this.add.graphics().setDepth(19);
     const xs = [86, W / 2, W - 86];
     for (let i = 0; i < 3; i++) {
-      const lane = this.add.rectangle(xs[i], 370, 96, 200, 0, 0).setOrigin(0.5)
+      const lane = this.add.rectangle(xs[i], 320, 96, 200, 0, 0).setOrigin(0.5)
         .setInteractive({ useHandCursor: true }).setDepth(20).setAlpha(0.001);
       lane.on('pointerdown', () => this.pickLane(i));
       this.lanes.push(lane);
     }
 
     // Round timer bar (candy style)
-    this.roundBar = createRoundBar(this, W / 2, 498, 260, 12);
+    this.roundBar = createRoundBar(this, W / 2, 448, 260, 12);
 
     // Combo display
-    this.comboText = this.add.text(W / 2, 528, '', {
+    this.comboText = this.add.text(W / 2, 478, '', {
       fontFamily: 'Nunito', fontSize: '20px', fontStyle: '900', color: PALETTE.primary,
       stroke: '#ffffff', strokeThickness: 2
     }).setOrigin(0.5).setDepth(20);
 
     // Hint
-    this.add.text(W / 2, 555, 'Find the free slot before time runs out!', {
+    this.add.text(W / 2, 500, 'Find the free slot before time runs out!', {
       fontFamily: 'Patrick Hand', fontSize: '17px', color: PALETTE.textMuted
     }).setOrigin(0.5).setDepth(18);
 
@@ -722,24 +722,24 @@ class GameScene extends Phaser.Scene {
       const col = free ? CC.success : CC.danger;
       const alpha = free ? 0.7 : 0.5;
       this.laneGraphics.fillStyle(col, alpha);
-      drawRRect(this.laneGraphics, xs[i] - 48, 270, 96, 200, 12);
+      drawRRect(this.laneGraphics, xs[i] - 48, 220, 96, 200, 12);
       this.laneGraphics.fillPath();
       // Candy-style shine on lanes
       this.laneGraphics.fillStyle(0xffffff, 0.15);
-      drawRRect(this.laneGraphics, xs[i] - 44, 274, 88, 40, 8);
+      drawRRect(this.laneGraphics, xs[i] - 44, 224, 88, 40, 8);
       this.laneGraphics.fillPath();
 
       // Car icon (occupied) or "P" (free)
       if (!free) {
         this.laneGraphics.fillStyle(CC.trackBorder, 0.8);
-        this.laneGraphics.fillRoundedRect(xs[i] - 24, 330, 48, 80, 8);
+        this.laneGraphics.fillRoundedRect(xs[i] - 24, 280, 48, 80, 8);
         this.laneGraphics.fillStyle(CC.trackBg, 0.6);
-        this.laneGraphics.fillRoundedRect(xs[i] - 18, 340, 36, 24, 4);
+        this.laneGraphics.fillRoundedRect(xs[i] - 18, 290, 36, 24, 4);
       }
     }
     // Draw "P" for free slot
     if (this.freeLabel) this.freeLabel.destroy();
-    this.freeLabel = this.add.text(xs[this.freeIndex], 370, 'P', {
+    this.freeLabel = this.add.text(xs[this.freeIndex], 320, 'P', {
       fontFamily: 'Nunito', fontSize: '48px', fontStyle: '900', color: PALETTE.success
     }).setOrigin(0.5).setDepth(20).setAlpha(0.8);
   }
@@ -773,10 +773,10 @@ class GameScene extends Phaser.Scene {
 
       const isPerfect = this.streak >= 3;
       if (isPerfect) {
-        showToast(this, '\u2726 Perfect +' + gain, PALETTE.success, W / 2, 530);
-        spawnParticles(this, W / 2, 370, CC.accentGold, 8, 400);
+        showToast(this, '\u2726 Perfect +' + gain, PALETTE.success, W / 2, 480);
+        spawnParticles(this, W / 2, 320, CC.accentGold, 8, 400);
       } else {
-        showToast(this, 'Parked! +' + gain, PALETTE.primary, W / 2, 530);
+        showToast(this, 'Parked! +' + gain, PALETTE.primary, W / 2, 480);
       }
 
       audio.success();
@@ -797,7 +797,7 @@ class GameScene extends Phaser.Scene {
     this.combo = 0;
     this.totalMiss += 1;
     this.addScore(penalty);
-    showToast(this, 'Blocked! ' + penalty, PALETTE.danger, W / 2, 530);
+    showToast(this, 'Blocked! ' + penalty, PALETTE.danger, W / 2, 480);
     audio.fail();
     damageFlash(this);
     screenShake(this, 0.008);
@@ -850,7 +850,7 @@ class GameScene extends Phaser.Scene {
       this.combo = 0;
       this.totalMiss += 1;
       this.addScore(penalty);
-      showToast(this, 'Too slow! ' + penalty, PALETTE.danger, W / 2, 530);
+      showToast(this, 'Too slow! ' + penalty, PALETTE.danger, W / 2, 480);
       audio.fail();
       screenShake(this, 0.005);
       this.streakText.setText('Streak 0');

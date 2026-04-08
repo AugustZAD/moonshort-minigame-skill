@@ -732,7 +732,7 @@ class GameScene extends Phaser.Scene {
     }).setOrigin(0.5).setDepth(16);
 
     // ── Main action card (notification card — soft pink, floating, gold corners) ──
-    const cardY = 320;
+    const cardY = 290;
     const cardW = 320;
     const cardH = 260;
 
@@ -771,13 +771,13 @@ class GameScene extends Phaser.Scene {
     }).setOrigin(0.5).setDepth(20);
 
     // ── Combo display ──
-    this.comboText = this.add.text(W / 2, 480, '', {
+    this.comboText = this.add.text(W / 2, 458, '', {
       fontFamily: 'Nunito', fontSize: '20px', fontStyle: '900', color: PALETTE.primary,
       stroke: '#ffffff', strokeThickness: 2
     }).setOrigin(0.5).setDepth(20);
 
     // ── Action buttons (puffy candy style) ──
-    const btnY = H - 130;
+    const btnY = H - 110;
     const btnH = 64;
     makeButton(this, {
       x: 72, y: btnY, w: 108, h: btnH, label: 'PARRY', fontSize: 19,

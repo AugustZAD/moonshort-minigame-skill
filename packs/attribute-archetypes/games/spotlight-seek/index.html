@@ -603,23 +603,23 @@ class GameScene extends Phaser.Scene {
     }).setOrigin(0.5).setDepth(11);
 
     const cardCX = W / 2;
-    const cardCY = 385;
+    const cardCY = 360;
     const cardW = 330;
     const cardH = 370;
 
     drawCandyCard(this, cardCX, cardCY, cardW, cardH, CC.candy_cardPink, 3);
     drawGoldCorners(this, cardCX, cardCY, cardW, cardH, 7, 6);
 
-    this.roundText = this.add.text(W / 2, 225, 'Round 1', {
+    this.roundText = this.add.text(W / 2, 200, 'Round 1', {
       fontFamily: 'Nunito', fontSize: '18px', fontStyle: '900', color: PALETTE.primary
     }).setOrigin(0.5).setDepth(10);
 
-    this.hintText = this.add.text(W / 2, 249, 'The light only stays for a moment.', {
+    this.hintText = this.add.text(W / 2, 224, 'The light only stays for a moment.', {
       fontFamily: 'Patrick Hand', fontSize: '16px', color: PALETTE.textMuted
     }).setOrigin(0.5).setDepth(10);
 
     const sx = 98;
-    const sy = 335;
+    const sy = 310;
     const gap = 98;
     for (let r = 0; r < 3; r++) {
       for (let c = 0; c < 3; c++) {
@@ -649,7 +649,7 @@ class GameScene extends Phaser.Scene {
       fontFamily: 'Patrick Hand', fontSize: '18px', color: PALETTE.textMuted
     }).setOrigin(0.5).setDepth(18);
 
-    this.comboText = this.add.text(W / 2, 603, '', {
+    this.comboText = this.add.text(W / 2, 578, '', {
       fontFamily: 'Nunito', fontSize: '20px', fontStyle: '900', color: PALETTE.primary,
       stroke: '#ffffff', strokeThickness: 2
     }).setOrigin(0.5).setDepth(18);
