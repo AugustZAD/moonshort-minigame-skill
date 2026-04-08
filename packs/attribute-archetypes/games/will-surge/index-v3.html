@@ -569,6 +569,22 @@ function makeTapButton(label, fs, onTap) {
 
 function clearBtnArea() { $('btn-area').innerHTML = ''; }
 
+function resetAllDOM() {
+  clearBtnArea();
+  $('stars-row').innerHTML = '';
+  // Game-state elements: clear inline styles AND hide
+  ['score-display', 'score-delta', 'stars-row', 'result-info', 'timer-text',
+   'surge-bar-area', 'tug-bar-area'].forEach(function(id) {
+    var el = $(id);
+    if (el) { el.removeAttribute('style'); el.classList.add('hidden'); }
+  });
+  // Structural elements: clear inline styles only, do NOT hide
+  ['btn-area', 'dialogue'].forEach(function(id) {
+    var el = $(id);
+    if (el) { el.removeAttribute('style'); }
+  });
+}
+
 function updateTugBar(position) {
   var pct = Math.round(clamp(position, 0, 1) * 100);
   $('tug-fill-will').style.width = pct + '%';
@@ -611,17 +627,16 @@ class BootScene extends Phaser.Scene {
   constructor() { super('BootScene'); }
 
   create() {
+    var self = this;
     this.children.removeAll(true);
     this.cameras.main.resetFX();
     var T = window.__V3_THEME__;
 
+    var BG_INT = parseInt((T && T.bg || '#1a1a2e').replace('#',''), 16);
+    this.add.graphics().setDepth(0).fillStyle(BG_INT, 1).fillRect(0, 0, W, H);
+
+    resetAllDOM();
     setVisible('dialogue', true);
-    setVisible('score-display', false);
-    setVisible('timer-text', false);
-    setVisible('surge-bar-area', false);
-    setVisible('tug-bar-area', false);
-    setVisible('stars-row', false);
-    setVisible('result-info', false);
 
     $('dialogue').textContent = 'Tap to push back the pressure wave! Survive surges and hold your ground.';
 
@@ -633,14 +648,13 @@ class BootScene extends Phaser.Scene {
     setVisible('boot-card', true);
     $('boot-subtitle').textContent = DISPLAY_ATTRIBUTE + ' Challenge';
 
-    clearBtnArea();
     $('btn-area').appendChild(makeCandyButton('START', 'full', 18, function() {
-      audio.unlock(); setVisible('boot-card', false); setVisible('dialogue', false); window.__game.scene.start('GameScene');
+      audio.unlock(); setVisible('boot-card', false); setVisible('dialogue', false); self.scene.start('GameScene');
     }));
     $('btn-area').appendChild(makeCandyButton('UNLOCK S TIER  🌙 50', 'full secondary', 16, function() {
       audio.unlock();
       setVisible('boot-card', false); setVisible('dialogue', false);
-      window.__game.scene.start('ResultScene', { score: 9999, wavesDefeated: 99, positionFinal: 100 });
+      self.scene.start('ResultScene', { score: 9999, wavesDefeated: 99, positionFinal: 100 });
     }));
   }
 }
@@ -994,9 +1008,9 @@ class ResultScene extends Phaser.Scene {
     clearBtnArea();
     $('btn-area').appendChild(makeCandyButton('CONTINUE', 'full', 18, function() {
       notifyGameComplete({ rating: rating, score: self.finalScore, attribute: ATTRIBUTE, modifier: modifier, gameId: 'will-surge', wavesDefeated: self.wavesDefeated, positionFinal: self.positionFinal });
-      setTimeout(function() { window.__game.scene.start('BootScene'); }, 600);
+      self.time.delayedCall(600, function() { self.scene.start('BootScene'); });
     }));
-    $('btn-area').appendChild(makeCandyButton('REPLAY', 'full', 18, function() { window.__game.scene.start('BootScene'); }));
+    $('btn-area').appendChild(makeCandyButton('REPLAY', 'full', 18, function() { self.scene.start('BootScene'); }));
   }
 }
 

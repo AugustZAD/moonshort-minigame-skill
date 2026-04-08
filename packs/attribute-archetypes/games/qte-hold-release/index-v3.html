@@ -685,6 +685,22 @@ function makeHoldButton(label, fs, onDown, onUp) {
 
 function clearBtnArea() { $('btn-area').innerHTML = ''; }
 
+function resetAllDOM() {
+  clearBtnArea();
+  $('stars-row').innerHTML = '';
+  // Game-state elements: clear inline styles AND hide
+  ['score-display','combo-text','score-delta','stars-row','result-info','timer-text','gauge-area'].forEach(function(id) {
+    var el = $(id); if (!el) return;
+    el.removeAttribute('style');
+    el.classList.add('hidden');
+  });
+  // Structural elements: clear inline styles only, do NOT hide
+  ['btn-area','dialogue'].forEach(function(id) {
+    var el = $(id); if (!el) return;
+    el.removeAttribute('style');
+  });
+}
+
 function updateHpBar(side, ratio) {
   var pct = Math.round(clamp(ratio, 0, 1) * 100);
   $(side === 'left' ? 'hp-fill-left' : 'hp-fill-right').style.width = pct + '%';
@@ -726,16 +742,15 @@ class BootScene extends Phaser.Scene {
   constructor() { super('BootScene'); }
 
   create() {
+    var self = this;
     this.children.removeAll(true);
     this.cameras.main.resetFX();
     var T = window.__V3_THEME__;
+    var BG_INT = parseInt((T && T.bg || '#1a1a2e').replace('#',''), 16);
+    this.add.graphics().setDepth(0).fillStyle(BG_INT, 1).fillRect(0, 0, W, H);
 
+    resetAllDOM();
     setVisible('dialogue', true);
-    setVisible('score-display', false);
-    setVisible('timer-text', false);
-    setVisible('combo-text', false);
-    setVisible('stars-row', false);
-    setVisible('result-info', false);
     setVisible('gauge-area', true);
 
     updateHpBar('left', 1); updateHpBar('right', 1);
@@ -753,14 +768,13 @@ class BootScene extends Phaser.Scene {
     gfx.beginPath(); gfx.arc(cx, cy, r, -Math.PI * 0.3, Math.PI * 0.1); gfx.strokePath();
     this.add.circle(cx, cy, 95, hexToInt(T.bg), 0.85).setDepth(2);
 
-    clearBtnArea();
     $('btn-area').appendChild(makeCandyButton('START', 'full', 18, function() {
-      audio.unlock(); setVisible('dialogue', false); setVisible('gauge-area', false); window.__game.scene.start('GameScene');
+      audio.unlock(); setVisible('dialogue', false); setVisible('gauge-area', false); self.scene.start('GameScene');
     }));
     $('btn-area').appendChild(makeCandyButton('UNLOCK S TIER  🌙 50', 'full secondary', 16, function() {
       audio.unlock();
       setVisible('dialogue', false); setVisible('gauge-area', false);
-      window.__game.scene.start('ResultScene', { score: 9999, maxCombo: 99, hits: 99, misses: 0, reason: "unlock-preview" });
+      self.scene.start('ResultScene', { score: 9999, maxCombo: 99, hits: 99, misses: 0, reason: "unlock-preview" });
     }));
   }
 }
@@ -1079,9 +1093,9 @@ class ResultScene extends Phaser.Scene {
     clearBtnArea();
     $('btn-area').appendChild(makeCandyButton('CONTINUE', 'full', 18, function() {
       notifyGameComplete({ rating: rating, score: self.finalScore, attribute: ATTRIBUTE, modifier: modifier, gameId: 'qte-hold-release', maxCombo: self.maxCombo, hits: self.hits, misses: self.misses });
-      setTimeout(function() { window.__game.scene.start('BootScene'); }, 600);
+      self.time.delayedCall(600, function() { self.scene.start('BootScene'); });
     }));
-    $('btn-area').appendChild(makeCandyButton('REPLAY', 'full', 18, function() { window.__game.scene.start('BootScene'); }));
+    $('btn-area').appendChild(makeCandyButton('REPLAY', 'full', 18, function() { self.scene.start('BootScene'); }));
   }
 }
 

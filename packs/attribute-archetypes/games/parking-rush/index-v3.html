@@ -184,6 +184,7 @@ function $(id){return document.getElementById(id);}
 function setVisible(id,v){var e=$(id);if(!e)return;if(v)e.classList.remove('hidden');else e.classList.add('hidden');}
 function makeCandyButton(label,cls,fs,onClick){var b=document.createElement('div');b.className='btn-candy '+(cls||'full');b.innerHTML='<div class="base"></div><div class="glass"></div><div class="highlight"></div><div class="glow"></div><div class="label" style="font-size:'+(fs||18)+'px">'+label+'</div>';b.addEventListener('pointerdown',function(e){e.preventDefault();audio.tap();});b.addEventListener('pointerup',function(e){e.preventDefault();if(onClick)onClick();});return b;}
 function clearBtnArea(){$('btn-area').innerHTML='';}
+function resetAllDOM(){clearBtnArea();$('stars-row').innerHTML='';var gameEls=['score-delta','combo-text','streak-text','stars-row','result-info','hint-text','round-bar-wrap','lane-btns','level-info','timer-text','level-text','score-value','score-label','attr-mod','stat-combo','stat-hits'];for(var i=0;i<gameEls.length;i++){var e=$(gameEls[i]);if(e){e.removeAttribute('style');e.classList.add('hidden');}}}
 function deltaPop(v){var e=$('score-delta');e.classList.remove('pop','plus','minus');e.textContent=(v>=0?'+':'')+v;e.classList.add(v>=0?'plus':'minus');void e.offsetWidth;e.classList.add('pop');}
 function initShellDOM(){$('title-text').textContent=(EPISODE_LABEL?EPISODE_LABEL+': ':'')+EPISODE_TITLE;}
 
@@ -213,20 +214,21 @@ var LOT_TOP=170,LOT_H=420;var LANE_XS=[86,W/2,W-86];
 class BootScene extends Phaser.Scene{
   constructor(){super('BootScene');}
   create(){
+    var self=this;
     this.children.removeAll(true);
     var T=window.__V3_THEME__;var priI=hexToInt(T.primary);
-    setVisible('level-info',false);setVisible('streak-text',false);setVisible('combo-text',false);
-    setVisible('lane-btns',false);setVisible('round-bar-wrap',false);setVisible('hint-text',false);
-    setVisible('stars-row',false);setVisible('result-info',false);setVisible('btn-area',true);
+    var BG_INT=parseInt((window.__V3_THEME__&&window.__V3_THEME__.bg||'#1a1a2e').replace('#',''),16);this.add.graphics().setDepth(0).fillStyle(BG_INT,1).fillRect(0,0,W,H);
+    resetAllDOM();
+    setVisible('btn-area',true);
     var gfx=this.add.graphics().setDepth(2).setAlpha(0.5);
     gfx.fillStyle(hexToInt(darken(T.bg,-0.3)),0.6);gfx.fillRect(20,LOT_TOP,W-40,LOT_H);
     gfx.lineStyle(2,priI,0.3);for(var i=0;i<3;i++){gfx.strokeRect(LANE_XS[i]-48,LOT_TOP+40,96,200);}
     setVisible('boot-card',true);$('boot-subtitle').textContent=DISPLAY_ATTRIBUTE+' Challenge';
-    clearBtnArea();$('btn-area').appendChild(makeCandyButton('START','full',20,function(){audio.unlock();setVisible('boot-card',false);setVisible('btn-area',false);window.__game.scene.start('GameScene');}));
+    clearBtnArea();$('btn-area').appendChild(makeCandyButton('START','full',20,function(){audio.unlock();setVisible('boot-card',false);setVisible('btn-area',false);self.scene.start('GameScene');}));
     $('btn-area').appendChild(makeCandyButton('UNLOCK S TIER  🌙 50', 'full secondary', 16, function() {
       audio.unlock();
       setVisible('boot-card',false);setVisible('btn-area',false);
-      window.__game.scene.start('ResultScene', { score: 9999, maxCombo: 99, hits: 99, misses: 0 });
+      self.scene.start('ResultScene', { score: 9999, maxCombo: 99, hits: 99, misses: 0 });
     }));
   }
 }
@@ -293,6 +295,7 @@ class ResultScene extends Phaser.Scene{
   constructor(){super('ResultScene');}
   init(data){this.finalScore=data.score||0;this.maxCombo=data.maxCombo||0;this.hits=data.hits||0;this.misses=data.misses||0;}
   create(){
+    var self=this;
     this.children.removeAll(true);this.cameras.main.resetFX();var T=window.__V3_THEME__;
     this.add.rectangle(W/2,H/2,W,H,hexToInt(T.bg),1).setDepth(0);
     var rating=getRating(this.finalScore),modifier=getModifier(rating),modText=modifier>0?'+'+modifier:String(modifier);
@@ -311,7 +314,7 @@ class ResultScene extends Phaser.Scene{
     $('result-info').style.top='490px';$('attr-mod').textContent='';$('stat-combo').textContent='Combo: '+this.maxCombo;$('stat-hits').textContent='Parked: '+this.hits+' / Miss: '+this.misses;
     var self=this;clearBtnArea();
     $('btn-area').appendChild(makeCandyButton('CONTINUE','full',18,function(){notifyGameComplete({rating:rating,score:self.finalScore,attribute:ATTRIBUTE,modifier:modifier,gameId:'parking-rush',maxCombo:self.maxCombo,hits:self.hits,misses:self.misses});self.time.delayedCall(600,function(){self.scene.start('BootScene');});}));
-    $('btn-area').appendChild(makeCandyButton('REPLAY','full',18,function(){window.__game.scene.start('BootScene');}));
+    $('btn-area').appendChild(makeCandyButton('REPLAY','full',18,function(){self.scene.start('BootScene');}));
   }
 }
 

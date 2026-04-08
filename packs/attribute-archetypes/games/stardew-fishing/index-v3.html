@@ -343,8 +343,14 @@ function blendHex(a, b, t) { function p(h) { var r = h.replace('#',''); if (r.le
 
 function $(id) { return document.getElementById(id); }
 function setVisible(id, v) { var el = $(id); if (!el) return; if (v) el.classList.remove('hidden'); else el.classList.add('hidden'); }
-function makeCandyButton(label, cls, fs, onClick) { var b = document.createElement('div'); b.className = 'btn-candy '+(cls||'full'); b.innerHTML = '<div class="base"></div><div class="glass"></div><div class="highlight"></div><div class="glow"></div><div class="btn-candy-label" style="font-size:'+(fs||18)+'px">'+label+'</div>'; b.addEventListener('pointerdown', function(e) { e.preventDefault(); audio.tap(); }); b.addEventListener('pointerup', function(e) { e.preventDefault(); if (onClick) onClick(); }); return b; }
+function makeCandyButton(label, cls, fs, onClick) { var b = document.createElement('div'); b.className = 'btn-candy '+(cls||'full'); b.innerHTML = '<div class="base"></div><div class="glass"></div><div class="highlight"></div><div class="glow"></div><div class="label" style="font-size:'+(fs||18)+'px">'+label+'</div>'; b.addEventListener('pointerdown', function(e) { e.preventDefault(); audio.tap(); }); b.addEventListener('pointerup', function(e) { e.preventDefault(); if (onClick) onClick(); }); return b; }
 function clearBtnArea() { $('btn-area').innerHTML = ''; }
+function resetAllDOM() {
+  clearBtnArea();
+  $('stars-row').innerHTML = '';
+  ['score-display','combo-text','score-delta','stars-row','result-info','status-text','reel-btn','catch-row','water-surface'].forEach(function(id) { var el = $(id); if (el) { el.removeAttribute('style'); el.classList.add('hidden'); } });
+  ['btn-area'].forEach(function(id) { var el = $(id); if (el) { el.removeAttribute('style'); } });
+}
 function addScoreDOM(d) { var el = $('score-delta'); el.classList.remove('pop','plus','minus'); el.textContent = (d>=0?'+':'')+d; el.classList.add(d>=0?'plus':'minus'); void el.offsetWidth; el.classList.add('pop'); }
 function initShellDOM() { var t = EPISODE_LABEL ? EPISODE_LABEL+': '+EPISODE_TITLE : EPISODE_TITLE; $('title-text').textContent = t; }
 
@@ -375,14 +381,14 @@ var BootScene = new Phaser.Class({
   Extends: Phaser.Scene,
   initialize: function() { Phaser.Scene.call(this, 'BootScene'); },
   create: function() {
+    var self = this;
     this.children.removeAll(true);
     var T = window.__V3_THEME__;
     var PRIMARY_INT = hexToInt(T.primary);
-    var BG_INT = hexToInt(T.bg);
+    var BG_INT = parseInt((T && T.bg || '#1a1a2e').replace('#',''), 16);
+    this.add.graphics().setDepth(0).fillStyle(BG_INT, 1).fillRect(0, 0, W, H);
+    resetAllDOM();
     setVisible('catch-row', true); setVisible('water-surface', true);
-    setVisible('status-text', false); setVisible('combo-text', false);
-    setVisible('score-display', false); setVisible('reel-btn', false);
-    setVisible('stars-row', false); setVisible('result-info', false);
     $('catch-label').textContent = 'Cast your line!'; $('timer-label').textContent = '';
     var gfx = this.add.graphics().setDepth(3);
     gfx.lineStyle(4, 0x8B6914, 1); gfx.lineBetween(W/2+60, 100, W/2+20, 170);
@@ -393,12 +399,11 @@ var BootScene = new Phaser.Class({
     for (var i = 0; i < 8; i++) { gfx.fillStyle(PRIMARY_INT, 0.08); gfx.fillCircle(40 + Math.random() * (W - 80), 250 + Math.random() * 300, 20 + Math.random() * 30); }
     setVisible('boot-card', true);
     $('boot-subtitle').textContent = DISPLAY_ATTRIBUTE + ' Challenge';
-    clearBtnArea();
-    $('btn-area').appendChild(makeCandyButton('START', 'full', 18, function() { audio.unlock(); setVisible('boot-card', false); setVisible('catch-row', false); setVisible('water-surface', false); window.__game.scene.start('GameScene'); }));
+    $('btn-area').appendChild(makeCandyButton('START', 'full', 18, function() { audio.unlock(); setVisible('boot-card', false); setVisible('catch-row', false); setVisible('water-surface', false); self.scene.start('GameScene'); }));
     $('btn-area').appendChild(makeCandyButton('UNLOCK S TIER  🌙 50', 'full secondary', 16, function() {
       audio.unlock();
       setVisible('boot-card', false); setVisible('catch-row', false); setVisible('water-surface', false);
-      window.__game.scene.start('ResultScene', { score: 9999, maxCombo: 99, hits: 99, misses: 0, fishCaught: 99 });
+      self.scene.start('ResultScene', { score: 9999, maxCombo: 99, hits: 99, misses: 0, fishCaught: 99 });
     }));
   }
 });
@@ -557,9 +562,9 @@ var ResultScene = new Phaser.Class({
     clearBtnArea();
     $('btn-area').appendChild(makeCandyButton('CONTINUE', 'full', 18, function() {
       notifyGameComplete({ rating:rating, score:self.finalScore, attribute:ATTRIBUTE, modifier:modifier, gameId:'stardew-fishing', maxCombo:self.maxCombo, hits:self.hits, misses:self.misses, fishCaught:self.fishCaught });
-      setTimeout(function() { window.__game.scene.start('BootScene'); }, 600);
+      self.time.delayedCall(600, function() { self.scene.start('BootScene'); });
     }));
-    $('btn-area').appendChild(makeCandyButton('REPLAY', 'full', 18, function() { window.__game.scene.start('BootScene'); }));
+    $('btn-area').appendChild(makeCandyButton('REPLAY', 'full', 18, function() { self.scene.start('BootScene'); }));
   }
 });
 

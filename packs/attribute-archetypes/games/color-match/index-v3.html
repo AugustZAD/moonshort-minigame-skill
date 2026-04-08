@@ -674,6 +674,27 @@ function makeCandyButton(label, cssClass, fontSize, onClick) {
 
 function clearBtnArea() { $('btn-area').innerHTML = ''; }
 
+function resetAllDOM() {
+  clearBtnArea();
+  $('stars-row').innerHTML = '';
+  // Game-state elements: remove inline styles AND hide
+  ['score-display','combo-text','score-delta','stars-row','result-info',
+   'round-row','mode-hint','answer-timer','answer-grid',
+   'card-text','card-question','color-card-wrap'].forEach(function(id) {
+    var el = $(id); if (!el) return;
+    el.removeAttribute('style');
+    el.classList.add('hidden');
+  });
+  // Structural elements: only remove inline styles, do NOT hide
+  ['btn-area'].forEach(function(id) {
+    var el = $(id); if (!el) return;
+    el.removeAttribute('style');
+  });
+  // Reset answer-timer-fill width
+  var fill = $('answer-timer-fill');
+  if (fill) { fill.removeAttribute('style'); }
+}
+
 function addScoreDOM(delta) {
   var el = $('score-delta');
   el.classList.remove('pop', 'plus', 'minus');
@@ -767,20 +788,17 @@ var BootScene = new Phaser.Class({
   initialize: function() { Phaser.Scene.call(this, 'BootScene'); },
 
   create: function() {
+    var self = this;
     this.children.removeAll(true);
     var T = window.__V3_THEME__;
 
-    setVisible('round-row', false);
-    setVisible('color-card-wrap', true);
-    setVisible('mode-hint', false);
-    setVisible('answer-timer', false);
-    setVisible('answer-grid', false);
-    setVisible('combo-text', false);
-    setVisible('score-display', false);
-    setVisible('stars-row', false);
-    setVisible('result-info', false);
+    var BG_INT = parseInt((window.__V3_THEME__ && window.__V3_THEME__.bg || '#1a1a2e').replace('#',''), 16);
+    this.add.graphics().setDepth(0).fillStyle(BG_INT, 1).fillRect(0, 0, W, H);
+
+    resetAllDOM();
 
     // Show question mark card with game intro
+    setVisible('color-card-wrap', true);
     $('card-swatch').style.background = 'linear-gradient(135deg, ' + T.bg + ', ' + darken(T.bg, -0.1) + ')';
     $('card-text').textContent = '';
     setVisible('card-text', false);
@@ -795,16 +813,15 @@ var BootScene = new Phaser.Class({
       'Tap the correct match from the grid<br>' +
       'Watch out for tricky Stroop rounds!</div>';
 
-    clearBtnArea();
     $('btn-area').appendChild(makeCandyButton('START', 'full', 18, function() {
       audio.unlock();
       setVisible('color-card-wrap', false); setVisible('mode-hint', false); setVisible('card-question', false);
-      window.__game.scene.start('GameScene');
+      self.scene.start('GameScene');
     }));
     $('btn-area').appendChild(makeCandyButton('UNLOCK S TIER  🌙 50', 'full secondary', 16, function() {
       audio.unlock();
       setVisible('color-card-wrap', false); setVisible('mode-hint', false); setVisible('card-question', false);
-      window.__game.scene.start('ResultScene', { score: 9999, maxCombo: 99, hits: 99, misses: 0 });
+      self.scene.start('ResultScene', { score: 9999, maxCombo: 99, hits: 99, misses: 0 });
     }));
   }
 });
@@ -1092,11 +1109,11 @@ var ResultScene = new Phaser.Class({
     $('btn-area').appendChild(makeCandyButton('CONTINUE', 'full', 18, function() {
       notifyGameComplete({ rating: rating, score: self.finalScore, attribute: ATTRIBUTE,
         modifier: modifier, gameId: 'color-match', maxCombo: self.maxCombo, hits: self.hits, misses: self.misses });
-      setTimeout(function() { window.__game.scene.start('BootScene'); }, 600);
+      self.time.delayedCall(600, function() { self.scene.start('BootScene'); });
     }));
     $('btn-area').appendChild(makeCandyButton('REPLAY', 'full', 18, function() {
       $('card-text').style.fontSize = '48px';
-      window.__game.scene.start('BootScene');
+      self.scene.start('BootScene');
     }));
   }
 });

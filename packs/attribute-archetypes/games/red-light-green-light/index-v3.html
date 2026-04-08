@@ -319,6 +319,12 @@ function $(id) { return document.getElementById(id); }
 function setVisible(id, v) { var el = $(id); if (!el) return; if (v) el.classList.remove('hidden'); else el.classList.add('hidden'); }
 function makeCandyButton(label, cls, fs, onClick) { var b = document.createElement('div'); b.className = 'btn-candy ' + (cls || 'full'); b.innerHTML = '<div class="base"></div><div class="glass"></div><div class="highlight"></div><div class="glow"></div><div class="label" style="font-size:' + (fs || 18) + 'px">' + label + '</div>'; b.addEventListener('pointerdown', function(e) { e.preventDefault(); audio.tap(); }); b.addEventListener('pointerup', function(e) { e.preventDefault(); if (onClick) onClick(); }); return b; }
 function clearBtnArea() { $('btn-area').innerHTML = ''; }
+function resetAllDOM() {
+  clearBtnArea();
+  $('stars-row').innerHTML = '';
+  ['score-delta', 'combo-text', 'stars-row', 'result-info', 'info-strip', 'traffic-light', 'light-label', 'progress-track', 'stamina-area', 'switch-bar-area', 'grade-overlay', 'rules-card'].forEach(function(id) { var el = $(id); if (el) { el.removeAttribute('style'); el.classList.add('hidden'); } });
+  ['btn-area'].forEach(function(id) { var el = $(id); if (el) { el.removeAttribute('style'); } });
+}
 function deltaPop(val) { var el = $('score-delta'); el.classList.remove('pop', 'plus', 'minus'); el.textContent = (val > 0 ? '+' : '') + Math.round(val) + 'm'; el.classList.add(val > 0 ? 'plus' : 'minus'); void el.offsetWidth; el.classList.add('pop'); }
 function initShellDOM() { var t = EPISODE_LABEL ? EPISODE_LABEL + ': ' + EPISODE_TITLE : EPISODE_TITLE; $('title-text').textContent = t; }
 
@@ -345,16 +351,17 @@ function screenShake(sc, i) { sc.cameras.main.shake(150, i || 0.008); }
 class BootScene extends Phaser.Scene {
   constructor() { super('BootScene'); }
   create() {
+    var self = this;
     this.children.removeAll(true);
-    setVisible('rules-card', true); setVisible('info-strip', false); setVisible('traffic-light', true); setVisible('light-label', false);
-    setVisible('progress-track', false); setVisible('stamina-area', false); setVisible('combo-text', false); setVisible('switch-bar-area', false);
-    setVisible('grade-overlay', false); setVisible('stars-row', false); setVisible('result-info', false);
+    var BG_INT = parseInt((window.__V3_THEME__ && window.__V3_THEME__.bg || '#1a1a2e').replace('#',''), 16); this.add.graphics().setDepth(0).fillStyle(BG_INT, 1).fillRect(0, 0, W, H);
+    resetAllDOM();
+    setVisible('rules-card', true); setVisible('traffic-light', true);
     setTrafficLight('none');
-    clearBtnArea(); $('btn-area').appendChild(makeCandyButton('START', 'full', 20, function() { audio.unlock(); setVisible('rules-card', false); setVisible('traffic-light', false); window.__game.scene.start('GameScene'); }));
+    $('btn-area').appendChild(makeCandyButton('START', 'full', 20, function() { audio.unlock(); setVisible('rules-card', false); setVisible('traffic-light', false); self.scene.start('GameScene'); }));
     $('btn-area').appendChild(makeCandyButton('UNLOCK S TIER  🌙 50', 'full secondary', 16, function() {
       audio.unlock();
       setVisible('rules-card', false); setVisible('traffic-light', false);
-      window.__game.scene.start('ResultScene', { score: 9999, maxCombo: 99, hits: 99, misses: 0, distance: 999 });
+      self.scene.start('ResultScene', { score: 9999, maxCombo: 99, hits: 99, misses: 0, distance: 999 });
     }));
   }
 }
@@ -461,8 +468,8 @@ class ResultScene extends Phaser.Scene {
     if (rating === 'S') { spawnParticles(this, W / 2, 330, hexToInt(T.gold), 16, 600); audio.success(); setTimeout(function() { audio.success(); }, 100); } else if (rating === 'A') { audio.success(); }
     this.add.rectangle(W / 2, H / 2, W, H, hexToInt(T.bg), 1).setDepth(0);
     clearBtnArea();
-    $('btn-area').appendChild(makeCandyButton('CONTINUE', 'full', 18, function() { notifyGameComplete({ rating: rating, score: self.finalScore, attribute: ATTRIBUTE, modifier: modifier, gameId: 'red-light-green-light', maxCombo: self.maxCombo, hits: self.hits, misses: self.misses }); setTimeout(function() { window.__game.scene.start('BootScene'); }, 600); }));
-    $('btn-area').appendChild(makeCandyButton('REPLAY', 'full', 18, function() { window.__game.scene.start('BootScene'); }));
+    $('btn-area').appendChild(makeCandyButton('CONTINUE', 'full', 18, function() { notifyGameComplete({ rating: rating, score: self.finalScore, attribute: ATTRIBUTE, modifier: modifier, gameId: 'red-light-green-light', maxCombo: self.maxCombo, hits: self.hits, misses: self.misses }); self.time.delayedCall(600, function() { self.scene.start('BootScene'); }); }));
+    $('btn-area').appendChild(makeCandyButton('REPLAY', 'full', 18, function() { self.scene.start('BootScene'); }));
   }
 }
 

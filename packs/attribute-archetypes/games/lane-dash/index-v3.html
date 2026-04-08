@@ -416,6 +416,12 @@ function $(id) { return document.getElementById(id); }
 function setVisible(id, v) { var el = $(id); if (!el) return; if (v) el.classList.remove('hidden'); else el.classList.add('hidden'); }
 function makeCandyButton(label, cls, fs, onClick) { var b = document.createElement('div'); b.className = 'btn-candy ' + (cls || 'full'); b.innerHTML = '<div class="base"></div><div class="glass"></div><div class="highlight"></div><div class="glow"></div><div class="label" style="font-size:' + (fs || 18) + 'px">' + label + '</div>'; b.addEventListener('pointerdown', function(e) { e.preventDefault(); audio.tap(); }); b.addEventListener('pointerup', function(e) { e.preventDefault(); if (onClick) onClick(); }); return b; }
 function clearBtnArea() { $('btn-area').innerHTML = ''; }
+function resetAllDOM() {
+  clearBtnArea();
+  $('stars-row').innerHTML = '';
+  ['score-delta', 'combo-text', 'stars-row', 'result-info', 'grade-overlay', 'rules-card', 'status-bar'].forEach(function(id) { var el = $(id); if (el) { el.removeAttribute('style'); el.classList.add('hidden'); } });
+  ['btn-area'].forEach(function(id) { var el = $(id); if (el) { el.removeAttribute('style'); } });
+}
 function deltaPop(val) { var el = $('score-delta'); el.classList.remove('pop', 'plus', 'minus'); el.textContent = (val > 0 ? '+' : '') + val; el.classList.add(val > 0 ? 'plus' : 'minus'); void el.offsetWidth; el.classList.add('pop'); }
 function initShellDOM() { var t = EPISODE_LABEL ? EPISODE_LABEL + ': ' + EPISODE_TITLE : EPISODE_TITLE; $('title-text').textContent = t; }
 
@@ -439,22 +445,24 @@ var LANE_BOTTOM = 760;
 class BootScene extends Phaser.Scene {
   constructor() { super('BootScene'); }
   create() {
+    var self = this;
     this.children.removeAll(true);
     var T = window.__V3_THEME__;
     var PRIMARY_INT = hexToInt(T.primary);
-    setVisible('rules-card', true); setVisible('status-bar', false); setVisible('combo-text', false);
-    setVisible('grade-overlay', false); setVisible('stars-row', false); setVisible('result-info', false);
+    var BG_INT = parseInt((T && T.bg || '#1a1a2e').replace('#',''), 16);
+    this.add.graphics().setDepth(0).fillStyle(BG_INT, 1).fillRect(0, 0, W, H);
+    resetAllDOM();
+    setVisible('rules-card', true);
     var gfx = this.add.graphics().setDepth(2);
     for (var i = 0; i < 3; i++) { gfx.fillStyle(PRIMARY_INT, 0.03 + i * 0.01); gfx.fillRect(i * 131, LANE_TOP, 131, LANE_BOTTOM - LANE_TOP); }
     gfx.lineStyle(2, 0xffffff, 0.1);
     for (var dy = LANE_TOP; dy < LANE_BOTTOM; dy += 24) { gfx.lineBetween(131, dy, 131, dy + 12); gfx.lineBetween(262, dy, 262, dy + 12); }
     gfx.lineStyle(3, 0xffffff, 0.06); gfx.lineBetween(0, LANE_TOP, W, LANE_TOP); gfx.lineBetween(0, LANE_BOTTOM, W, LANE_BOTTOM);
-    clearBtnArea();
-    $('btn-area').appendChild(makeCandyButton('START', 'full', 20, function() { audio.unlock(); setVisible('boot-card',false); window.__game.scene.start('GameScene'); }));
+    $('btn-area').appendChild(makeCandyButton('START', 'full', 20, function() { audio.unlock(); setVisible('rules-card',false); self.scene.start('GameScene'); }));
     $('btn-area').appendChild(makeCandyButton('UNLOCK S TIER  🌙 50', 'full secondary', 16, function() {
       audio.unlock();
-      setVisible('boot-card',false);
-      window.__game.scene.start('ResultScene', { score: 9999, maxCombo: 99, hits: 99, misses: 0 });
+      setVisible('rules-card',false);
+      self.scene.start('ResultScene', { score: 9999, maxCombo: 99, hits: 99, misses: 0 });
     }));
   }
 }
@@ -538,8 +546,8 @@ class ResultScene extends Phaser.Scene {
     if (rating === 'S') { spawnParticles(this, W / 2, 350, hexToInt(T.gold), 16, 600); audio.success(); setTimeout(function() { audio.success(); }, 100); } else if (rating === 'A') { audio.success(); }
     this.add.rectangle(W / 2, H / 2, W, H, hexToInt(T.bg), 1).setDepth(0);
     clearBtnArea();
-    $('btn-area').appendChild(makeCandyButton('CONTINUE', 'full', 18, function() { notifyGameComplete({ rating: rating, score: self.finalScore, attribute: ATTRIBUTE, modifier: modifier, gameId: 'lane-dash', maxCombo: self.maxCombo, hits: self.hits, misses: self.misses }); setTimeout(function() { window.__game.scene.start('BootScene'); }, 600); }));
-    $('btn-area').appendChild(makeCandyButton('REPLAY', 'full', 18, function() { window.__game.scene.start('BootScene'); }));
+    $('btn-area').appendChild(makeCandyButton('CONTINUE', 'full', 18, function() { notifyGameComplete({ rating: rating, score: self.finalScore, attribute: ATTRIBUTE, modifier: modifier, gameId: 'lane-dash', maxCombo: self.maxCombo, hits: self.hits, misses: self.misses }); self.time.delayedCall(600, function() { self.scene.start('BootScene'); }); }));
+    $('btn-area').appendChild(makeCandyButton('REPLAY', 'full', 18, function() { self.scene.start('BootScene'); }));
   }
 }
 

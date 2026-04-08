@@ -576,6 +576,26 @@ function clearBtnArea() {
   $('btn-area').innerHTML = '';
 }
 
+function resetAllDOM() {
+  clearBtnArea();
+  $('stars-row').innerHTML = '';
+  // Game-state elements: clear inline styles AND hide
+  ['score-value', 'score-delta', 'combo-text', 'stars-row', 'info-strip',
+   'angle-display', 'grade-overlay', 'grade-letter', 'grade-score',
+   'result-info', 'attr-mod', 'stat-combo', 'stat-hits',
+   'timer-value', 'rules-card'].forEach(function(id) {
+    var el = $(id);
+    if (!el) return;
+    el.removeAttribute('style');
+    el.classList.add('hidden');
+  });
+  // Structural elements: clear inline styles only, do NOT hide
+  ['btn-area', 'dialogue'].forEach(function(id) {
+    var el = $(id);
+    if (el) el.removeAttribute('style');
+  });
+}
+
 function deltaPop(val) {
   var el = $('score-delta');
   el.classList.remove('pop', 'plus', 'minus');
@@ -787,17 +807,16 @@ class BootScene extends Phaser.Scene {
   constructor() { super('BootScene'); }
 
   create() {
+    var self = this;
     this.children.removeAll(true);
     var T = window.__V3_THEME__;
     var PRIMARY_INT = hexToInt(T.primary);
 
+    var BG_INT = parseInt((window.__V3_THEME__ && window.__V3_THEME__.bg || '#1a1a2e').replace('#',''), 16);
+    this.add.graphics().setDepth(0).fillStyle(BG_INT, 1).fillRect(0, 0, W, H);
+
+    resetAllDOM();
     setVisible('rules-card', true);
-    setVisible('info-strip', false);
-    setVisible('angle-display', false);
-    setVisible('combo-text', false);
-    setVisible('grade-overlay', false);
-    setVisible('stars-row', false);
-    setVisible('result-info', false);
 
     var gfx = this.add.graphics().setDepth(5);
     // Cannon preview only (target previews removed to avoid confusion)
@@ -806,16 +825,15 @@ class BootScene extends Phaser.Scene {
     gfx.lineStyle(8, 0x333333, 0.25);
     gfx.lineBetween(W / 2, 680, W / 2 - 30, 640);
 
-    clearBtnArea();
     $('btn-area').appendChild(makeCandyButton('START', 'full', 20, function() {
       audio.unlock();
       setVisible('rules-card', false);
-      window.__game.scene.start('GameScene');
+      self.scene.start('GameScene');
     }));
     $('btn-area').appendChild(makeCandyButton('UNLOCK S TIER  🌙 50', 'full secondary', 16, function() {
       audio.unlock();
       setVisible('rules-card', false);
-      window.__game.scene.start('ResultScene', { score: 9999, maxCombo: 99, hits: 99, misses: 0 });
+      self.scene.start('ResultScene', { score: 9999, maxCombo: 99, hits: 99, misses: 0 });
     }));
   }
 }
@@ -1228,12 +1246,12 @@ class ResultScene extends Phaser.Scene {
         hits: self.hits,
         misses: self.misses
       });
-      setTimeout(function() {
-        window.__game.scene.start('BootScene');
-      }, 600);
+      self.time.delayedCall(600, function() {
+        self.scene.start('BootScene');
+      });
     }));
     $('btn-area').appendChild(makeCandyButton('REPLAY', 'full', 18, function() {
-      window.__game.scene.start('BootScene');
+      self.scene.start('BootScene');
     }));
   }
 }
