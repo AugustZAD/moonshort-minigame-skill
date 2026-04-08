@@ -70,6 +70,101 @@ const STORY_GAME = {
   ep20: { title: '找到方向', rules: '在新领地的迷宫中探索<br>找到钥匙，推开那扇门<br>这一次，没有人追你' },
 };
 
+// ── Per-episode in-game element reskin (labels, emoji, categories) ───────────
+// Each entry maps template-specific game elements to story-themed equivalents
+const STORY_RESKIN = {
+  // ── conveyor-sort: category bins ──
+  ep3:  { // 偷听Luna书房情报
+    categories: { DATA:'证词', CODE:'线索', MAIL:'密信', MEDIA:'档案', VIRUS:'谎言' },
+    emoji: { '📊':'📝', '💻':'🔍', '✉️':'💌', '🎥':'📁', '⚠️':'🚫' },
+    hints: { 'Watch out for VIRUS packages!': '小心混入的谎言！' },
+  },
+  ep13_minor: { // 靠自己走到边界线
+    categories: { DATA:'补给', CODE:'路线', MAIL:'信号', MEDIA:'地图', VIRUS:'陷阱' },
+    emoji: { '📊':'🎒', '💻':'🗺️', '✉️':'📡', '🎥':'🧭', '⚠️':'⚠️' },
+    hints: { 'Watch out for VIRUS packages!': '小心路上的陷阱！' },
+  },
+  // ── qte-boss-parry: attack/counter types ──
+  ep6:  { // 直面Luna摊牌
+    attacks: { SLASH:'质问', HEAVY:'施压', BURST:'命令' },
+    counters: { PARRY:'沉默', DODGE:'回避', BLOCK:'反驳' },
+    symbols: { '⚔':'🗡️', '⚡':'💢', '⛔':'👊' },
+    dialogue: 'Luna会用质问、施压或命令来压制你。',
+  },
+  ep19: { // 满月之约
+    attacks: { SLASH:'试探', HEAVY:'表白', BURST:'承诺' },
+    counters: { PARRY:'回应', DODGE:'犹豫', BLOCK:'接受' },
+    symbols: { '⚔':'💬', '⚡':'💗', '⛔':'🌙' },
+    dialogue: '月光下的每一句话都需要你回应。',
+  },
+  // ── cannon-aim: target types ──
+  ep7:  { // 在嫉妒中锻造武器
+    targetLabels: { 'Big balloon':'大破绽', 'Medium':'中等弱点', 'Small gold':'关键真相' },
+    emoji: { '🎯':'🔥' },
+  },
+  ep18: { // 咖啡馆重逢
+    targetLabels: { 'Big balloon':'大信号', 'Medium':'微表情', 'Small gold':'心意' },
+    emoji: { '🎯':'💫' },
+  },
+  // ── stardew-fishing: fish/reel metaphor ──
+  ep8:  { // 拉扯真相
+    labels: { '🐟 Caught:':'💬 逼问:', '🐟 Caught: ':'💬 逼问: ', 'Cast your line!':'试探他', 'Track the fish!':'抓住他的话！', 'HOLD TO REEL':'拉住不放', 'Great catch!':'他松口了！' },
+  },
+  ep15: { // 重新呼吸
+    labels: { '🐟 Caught:':'🫁 呼吸:', '🐟 Caught: ':'🫁 呼吸: ', 'Cast your line!':'深呼吸', 'Track the fish!':'保持节奏', 'HOLD TO REEL':'稳住', 'Great catch!':'好多了！' },
+  },
+  // ── maze-escape: ghost/key metaphor ──
+  ep13: { // 踏过边界线
+    labels: { '👻':'🐺', 'ghost hunts you':'追兵来了', 'Find the Key!':'找到出路！', 'Got it! Run to Exit!':'拿到了！快跑！' },
+  },
+  ep20: { // 在新领地找到方向
+    labels: { '👻':'🌫️', 'ghost hunts you':'迷雾追来了', 'Find the Key!':'找到方向！', 'Got it! Run to Exit!':'看清了！往前跑！' },
+  },
+  // ── will-surge: wave metaphor ──
+  ep5:  { // 撑不住
+    labels: { 'WAVE IN ':'崩溃波 ', 'WAVE APPROACHING':'崩溃逼近', 'CALM':'平静', 'HOLDING STRONG':'撑住了', 'HOLD THE LINE':'不能倒' },
+  },
+  ep9:  { // 给我
+    labels: { 'WAVE IN ':'压力波 ', 'WAVE APPROACHING':'抉择逼近', 'CALM':'冷静', 'HOLDING STRONG':'握紧了', 'HOLD THE LINE':'不能颤抖' },
+  },
+  // ── red-light-green-light ──
+  ep2:  { // 在Alpha命令下撑住不跪
+    labels: { 'STAMINA':'意志力', 'RUN':'前进', 'STOP!':'跪下！', 'GO!':'站起来！' },
+  },
+  ep12_minor: { // 坐着别动
+    labels: { 'STAMINA':'忍耐值', 'RUN':'喘息', 'STOP!':'别动！', 'GO!':'可以了' },
+  },
+  // ── lane-dash ──
+  ep12: { // 翻窗逃离
+    labels: { 'Dodged ':'躲过 ' },
+  },
+  ep14: { // 黑暗奔逃
+    labels: { 'Dodged ':'闪过 ' },
+  },
+  // ── spotlight-seek ──
+  ep4: { // 权力棋盘
+    labels: { 'Watch the spotlight...':'注意权力动向...', 'Found: ':'锁定: ' },
+  },
+  ep17: { // 道别的勇气
+    labels: { 'Watch the spotlight...':'找到那个人...', 'Found: ':'找到: ' },
+  },
+  // ── qte-hold-release ──
+  ep1: { // 压住心跳
+    labels: { 'HOLD TO CHARGE ⚡':'压住 💔', 'CHARGING... ⚡':'压住中... 💔', 'OVERCHARGED!':'压不住了！', 'PERFECT!':'精准开口！', 'GOOD HIT!':'说到了！', 'TOO EARLY!':'太急了！', 'TOO LATE!':'来不及了！' },
+  },
+  ep10: { // 最后一口气
+    labels: { 'HOLD TO CHARGE ⚡':'憋住 🫁', 'CHARGING... ⚡':'憋气中... 🫁', 'OVERCHARGED!':'窒息了！', 'PERFECT!':'说出来了！', 'GOOD HIT!':'开口了！', 'TOO EARLY!':'太早了！', 'TOO LATE!':'说不出了！' },
+  },
+  // ── parking-rush ──
+  ep11: { // 规则战争
+    labels: { 'Parked! +':'到位！+', 'Parked: ':'部署: ', 'Streak ':'连续 ', 'CENTER':'中路', 'Find the free slot before time runs out!':'在时间耗尽前把资源送到正确位置！' },
+  },
+  // ── color-match ──
+  ep16: { // 月光辨认
+    labels: { 'Tricky! Read the WORD, ignore the color!':'注意！看清面孔，别被月光干扰！', 'Tap the matching swatch':'点击匹配的面孔', 'Tap the correct color name':'选择正确的判断' },
+  },
+};
+
 // ── Narrative overlay CSS ───────────────────────────────────────────────────
 const NARRATIVE_CSS = `
   .narrative-overlay { position:absolute;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.85);z-index:50;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:40px 32px;cursor:pointer; }
@@ -147,7 +242,9 @@ class NarrativeScene extends Phaser.Scene {
     }
     if (this.textures.exists('ep_bg_narrative')) {
       var bg = this.add.image(W/2, H/2, 'ep_bg_narrative');
-      bg.setDisplaySize(W, H);
+      var _t = bg.texture.getSourceImage();
+      var _s = Math.max(W/_t.width, H/_t.height);
+      bg.setScale(_s);
       bg.setAlpha(0.12);
       bg.setDepth(1);
     }
@@ -233,7 +330,9 @@ const DRAW_SCENE_BG = `
 function drawSceneBg(scene, sceneKey, alpha) {
   if (!scene.textures.exists('ep_bg_' + sceneKey)) return;
   var bg = scene.add.image(W/2, H/2, 'ep_bg_' + sceneKey);
-  bg.setDisplaySize(W, H);
+  var _t = bg.texture.getSourceImage();
+  var _s = Math.max(W/_t.width, H/_t.height);
+  bg.setScale(_s);
   bg.setAlpha(alpha || 0.03);
   bg.setDepth(-1);
 }`;
@@ -263,7 +362,9 @@ const BOOT_BG_PATCH = `
     // Draw bg image on top of the solid bg, with visible opacity
     if (this.textures.exists('ep_bg_boot')) {
       var bg = this.add.image(W/2, H/2, 'ep_bg_boot');
-      bg.setDisplaySize(W, H);
+      var _t = bg.texture.getSourceImage();
+      var _s = Math.max(W/_t.width, H/_t.height);
+      bg.setScale(_s);
       bg.setAlpha(0.15);
       bg.setDepth(0);
     }
@@ -342,6 +443,45 @@ function generateGame(ep, templateId) {
   delete ctxClean._template;
   delete ctxClean._htmlSize;
   delete ctxClean._raw;
+
+  // ── 0. Normalize portrait filenames to match actual files on disk ──────────
+  // CTX backup may use simplified names (e.g. avatar-lunamiller.png) while
+  // batch-assets-werewolf.js generates names with hyphens (avatar-luna-miller.png).
+  // Resolve by checking which file actually exists in the game directory.
+  const gameDir = path.join(BASE, ep, 'game');
+  if (ctxClean.portraits) {
+    const avatarFiles = fs.readdirSync(gameDir).filter(f => f.startsWith('avatar-') && f.endsWith('.png'));
+    for (const side of ['left', 'right']) {
+      const wanted = ctxClean.portraits[side];
+      if (wanted && !avatarFiles.includes(wanted)) {
+        // Try to find a matching avatar by character name substring
+        const namepart = wanted.replace('avatar-', '').replace('.png', '').toLowerCase();
+        const match = avatarFiles.find(f => {
+          const fpart = f.replace('avatar-', '').replace('.png', '').replace(/-/g, '');
+          return fpart === namepart || namepart.includes(fpart) || fpart.includes(namepart);
+        });
+        if (match) {
+          console.log(`  [portrait] ${side}: ${wanted} → ${match}`);
+          ctxClean.portraits[side] = match;
+        } else {
+          // Fallback: copy from character/ directory if available
+          const charDir = path.join(BASE, ep, 'character');
+          if (fs.existsSync(charDir)) {
+            const charFiles = fs.readdirSync(charDir).filter(f => f.endsWith('.png'));
+            const charMatch = charFiles.find(f => {
+              const cname = f.replace('.png', '').toLowerCase().replace(/ /g, '');
+              return cname === namepart || namepart.includes(cname) || cname.includes(namepart);
+            });
+            if (charMatch) {
+              const dest = path.join(gameDir, wanted);
+              fs.copyFileSync(path.join(charDir, charMatch), dest);
+              console.log(`  [portrait] ${side}: copied ${charMatch} → ${wanted}`);
+            }
+          }
+        }
+      }
+    }
+  }
 
   const templatePath = path.join(TEMPLATES_DIR, templateId, 'index-v3.html');
   if (!fs.existsSync(templatePath)) throw new Error('Template not found: ' + templatePath);
@@ -541,6 +681,7 @@ function generateGame(ep, templateId) {
       'will-surge': 'Tap to resist \\u2014 hold on until help arrives.',
       'cannon-aim': 'Big balloon: <b>2pt</b> (no combo)<br>Medium: <b>20pt</b> (builds combo)<br>Small gold (top): <b>50pt</b> (builds combo)',
       'qte-boss-parry': 'Choose PARRY, DODGE, or COUNTER<br>Match the attack type<br>Build combo for bonus!',
+      'red-light-green-light': 'Reach 100m to get S rank!<br>Hold RUN on GREEN, STOP on RED.<br>Yellow flash is a bluff \u2014 keep running!<br>Red violation pushes you back -5/-8/-12m<br>Combos reward +5m / +10m bonus<br>Quick release before RED = +3m',
     };
     const origRuleText = RULE_TEXT_MAP[templateId];
     // Use story-themed rules if available, otherwise generic Chinese
@@ -601,16 +742,16 @@ function generateGame(ep, templateId) {
   // Template-specific boot scene descriptions (full block replacements)
   const BOOT_DESC_REPLACEMENTS = {
     'conveyor-sort': [
-      ['Drag falling packages into matching bins.<br>Speed increases! Watch for virus packages.', '拖动到对应分类区。<br>速度递增！小心干扰项。'],
+      ['Drag falling packages into matching bins.<br>Speed increases! Watch for virus packages.', storyGame ? storyGame.rules : '拖动到对应分类区。<br>速度递增！小心干扰项。'],
       ['Drag packages to matching bins!', sub || '分类整理听到的信息碎片'],
     ],
     'spotlight-seek': [
-      ['Tiles flash briefly on a 3x3 grid.<br>Remember and tap the highlighted tile.', '方块短暂闪烁。<br>记住位置，快速点击。'],
+      ['Tiles flash briefly on a 3x3 grid.<br>Remember and tap the highlighted tile.', storyGame ? storyGame.rules : '方块短暂闪烁。<br>记住位置，快速点击。'],
       ['Watch the spotlight...', '注意观察...'],
       ['Found: ', '找到: '],
     ],
     'stardew-fishing': [
-      ['Hold to move the catch bar up.<br>Release to let it fall.<br>Keep bar over the fish to fill gauge.', '长按上移捕获条。<br>松开下落。<br>保持在目标上填满进度。'],
+      ['Hold to move the catch bar up.<br>Release to let it fall.<br>Keep bar over the fish to fill gauge.', storyGame ? storyGame.rules : '长按上移捕获条。<br>松开下落。<br>保持在目标上填满进度。'],
       ['Cast your line!', sub || '拉扯真相'],
       ['Track the fish!', '追踪节奏！'],
       ['HOLD TO REEL', '长按拉线'],
@@ -618,13 +759,13 @@ function generateGame(ep, templateId) {
       ['🐟 Caught: ', '🐟 捕获: '],
     ],
     'lane-dash': [
-      ['Tap LEFT or RIGHT to switch lanes.<br>Dodge falling obstacles to survive.<br>Speed increases as you progress!', '点击左右切换车道。<br>躲避障碍继续前进。<br>速度越来越快！'],
-      ['3-LANE SPRINT', '极速冲刺'],
+      ['Tap LEFT or RIGHT to switch lanes.<br>Dodge falling obstacles to survive.<br>Speed increases as you progress!', storyGame ? storyGame.rules : '点击左右切换车道。<br>躲避障碍继续前进。<br>速度越来越快！'],
+      ['3-LANE SPRINT', storyGame ? storyGame.title : '极速冲刺'],
       ['Swipe to dodge obstacles!', sub || '在黑暗中奔跑'],
       ['Dodged ', '躲避 '],
     ],
     'parking-rush': [
-      ['Tap the correct lane to park each car.<br>Get streaks for bonus points!<br>Wrong lane costs time!', '点击正确车道停车。<br>连续正确获得加成！<br>选错扣时间！'],
+      ['Tap the correct lane to park each car.<br>Get streaks for bonus points!<br>Wrong lane costs time!', storyGame ? storyGame.rules : '点击正确车道停车。<br>连续正确获得加成！<br>选错扣时间！'],
       ['Find the free slot before time runs out!', sub || '调度政治资源'],
       ['Streak ', '连击 '],
       ['Parked! +', '到位！+'],
@@ -637,8 +778,8 @@ function generateGame(ep, templateId) {
       ['Tap the correct color name', '点击正确的颜色名'],
     ],
     'red-light-green-light': [
-      ['Reach 100m to get S rank!<br>Hold RUN on GREEN, STOP on RED.<br>Yellow flash is a bluff — keep running!<br>Red violation pushes you back -5/-8/-12m<br>Combos reward +5m / +10m bonus<br>Quick release before RED = +3m', '达到100m获S级！<br>绿灯长按跑，红灯松手停。<br>黄灯是虚晃——继续跑！<br>红灯违规后退 -5/-8/-12m<br>连击奖励 +5m / +10m<br>红灯前松手 = +3m'],
-      ['TRAFFIC LIGHT SPRINT', '红绿灯冲刺'],
+      ['Reach 100m to get S rank!<br>Hold RUN on GREEN, STOP on RED.<br>Yellow flash is a bluff — keep running!<br>Red violation pushes you back -5/-8/-12m<br>Combos reward +5m / +10m bonus<br>Quick release before RED = +3m', storyGame ? storyGame.rules : '达到100m获S级！<br>绿灯长按跑，红灯松手停。<br>黄灯是虚晃——继续跑！<br>红灯违规后退 -5/-8/-12m<br>连击奖励 +5m / +10m<br>红灯前松手 = +3m'],
+      ['TRAFFIC LIGHT SPRINT', storyGame ? storyGame.title : '红绿灯冲刺'],
       ['STAMINA', '体力'],
       ['STOP!', '停！'],
       ['GO!', '走！'],
@@ -646,14 +787,14 @@ function generateGame(ep, templateId) {
       ['RUN', '跑'],
     ],
     'qte-boss-parry': [
-      ['Choose PARRY, DODGE, or COUNTER<br>Match the attack type<br>Build combo for bonus!', '选择格挡、闪避或反击<br>匹配对方攻击类型<br>连击获得加成！'],
+      ['Choose PARRY, DODGE, or COUNTER<br>Match the attack type<br>Build combo for bonus!', storyGame ? storyGame.rules : '选择格挡、闪避或反击<br>匹配对方攻击类型<br>连击获得加成！'],
       ['Counter with the right action!', '选择正确的应对！'],
       ['Incoming: ', '来袭: '],
       ['Counter \\u2192 ', '应对 → '],
     ],
     'cannon-aim': [
-      ['Drag to aim, tap FIRE to shoot.<br>🎯 Big balloon: <b>2pt</b> (no combo)<br>🎯 Medium: <b>20pt</b> (builds combo)<br>🎯 Small gold (top): <b>50pt</b> (builds combo)<br>Only medium & gold build your combo multiplier!', '拖动瞄准，点击发射。<br>🎯 大目标：<b>2分</b>（无连击）<br>🎯 中目标：<b>20分</b>（触发连击）<br>🎯 小金色（顶部）：<b>50分</b>（触发连击）<br>只有中、金目标累积连击！'],
-      ['FIRING RANGE', '精准射击'],
+      ['Drag to aim, tap FIRE to shoot.<br>🎯 Big balloon: <b>2pt</b> (no combo)<br>🎯 Medium: <b>20pt</b> (builds combo)<br>🎯 Small gold (top): <b>50pt</b> (builds combo)<br>Only medium & gold build your combo multiplier!', storyGame ? storyGame.rules : '拖动瞄准，点击发射。<br>🎯 大目标：<b>2分</b>（无连击）<br>🎯 中目标：<b>20分</b>（触发连击）<br>🎯 小金色（顶部）：<b>50分</b>（触发连击）<br>只有中、金目标累积连击！'],
+      ['FIRING RANGE', storyGame ? storyGame.title : '精准射击'],
     ],
   };
 
@@ -663,6 +804,24 @@ function generateGame(ep, templateId) {
       const escaped = from.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       html = html.replace(new RegExp(escaped, 'g'), to);
     }
+  }
+
+  // ── Final story-rules replacement (after all translations) ──
+  if (storyGame) {
+    // Strategy 1: replace generic Chinese rules if present
+    if (rules && rules.rules && html.includes(rules.rules)) {
+      html = html.replace(rules.rules, storyGame.rules);
+    }
+    // Strategy 2: replace BootScene inline rules div (line-height:2 block)
+    html = html.replace(
+      /(line-height:2;?">)([^<]+(?:<br>[^<]+)*?)(<\/div>)/,
+      '$1' + storyGame.rules + '$3'
+    );
+    // Strategy 3: replace rules-card <p> content if present
+    html = html.replace(
+      /(<div class="rules-card[^>]*>.*?<p>)([^<]+(?:<[^>]+>[^<]*)*)(<\/p>)/,
+      '$1' + storyGame.rules + '$3'
+    );
   }
 
   // Replace misc English UI text across all templates
@@ -731,6 +890,531 @@ function generateGame(ep, templateId) {
     } else if (html.includes('class MoonAudio')) {
       html = html.replace(/(class MoonAudio)/, DRAW_SCENE_BG + '\n\n$1');
     }
+  }
+
+  // ── 13. Apply per-episode in-game reskin ────────────────────────────────────
+  const reskin = STORY_RESKIN[ep];
+  if (reskin) {
+    // Category label replacements (conveyor-sort bins)
+    if (reskin.categories) {
+      for (const [en, cn] of Object.entries(reskin.categories)) {
+        html = html.replace(new RegExp("label:'" + en + "'", 'g'), "label:'" + cn + "'");
+        html = html.replace(new RegExp("'" + en + "'", 'g'), "'" + cn + "'");
+      }
+    }
+    // Emoji replacements
+    if (reskin.emoji) {
+      for (const [from, to] of Object.entries(reskin.emoji)) {
+        html = html.replace(new RegExp(from.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), to);
+      }
+    }
+    // Attack/counter labels (qte-boss-parry)
+    if (reskin.attacks) {
+      for (const [en, cn] of Object.entries(reskin.attacks)) {
+        html = html.replace(new RegExp("label: '" + en + "'", 'g'), "label: '" + cn + "'");
+        html = html.replace(new RegExp("label:'" + en + "'", 'g'), "label:'" + cn + "'");
+      }
+    }
+    if (reskin.counters) {
+      for (const [en, cn] of Object.entries(reskin.counters)) {
+        html = html.replace(new RegExp("counter: '" + en + "'", 'g'), "counter: '" + cn + "'");
+        html = html.replace(new RegExp("counter:'" + en + "'", 'g'), "counter:'" + cn + "'");
+        // Also replace button labels
+        html = html.replace(new RegExp("makeCandyButton\\('" + en + "'", 'g'), "makeCandyButton('" + cn + "'");
+      }
+    }
+    if (reskin.dialogue) {
+      // Replace the boss dialogue hint
+      const origDialogues = [
+        'Luna会用质问、施压或命令来压制你。',
+        '月光下的每一句话都需要你回应。',
+        '选择正确的应对！',
+      ];
+      // The dialogue was already partly replaced, just set it
+      html = html.replace(/Boss will attack with.*?\./, reskin.dialogue);
+    }
+    // Hint text replacements
+    if (reskin.hints) {
+      for (const [from, to] of Object.entries(reskin.hints)) {
+        html = html.replace(new RegExp(from.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), to);
+      }
+    }
+    // Generic label replacements
+    if (reskin.labels) {
+      for (const [from, to] of Object.entries(reskin.labels)) {
+        html = html.replace(new RegExp(from.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), to);
+      }
+    }
+    // Target label replacements (cannon-aim)
+    if (reskin.targetLabels) {
+      for (const [from, to] of Object.entries(reskin.targetLabels)) {
+        html = html.replace(new RegExp(from.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), to);
+      }
+    }
+  }
+
+  // ── 14. Inject sprite loading + rendering if sprite files exist ─────────────
+  // gameDir already defined in step 0 (portrait normalization)
+  const spriteFiles = fs.readdirSync(gameDir).filter(f => f.startsWith('sprite-') && f.endsWith('.png'));
+
+  if (spriteFiles.length > 0) {
+    // Add sprites to CTX
+    const spriteMap = {};
+    for (const f of spriteFiles) {
+      const key = f.replace('.png', '').replace('sprite-', '');
+      spriteMap[key] = f;
+    }
+    html = html.replace(
+      /window\.__EPISODE_CTX__\s*=\s*\{/,
+      'window.__EPISODE_CTX__ = {\n  "sprites": ' + JSON.stringify(spriteMap) + ','
+    );
+
+    // Build sprite preload lines
+    const preloadLines = spriteFiles.map(f => {
+      const key = 'ep_sprite_' + f.replace('.png', '').replace('sprite-', '');
+      return `    this.load.image('${key}', '${f}');`;
+    }).join('\n');
+
+    // Monkey-patch GameScene preload to load sprites
+    let spritePatch = `
+(function() {
+  var gs = GameScene.prototype || GameScene;
+  var origPre = gs.preload;
+  gs.preload = function() { if (origPre) origPre.call(this);
+${preloadLines}
+  };
+})();`;
+
+    // Template-specific rendering patches
+    if (templateId === 'conveyor-sort') {
+      spritePatch += `
+(function() {
+  var gs = GameScene.prototype || GameScene;
+  var origSpawn = gs.spawnItem;
+  gs.spawnItem = function() {
+    origSpawn.call(this);
+    var last = this.items[this.items.length - 1];
+    if (!last || !last.container) return;
+    var ct = last.container;
+    var children = ct.list || ct.getAll();
+    for (var i = 0; i < children.length; i++) {
+      if (children[i].type === 'Text' && children[i].text) {
+        var sMap = {data:'cat1',code:'cat2',mail:'cat3',media:'cat4',decoy:'decoy'};
+        var sKey = 'ep_sprite_' + (sMap[last.targetKey] || last.targetKey);
+        if (this.textures.exists(sKey)) {
+          var old = children[i];
+          var img = this.add.image(0, 2, sKey).setDisplaySize(28, 28).setOrigin(0.5);
+          ct.replace(old, img);
+          old.destroy();
+        }
+        break;
+      }
+    }
+  };
+})();`;
+    }
+
+    // ── qte-hold-release: charge center icon + release burst ──
+    if (templateId === 'qte-hold-release') {
+      spritePatch += `
+(function() {
+  var gs = GameScene.prototype || GameScene;
+  // After create: add charge sprite to gauge center
+  var origCreate = gs.create;
+  gs.create = function() {
+    origCreate.call(this);
+    if (this.textures.exists('ep_sprite_charge')) {
+      this._sprCharge = this.add.image(this.gCx, this.gCy, 'ep_sprite_charge')
+        .setDisplaySize(80, 80).setOrigin(0.5).setDepth(2.5).setAlpha(0.85);
+    }
+  };
+  // On release success: show release sprite burst
+  var origUpdate = gs.update;
+  gs.update = function(time, dt) {
+    origUpdate.call(this, time, dt);
+    // Pulse charge sprite with charge level
+    if (this._sprCharge && this.charge > 0) {
+      var s = 1 + (this.charge / 100) * 0.25;
+      this._sprCharge.setScale(s * 80 / this._sprCharge.width);
+      this._sprCharge.setAlpha(0.6 + (this.charge / 100) * 0.4);
+    } else if (this._sprCharge) {
+      this._sprCharge.setAlpha(0.5);
+    }
+  };
+  // Hook into releaseCharge to show release sprite
+  var origRelease = gs.releaseCharge;
+  if (origRelease) {
+    gs.releaseCharge = function() {
+      var wasCharging = this.isCharging;
+      origRelease.call(this);
+      if (wasCharging && this.textures.exists('ep_sprite_release')) {
+        var rel = this.add.image(this.gCx, this.gCy, 'ep_sprite_release')
+          .setDisplaySize(60, 60).setOrigin(0.5).setDepth(50).setAlpha(1);
+        this.tweens.add({ targets: rel, scaleX: 2.5, scaleY: 2.5, alpha: 0,
+          duration: 500, ease: 'Quad.easeOut', onComplete: function() { rel.destroy(); } });
+      }
+    };
+  }
+})();`;
+    }
+
+    // ── red-light-green-light: runner img + signal overlay ──
+    if (templateId === 'red-light-green-light') {
+      spritePatch += `
+(function() {
+  // Replace runner emoji with sprite image (DOM-based template)
+  function replaceRunner() {
+    var runner = document.getElementById('track-runner');
+    if (!runner) return;
+    var ctx = window.__EPISODE_CTX__;
+    if (ctx && ctx.sprites && ctx.sprites.runner) {
+      runner.innerHTML = '';
+      runner.style.fontSize = '0';
+      var img = document.createElement('img');
+      img.src = ctx.sprites.runner;
+      img.style.width = '32px'; img.style.height = '32px';
+      img.style.objectFit = 'contain';
+      img.style.filter = 'invert(1) drop-shadow(0 0 6px rgba(255,255,255,0.8))';
+      runner.appendChild(img);
+    }
+  }
+  // Replace traffic light with signal sprite overlay
+  function replaceSignal() {
+    var tl = document.getElementById('traffic-light');
+    if (!tl) return;
+    var ctx = window.__EPISODE_CTX__;
+    if (ctx && ctx.sprites && ctx.sprites.signal) {
+      var img = document.createElement('img');
+      img.src = ctx.sprites.signal;
+      img.style.width = '48px'; img.style.height = '48px';
+      img.style.objectFit = 'contain';
+      img.style.position = 'absolute'; img.style.top = '-8px'; img.style.right = '-56px';
+      img.style.filter = 'drop-shadow(0 0 6px rgba(255,255,255,0.3))';
+      img.style.pointerEvents = 'none';
+      tl.style.position = 'relative';
+      tl.appendChild(img);
+    }
+  }
+  // Run after DOM is ready and game starts
+  var origBoot = BootScene.prototype.create;
+  BootScene.prototype.create = function() {
+    origBoot.call(this);
+    setTimeout(function() { replaceRunner(); replaceSignal(); }, 100);
+  };
+  // Also patch GameScene in case runner gets reset
+  var gs = GameScene.prototype || GameScene;
+  var origGCreate = gs.create;
+  gs.create = function() {
+    origGCreate.call(this);
+    setTimeout(function() { replaceRunner(); replaceSignal(); }, 50);
+  };
+})();`;
+    }
+
+    // ── spotlight-seek: replace target tile with sprite ──
+    if (templateId === 'spotlight-seek') {
+      spritePatch += `
+(function() {
+  var gs = GameScene.prototype || GameScene;
+  var origCreate = gs.create;
+  gs.create = function() {
+    origCreate.call(this);
+    // Overlay sprite on each target cell after board is built
+    if (this.textures.exists('ep_sprite_target') && this.cells) {
+      for (var i = 0; i < this.cells.length; i++) {
+        var cell = this.cells[i];
+        if (cell && cell.x && cell.y) {
+          var spr = this.add.image(cell.x, cell.y, 'ep_sprite_target')
+            .setDisplaySize(48, 48).setOrigin(0.5).setDepth(12).setAlpha(0);
+          cell._sprite = spr;
+        }
+      }
+    }
+  };
+  // Show sprite when cell is the target
+  var origPaint = gs.paintBoard;
+  if (origPaint) {
+    gs.paintBoard = function() {
+      origPaint.call(this);
+      if (this.cells) {
+        for (var i = 0; i < this.cells.length; i++) {
+          var c = this.cells[i];
+          if (c && c._sprite) {
+            c._sprite.setAlpha(i === this.targetIdx && this.phase === 'show' ? 0.9 : 0);
+          }
+        }
+      }
+    };
+  }
+})();`;
+    }
+
+    // ── will-surge: shield center + wave overlay ──
+    if (templateId === 'will-surge') {
+      spritePatch += `
+(function() {
+  var gs = GameScene.prototype || GameScene;
+  var origCreate = gs.create;
+  gs.create = function() {
+    origCreate.call(this);
+    if (this.textures.exists('ep_sprite_shield') && this.coreCircle) {
+      this._sprShield = this.add.image(this.coreCircle.x, this.coreCircle.y, 'ep_sprite_shield')
+        .setDisplaySize(70, 70).setOrigin(0.5).setDepth(15).setAlpha(0.7);
+    }
+  };
+  var origUpdate = gs.update;
+  gs.update = function(time, dt) {
+    origUpdate.call(this, time, dt);
+    if (this._sprShield && this.coreCircle) {
+      this._sprShield.setPosition(this.coreCircle.x, this.coreCircle.y);
+      var s = this.coreCircle.scaleX || 1;
+      this._sprShield.setScale(s * 70 / this._sprShield.width);
+    }
+  };
+})();`;
+    }
+
+    // ── qte-boss-parry: attack type icons (DOM-based) ──
+    if (templateId === 'qte-boss-parry') {
+      spritePatch += `
+(function() {
+  var gs = GameScene.prototype || GameScene;
+  var origCreate = gs.create;
+  gs.create = function() {
+    origCreate.call(this);
+    // Map attack keys to sprite keys
+    var atkMap = { 'slash': 'ep_sprite_atk1', 'heavy': 'ep_sprite_atk2', 'burst': 'ep_sprite_atk3' };
+    var self = this;
+    // Patch showAttack to replace symbol with sprite image
+    if (this.attacks) {
+      this.attacks.forEach(function(atk) {
+        var origSym = atk.symbol;
+        var sprKey = atkMap[atk.key] || atkMap[Object.keys(atkMap)[0]];
+        if (self.textures.exists(sprKey)) {
+          atk._spriteKey = sprKey;
+        }
+      });
+    }
+  };
+  // After showAttack renders the cue symbol, try to overlay a sprite
+  var origUpdate = gs.update;
+  gs.update = function(time, dt) {
+    origUpdate.call(this, time, dt);
+    if (this.currentAttack && this.currentAttack._spriteKey && !this._atkSprShown) {
+      var cueEl = document.getElementById('boss-cue') || document.getElementById('cue-symbol');
+      if (cueEl && this.textures.exists(this.currentAttack._spriteKey)) {
+        if (!cueEl.querySelector('img.atk-spr')) {
+          var img = document.createElement('img');
+          img.className = 'atk-spr';
+          img.src = window.__EPISODE_CTX__.sprites[this.currentAttack._spriteKey.replace('ep_sprite_','')] || '';
+          img.style.cssText = 'width:48px;height:48px;object-fit:contain;filter:drop-shadow(0 0 8px rgba(255,255,255,0.5));display:block;margin:4px auto;';
+          cueEl.appendChild(img);
+          this._atkSprShown = true;
+        }
+      }
+    }
+    if (!this.currentAttack) this._atkSprShown = false;
+  };
+})();`;
+    }
+
+    // ── cannon-aim: replace balloon targets with sprites ──
+    if (templateId === 'cannon-aim') {
+      spritePatch += `
+(function() {
+  var gs = GameScene.prototype || GameScene;
+  var origCreate = gs.create;
+  gs.create = function() {
+    origCreate.call(this);
+    this._sprTgtMap = { 1: 'ep_sprite_tgt-big', 2: 'ep_sprite_tgt-med', 3: 'ep_sprite_tgt-sm' };
+  };
+  var origUpdate = gs.update;
+  gs.update = function(time, dt) {
+    origUpdate.call(this, time, dt);
+    if (this.targets && !this._sprTargetsInit) {
+      this._sprTargetsInit = true;
+      this._sprTargets = [];
+    }
+    // Draw sprite overlays on targets
+    if (this.targets) {
+      // Clean old sprites
+      if (this._sprTargets) {
+        this._sprTargets.forEach(function(s) { if (s) s.destroy(); });
+      }
+      this._sprTargets = [];
+      var self = this;
+      this.targets.forEach(function(t) {
+        var key = self._sprTgtMap[t.tier];
+        if (key && self.textures.exists(key)) {
+          var sz = t.r * 2.5;
+          var spr = self.add.image(t.x, t.y, key)
+            .setDisplaySize(sz, sz).setOrigin(0.5).setDepth(20).setAlpha(0.85);
+          self._sprTargets.push(spr);
+        }
+      });
+    }
+  };
+})();`;
+    }
+
+    // ── stardew-fishing: fish icon + hook decoration ──
+    if (templateId === 'stardew-fishing') {
+      spritePatch += `
+(function() {
+  var gs = GameScene.prototype || GameScene;
+  var origCreate = gs.create;
+  gs.create = function() {
+    origCreate.call(this);
+    // Replace fish emoji text with sprite
+    if (this.textures.exists('ep_sprite_catch') && this.fishIcon) {
+      this.fishIcon.setVisible(false);
+      this._sprFish = this.add.image(this.fishIcon.x, this.fishIcon.y, 'ep_sprite_catch')
+        .setDisplaySize(28, 28).setOrigin(0.5).setDepth(this.fishIcon.depth + 1);
+    }
+  };
+  var origUpdate = gs.update;
+  gs.update = function(time, dt) {
+    origUpdate.call(this, time, dt);
+    if (this._sprFish && this.fishIcon) {
+      this._sprFish.setPosition(this.fishIcon.x, this.fishIcon.y);
+    }
+  };
+})();`;
+    }
+
+    // ── lane-dash: player + obstacle sprites ──
+    if (templateId === 'lane-dash') {
+      spritePatch += `
+(function() {
+  var gs = GameScene.prototype || GameScene;
+  var origCreate = gs.create;
+  gs.create = function() {
+    origCreate.call(this);
+    // Create player sprite overlay
+    if (this.textures.exists('ep_sprite_player') && this.player) {
+      this._sprPlayer = this.add.image(this.player.x, 700, 'ep_sprite_player')
+        .setDisplaySize(42, 56).setOrigin(0.5).setDepth(11)
+        .setTint(0xffffff);
+    }
+  };
+  var origUpdate = gs.update;
+  gs.update = function(time, dt) {
+    origUpdate.call(this, time, dt);
+    // Follow player position
+    if (this._sprPlayer && this.player) {
+      this._sprPlayer.setPosition(this.player.x, 700);
+    }
+    // Add obstacle sprites
+    if (this.hazards && this.textures.exists('ep_sprite_obstacle')) {
+      for (var i = 0; i < this.hazards.length; i++) {
+        var h = this.hazards[i];
+        if (!h._spr && h.y > 0) {
+          h._spr = this.add.image(h.x, h.y, 'ep_sprite_obstacle')
+            .setDisplaySize(40, 64).setOrigin(0.5).setDepth(9).setAlpha(0.8);
+        }
+        if (h._spr) {
+          h._spr.setPosition(h.x, h.y);
+          if (h.y > 900) { h._spr.destroy(); h._spr = null; }
+        }
+      }
+    }
+  };
+})();`;
+    }
+
+    // ── maze-escape: player, ghost, key, door ──
+    if (templateId === 'maze-escape') {
+      spritePatch += `
+(function() {
+  var gs = GameScene.prototype || GameScene;
+  var origDraw = gs.drawMaze;
+  if (!origDraw) return;
+  gs.drawMaze = function() {
+    origDraw.call(this);
+    var cell = this.cell || 20;
+    var offX = this.offX || 0, offY = this.offY || 0;
+    // Player sprite
+    if (this.textures.exists('ep_sprite_player') && this.playerPos) {
+      if (!this._sprP) {
+        this._sprP = this.add.image(0, 0, 'ep_sprite_player').setDepth(40).setOrigin(0.5);
+      }
+      var px = offX + this.playerPos.x * cell + cell / 2;
+      var py = offY + this.playerPos.y * cell + cell / 2;
+      this._sprP.setPosition(px, py).setDisplaySize(cell * 0.7, cell * 0.7);
+    }
+    // Ghost sprites
+    if (this.textures.exists('ep_sprite_ghost') && this.ghosts) {
+      if (!this._sprGhosts) this._sprGhosts = [];
+      for (var gi = 0; gi < this.ghosts.length; gi++) {
+        var g = this.ghosts[gi];
+        if (!this._sprGhosts[gi]) {
+          this._sprGhosts[gi] = this.add.image(0, 0, 'ep_sprite_ghost').setDepth(38).setOrigin(0.5);
+        }
+        var gx = offX + g.x * cell + cell / 2;
+        var gy = offY + g.y * cell + cell / 2;
+        this._sprGhosts[gi].setPosition(gx, gy).setDisplaySize(cell * 0.8, cell * 0.8);
+      }
+    }
+    // Key sprite
+    if (this.textures.exists('ep_sprite_key') && this.keyPos && !this.hasKey) {
+      if (!this._sprKey) {
+        this._sprKey = this.add.image(0, 0, 'ep_sprite_key').setDepth(35).setOrigin(0.5);
+      }
+      var kx = offX + this.keyPos.x * cell + cell / 2;
+      var ky = offY + this.keyPos.y * cell + cell / 2;
+      this._sprKey.setPosition(kx, ky).setDisplaySize(cell * 0.6, cell * 0.6).setVisible(true);
+    } else if (this._sprKey) {
+      this._sprKey.setVisible(false);
+    }
+    // Exit door sprite
+    if (this.textures.exists('ep_sprite_exit') && this.exitPos) {
+      if (!this._sprExit) {
+        this._sprExit = this.add.image(0, 0, 'ep_sprite_exit').setDepth(34).setOrigin(0.5);
+      }
+      var ex = offX + this.exitPos.x * cell + cell / 2;
+      var ey = offY + this.exitPos.y * cell + cell / 2;
+      this._sprExit.setPosition(ex, ey).setDisplaySize(cell * 0.6, cell * 0.8);
+    }
+  };
+})();`;
+    }
+
+    // ── parking-rush: vehicle decoration ──
+    if (templateId === 'parking-rush') {
+      spritePatch += `
+(function() {
+  var gs = GameScene.prototype || GameScene;
+  var origCreate = gs.create;
+  gs.create = function() {
+    origCreate.call(this);
+    // Add decorative slot sprite if available
+    if (this.textures.exists('ep_sprite_slot')) {
+      var cx = this.sys.game.config.width / 2;
+      this.add.image(cx, 100, 'ep_sprite_slot')
+        .setDisplaySize(60, 60).setOrigin(0.5).setDepth(1).setAlpha(0.3);
+    }
+  };
+})();`;
+    }
+
+    // ── color-match: decorative moon/effect sprite ──
+    if (templateId === 'color-match') {
+      spritePatch += `
+(function() {
+  var gs = GameScene.prototype || GameScene;
+  var origCreate = gs.create;
+  gs.create = function() {
+    origCreate.call(this);
+    // Add atmospheric decoration
+    if (this.textures.exists('ep_sprite_moon')) {
+      this.add.image(this.sys.game.config.width - 50, 80, 'ep_sprite_moon')
+        .setDisplaySize(48, 48).setOrigin(0.5).setDepth(1).setAlpha(0.4);
+    }
+  };
+})();`;
+    }
+
+    html = html.replace(/(fitShell\(\);)/, '$1\n' + spritePatch);
   }
 
   // ── VALIDATION (Step 7b) ──────────────────────────────────────────────────

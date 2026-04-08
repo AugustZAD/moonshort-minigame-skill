@@ -240,7 +240,7 @@
   <div class="combo-text hidden" id="combo-text"></div>
 
   <!-- Rules card -->
-  <div class="rules-card hidden" id="rules-card"><h2>迈出第一步</h2><p>在咖啡馆重逢后迈出第一步<br>🎯 Big balloon: <b>2pt</b> (no combo)<br>🎯 Medium: <b>20pt</b> (builds combo)<br>🎯 Small gold (top): <b>50pt</b> (builds combo)<br>Only medium & gold build your combo multiplier!</p></div>
+  <div class="rules-card hidden" id="rules-card"><h2>迈出第一步</h2><p>瞄准重逢后的每一个时刻<br>大的容易，小的珍贵<br>连击 = 你们的默契</p></div>
 
   <!-- Grade overlay -->
   <div class="grade-overlay hidden" id="grade-overlay"><div class="grade-letter pop-in" id="grade-letter"></div><div class="grade-score" id="grade-score"></div></div>
@@ -257,6 +257,7 @@
 
 <script>
 window.__EPISODE_CTX__ = {
+  "sprites": {"tgt-big":"sprite-tgt-big.png","tgt-med":"sprite-tgt-med.png","tgt-sm":"sprite-tgt-sm.png"},
   "character": {
     "name": "Sylvia"
   },
@@ -521,7 +522,7 @@ function darken(hex, amount) {
 function paletteToTheme(p) {
   return {
     bg: p.bgDark, primary: p.primary, primaryLight: p.surface,
-    circleTail: p.surface, playerHp: p.accent, opponentHp: p.primary,
+    circleTail: p.surface, playerHp: p.accent, opponentHp: p.secondary,
     gold: '#F5C842', strokeDark: darken(p.primary, 0.25)
   };
 }
@@ -953,7 +954,9 @@ class NarrativeScene extends Phaser.Scene {
     }
     if (this.textures.exists('ep_bg_narrative')) {
       var bg = this.add.image(W/2, H/2, 'ep_bg_narrative');
-      bg.setDisplaySize(W, H);
+      var _t = bg.texture.getSourceImage();
+      var _s = Math.max(W/_t.width, H/_t.height);
+      bg.setScale(_s);
       bg.setAlpha(0.12);
       bg.setDepth(1);
     }
@@ -1287,7 +1290,7 @@ class GameScene extends Phaser.Scene {
           }
           this.addScore(gain);
           var toastColor = target.tier === 3 ? T.gold : (target.tier === 2 ? T.primaryLight : T.primary);
-          var toastMsg = target.tier === 3 ? '+' + gain + ' 🎯' : '+' + gain;
+          var toastMsg = target.tier === 3 ? '+' + gain + ' 💫' : '+' + gain;
           showToast(this, toastMsg, toastColor, target.x, target.y - 30);
           spawnParticles(this, target.x, target.y, target.color, 10, 400);
           audio.success();
@@ -1469,6 +1472,50 @@ function fitShell() {
 window.addEventListener('resize', fitShell);
 fitShell();
 
+(function() {
+  var gs = GameScene.prototype || GameScene;
+  var origPre = gs.preload;
+  gs.preload = function() { if (origPre) origPre.call(this);
+    this.load.image('ep_sprite_tgt-big', 'sprite-tgt-big.png');
+    this.load.image('ep_sprite_tgt-med', 'sprite-tgt-med.png');
+    this.load.image('ep_sprite_tgt-sm', 'sprite-tgt-sm.png');
+  };
+})();
+(function() {
+  var gs = GameScene.prototype || GameScene;
+  var origCreate = gs.create;
+  gs.create = function() {
+    origCreate.call(this);
+    this._sprTgtMap = { 1: 'ep_sprite_tgt-big', 2: 'ep_sprite_tgt-med', 3: 'ep_sprite_tgt-sm' };
+  };
+  var origUpdate = gs.update;
+  gs.update = function(time, dt) {
+    origUpdate.call(this, time, dt);
+    if (this.targets && !this._sprTargetsInit) {
+      this._sprTargetsInit = true;
+      this._sprTargets = [];
+    }
+    // Draw sprite overlays on targets
+    if (this.targets) {
+      // Clean old sprites
+      if (this._sprTargets) {
+        this._sprTargets.forEach(function(s) { if (s) s.destroy(); });
+      }
+      this._sprTargets = [];
+      var self = this;
+      this.targets.forEach(function(t) {
+        var key = self._sprTgtMap[t.tier];
+        if (key && self.textures.exists(key)) {
+          var sz = t.r * 2.5;
+          var spr = self.add.image(t.x, t.y, key)
+            .setDisplaySize(sz, sz).setOrigin(0.5).setDepth(20).setAlpha(0.85);
+          self._sprTargets.push(spr);
+        }
+      });
+    }
+  };
+})();
+
 
 // ══════════════════════════════════════════════════════════════════════════════
 //  BOOT SCENE BG PATCH: preload coverImage + draw in canvas
@@ -1491,7 +1538,9 @@ fitShell();
     // Draw bg image on top of the solid bg, with visible opacity
     if (this.textures.exists('ep_bg_boot')) {
       var bg = this.add.image(W/2, H/2, 'ep_bg_boot');
-      bg.setDisplaySize(W, H);
+      var _t = bg.texture.getSourceImage();
+      var _s = Math.max(W/_t.width, H/_t.height);
+      bg.setScale(_s);
       bg.setAlpha(0.15);
       bg.setDepth(0);
     }

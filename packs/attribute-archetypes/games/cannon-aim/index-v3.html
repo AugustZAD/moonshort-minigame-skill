@@ -474,7 +474,7 @@ function darken(hex, amount) {
 function paletteToTheme(p) {
   return {
     bg: p.bgDark, primary: p.primary, primaryLight: p.surface,
-    circleTail: p.surface, playerHp: p.accent, opponentHp: p.primary,
+    circleTail: p.surface, playerHp: p.accent, opponentHp: p.secondary,
     gold: '#F5C842', strokeDark: darken(p.primary, 0.25)
   };
 }

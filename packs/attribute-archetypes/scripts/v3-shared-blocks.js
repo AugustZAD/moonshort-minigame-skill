@@ -219,7 +219,7 @@ function paletteToTheme(p) {
     primaryLight: p.surface,
     circleTail: p.surface,
     playerHp: p.accent,
-    opponentHp: p.primary,
+    opponentHp: p.secondary,
     gold: '#F5C842',
     strokeDark: darken(p.primary, 0.25)
   };

@@ -262,13 +262,14 @@
   <div class="boot-card hidden" id="boot-card" style="position:absolute;top:380px;left:0;width:100%;text-align:center;z-index:12;">
     <div style="font-weight:900;font-size:28px;color:var(--primary);margin-bottom:8px;">迷宫探险</div>
     <div style="font-weight:700;font-size:14px;color:#64748B;margin-bottom:24px;" id="boot-subtitle">Wisdom 考验</div>
-    <div style="font-weight:700;font-size:13px;color:#E2E8F0;line-height:2;">找到钥匙，跑向出口，逃离！<br>4秒后 👻 追兵出现！<br>逃脱3次 = S级。被抓 = -5秒 + 重置</div>
+    <div style="font-weight:700;font-size:13px;color:#E2E8F0;line-height:2;">背着行囊穿越迷宫<br>找到钥匙，跑向自由<br>追兵就在身后</div>
   </div>
   <div class="btn-area hidden" id="btn-area" style="position:absolute;bottom:20px;left:12px;right:12px;display:flex;flex-direction:column;gap:14px;z-index:10;"></div>
 </div>
 
 <script>
 window.__EPISODE_CTX__ = {
+  "sprites": {"exit":"sprite-exit.png","ghost":"sprite-ghost.png","key":"sprite-key.png","player":"sprite-player.png"},
   "character": {
     "name": "Sylvia"
   },
@@ -534,7 +535,7 @@ function darken(hex, amount) {
 function paletteToTheme(p) {
   return {
     bg: p.bgDark, primary: p.primary, primaryLight: p.surface,
-    circleTail: p.surface, playerHp: p.accent, opponentHp: p.primary,
+    circleTail: p.surface, playerHp: p.accent, opponentHp: p.secondary,
     gold: '#F5C842', strokeDark: darken(p.primary, 0.25)
   };
 }
@@ -718,7 +719,9 @@ function generateMaze(cols, rows) {
 function drawSceneBg(scene, sceneKey, alpha) {
   if (!scene.textures.exists('ep_bg_' + sceneKey)) return;
   var bg = scene.add.image(W/2, H/2, 'ep_bg_' + sceneKey);
-  bg.setDisplaySize(W, H);
+  var _t = bg.texture.getSourceImage();
+  var _s = Math.max(W/_t.width, H/_t.height);
+  bg.setScale(_s);
   bg.setAlpha(alpha || 0.03);
   bg.setDepth(-1);
 }
@@ -818,7 +821,9 @@ class NarrativeScene extends Phaser.Scene {
     }
     if (this.textures.exists('ep_bg_narrative')) {
       var bg = this.add.image(W/2, H/2, 'ep_bg_narrative');
-      bg.setDisplaySize(W, H);
+      var _t = bg.texture.getSourceImage();
+      var _s = Math.max(W/_t.width, H/_t.height);
+      bg.setScale(_s);
       bg.setAlpha(0.12);
       bg.setDepth(1);
     }
@@ -1111,7 +1116,7 @@ class GameScene extends Phaser.Scene {
       if (!this.warnedGhost && this.ghostTimer <= 1.5) {
         this.warnedGhost = true;
         var nGhosts = this.escapes >= 2 ? 2 : 1;
-        var msg = nGhosts === 2 ? '👻👻 2 Ghosts incoming!' : '👻 Ghost incoming!';
+        var msg = nGhosts === 2 ? '🐺🐺 2 Ghosts incoming!' : '🐺 Ghost incoming!';
         showToast(this, msg, '#8B5CF6', W / 2, 380);
         audio.alert();
       }
@@ -1291,6 +1296,69 @@ function fitShell() {
 window.addEventListener('resize', fitShell);
 fitShell();
 
+(function() {
+  var gs = GameScene.prototype || GameScene;
+  var origPre = gs.preload;
+  gs.preload = function() { if (origPre) origPre.call(this);
+    this.load.image('ep_sprite_exit', 'sprite-exit.png');
+    this.load.image('ep_sprite_ghost', 'sprite-ghost.png');
+    this.load.image('ep_sprite_key', 'sprite-key.png');
+    this.load.image('ep_sprite_player', 'sprite-player.png');
+  };
+})();
+(function() {
+  var gs = GameScene.prototype || GameScene;
+  var origDraw = gs.drawMaze;
+  if (!origDraw) return;
+  gs.drawMaze = function() {
+    origDraw.call(this);
+    var cell = this.cell || 20;
+    var offX = this.offX || 0, offY = this.offY || 0;
+    // Player sprite
+    if (this.textures.exists('ep_sprite_player') && this.playerPos) {
+      if (!this._sprP) {
+        this._sprP = this.add.image(0, 0, 'ep_sprite_player').setDepth(40).setOrigin(0.5);
+      }
+      var px = offX + this.playerPos.x * cell + cell / 2;
+      var py = offY + this.playerPos.y * cell + cell / 2;
+      this._sprP.setPosition(px, py).setDisplaySize(cell * 0.7, cell * 0.7);
+    }
+    // Ghost sprites
+    if (this.textures.exists('ep_sprite_ghost') && this.ghosts) {
+      if (!this._sprGhosts) this._sprGhosts = [];
+      for (var gi = 0; gi < this.ghosts.length; gi++) {
+        var g = this.ghosts[gi];
+        if (!this._sprGhosts[gi]) {
+          this._sprGhosts[gi] = this.add.image(0, 0, 'ep_sprite_ghost').setDepth(38).setOrigin(0.5);
+        }
+        var gx = offX + g.x * cell + cell / 2;
+        var gy = offY + g.y * cell + cell / 2;
+        this._sprGhosts[gi].setPosition(gx, gy).setDisplaySize(cell * 0.8, cell * 0.8);
+      }
+    }
+    // Key sprite
+    if (this.textures.exists('ep_sprite_key') && this.keyPos && !this.hasKey) {
+      if (!this._sprKey) {
+        this._sprKey = this.add.image(0, 0, 'ep_sprite_key').setDepth(35).setOrigin(0.5);
+      }
+      var kx = offX + this.keyPos.x * cell + cell / 2;
+      var ky = offY + this.keyPos.y * cell + cell / 2;
+      this._sprKey.setPosition(kx, ky).setDisplaySize(cell * 0.6, cell * 0.6).setVisible(true);
+    } else if (this._sprKey) {
+      this._sprKey.setVisible(false);
+    }
+    // Exit door sprite
+    if (this.textures.exists('ep_sprite_exit') && this.exitPos) {
+      if (!this._sprExit) {
+        this._sprExit = this.add.image(0, 0, 'ep_sprite_exit').setDepth(34).setOrigin(0.5);
+      }
+      var ex = offX + this.exitPos.x * cell + cell / 2;
+      var ey = offY + this.exitPos.y * cell + cell / 2;
+      this._sprExit.setPosition(ex, ey).setDisplaySize(cell * 0.6, cell * 0.8);
+    }
+  };
+})();
+
 
 // ══════════════════════════════════════════════════════════════════════════════
 //  BOOT SCENE BG PATCH: preload coverImage + draw in canvas
@@ -1313,7 +1381,9 @@ fitShell();
     // Draw bg image on top of the solid bg, with visible opacity
     if (this.textures.exists('ep_bg_boot')) {
       var bg = this.add.image(W/2, H/2, 'ep_bg_boot');
-      bg.setDisplaySize(W, H);
+      var _t = bg.texture.getSourceImage();
+      var _s = Math.max(W/_t.width, H/_t.height);
+      bg.setScale(_s);
       bg.setAlpha(0.15);
       bg.setDepth(0);
     }

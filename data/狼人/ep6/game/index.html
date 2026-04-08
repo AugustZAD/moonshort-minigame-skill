@@ -459,6 +459,7 @@
 
 <script>
 window.__EPISODE_CTX__ = {
+  "sprites": {"atk1":"sprite-atk1.png","atk2":"sprite-atk2.png","atk3":"sprite-atk3.png"},
   "character": {
     "name": "Sylvia"
   },
@@ -725,7 +726,7 @@ function darken(hex, amount) {
 function paletteToTheme(p) {
   return {
     bg: p.bgDark, primary: p.primary, primaryLight: p.surface,
-    circleTail: p.surface, playerHp: p.accent, opponentHp: p.primary,
+    circleTail: p.surface, playerHp: p.accent, opponentHp: p.secondary,
     gold: '#F5C842', strokeDark: darken(p.primary, 0.25)
   };
 }
@@ -887,7 +888,9 @@ function initShellDOM() {
 function drawSceneBg(scene, sceneKey, alpha) {
   if (!scene.textures.exists('ep_bg_' + sceneKey)) return;
   var bg = scene.add.image(W/2, H/2, 'ep_bg_' + sceneKey);
-  bg.setDisplaySize(W, H);
+  var _t = bg.texture.getSourceImage();
+var _s = Math.max(W/_t.width, H/_t.height);
+bg.setScale(_s);
   bg.setAlpha(alpha || 0.03);
   bg.setDepth(-1);
 }
@@ -1160,7 +1163,9 @@ class NarrativeScene extends Phaser.Scene {
     }
     if (this.textures.exists('ep_bg_narrative')) {
       var bg = this.add.image(W/2, H/2, 'ep_bg_narrative');
-      bg.setDisplaySize(W, H);
+      var _t = bg.texture.getSourceImage();
+var _s = Math.max(W/_t.width, H/_t.height);
+bg.setScale(_s);
       bg.setAlpha(0.12);
       bg.setDepth(1);
     }
@@ -1231,9 +1236,9 @@ class GameScene extends Phaser.Scene {
     this.difficulty = 1;
     var T = window.__V3_THEME__;
     this.attacks = [
-      { key: 'parry', label: 'SLASH', symbol: '\u2694', counter: '格挡', color: T.gold, icon: '\u2694' },
-      { key: 'dodge', label: 'HEAVY', symbol: '\u26A1', counter: '闪避', color: T.primaryLight, icon: '\u26A1' },
-      { key: 'block', label: 'BURST', symbol: '\u26D4', counter: 'BLOCK', color: T.primary, icon: '\u26D4' }
+      { key: 'parry', label: '质问', symbol: '\u2694', counter: '格挡', color: T.gold, icon: '\u2694' },
+      { key: 'dodge', label: '施压', symbol: '\u26A1', counter: '闪避', color: T.primaryLight, icon: '\u26A1' },
+      { key: 'block', label: '命令', symbol: '\u26D4', counter: '反驳', color: T.primary, icon: '\u26D4' }
     ];
   }
 
@@ -1275,7 +1280,7 @@ class GameScene extends Phaser.Scene {
     row.className = 'btn-row';
     row.appendChild(makeCandyButton('格挡', 'third', 15, function() { self.handleCounter('parry'); }));
     row.appendChild(makeCandyButton('闪避', 'third', 15, function() { self.handleCounter('dodge'); }));
-    row.appendChild(makeCandyButton('BLOCK', 'third', 15, function() { self.handleCounter('block'); }));
+    row.appendChild(makeCandyButton('反驳', 'third', 15, function() { self.handleCounter('block'); }));
     $('btn-area').appendChild(row);
 
     this.input.once('pointerdown', function() {
@@ -1635,6 +1640,55 @@ function fitShell() {
 window.addEventListener('resize', fitShell);
 fitShell();
 
+(function() {
+  var gs = GameScene.prototype || GameScene;
+  var origPre = gs.preload;
+  gs.preload = function() { if (origPre) origPre.call(this);
+    this.load.image('ep_sprite_atk1', 'sprite-atk1.png');
+    this.load.image('ep_sprite_atk2', 'sprite-atk2.png');
+    this.load.image('ep_sprite_atk3', 'sprite-atk3.png');
+  };
+})();
+(function() {
+  var gs = GameScene.prototype || GameScene;
+  var origCreate = gs.create;
+  gs.create = function() {
+    origCreate.call(this);
+    // Map attack keys to sprite keys
+    var atkMap = { 'slash': 'ep_sprite_atk1', 'heavy': 'ep_sprite_atk2', 'burst': 'ep_sprite_atk3' };
+    var self = this;
+    // Patch showAttack to replace symbol with sprite image
+    if (this.attacks) {
+      this.attacks.forEach(function(atk) {
+        var origSym = atk.symbol;
+        var sprKey = atkMap[atk.key] || atkMap[Object.keys(atkMap)[0]];
+        if (self.textures.exists(sprKey)) {
+          atk._spriteKey = sprKey;
+        }
+      });
+    }
+  };
+  // After showAttack renders the cue symbol, try to overlay a sprite
+  var origUpdate = gs.update;
+  gs.update = function(time, dt) {
+    origUpdate.call(this, time, dt);
+    if (this.currentAttack && this.currentAttack._spriteKey && !this._atkSprShown) {
+      var cueEl = document.getElementById('boss-cue') || document.getElementById('cue-symbol');
+      if (cueEl && this.textures.exists(this.currentAttack._spriteKey)) {
+        if (!cueEl.querySelector('img.atk-spr')) {
+          var img = document.createElement('img');
+          img.className = 'atk-spr';
+          img.src = window.__EPISODE_CTX__.sprites[this.currentAttack._spriteKey.replace('ep_sprite_','')] || '';
+          img.style.cssText = 'width:48px;height:48px;object-fit:contain;filter:drop-shadow(0 0 8px rgba(255,255,255,0.5));display:block;margin:4px auto;';
+          cueEl.appendChild(img);
+          this._atkSprShown = true;
+        }
+      }
+    }
+    if (!this.currentAttack) this._atkSprShown = false;
+  };
+})();
+
 
 // ══════════════════════════════════════════════════════════════════════════════
 //  BOOT SCENE BG PATCH: preload coverImage + draw in canvas
@@ -1657,7 +1711,9 @@ fitShell();
     // Draw bg image on top of the solid bg, with visible opacity
     if (this.textures.exists('ep_bg_boot')) {
       var bg = this.add.image(W/2, H/2, 'ep_bg_boot');
-      bg.setDisplaySize(W, H);
+      var _t = bg.texture.getSourceImage();
+var _s = Math.max(W/_t.width, H/_t.height);
+bg.setScale(_s);
       bg.setAlpha(0.15);
       bg.setDepth(0);
     }

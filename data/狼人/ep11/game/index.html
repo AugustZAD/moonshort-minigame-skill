@@ -149,12 +149,13 @@
   <div class="boot-card hidden" id="boot-card" style="position:absolute;top:380px;left:0;width:100%;text-align:center;z-index:12;">
     <div style="font-weight:900;font-size:28px;color:var(--primary);margin-bottom:8px;">急速泊车</div>
     <div style="font-weight:700;font-size:14px;color:#64748B;margin-bottom:24px;" id="boot-subtitle">考验</div>
-    <div style="font-weight:700;font-size:13px;color:#E2E8F0;line-height:2;">Tap the correct lane to park each car.<br>Find the free parking slot.<br>Speed increases with every wave!</div>
+    <div style="font-weight:700;font-size:13px;color:#E2E8F0;line-height:2;">在议事厅的压力中调度资源<br>用程序而非武力<br>每一步都必须精准</div>
   </div>
   <div class="btn-area hidden" id="btn-area" style="position:absolute;bottom:20px;left:12px;right:12px;display:flex;flex-direction:column;gap:14px;z-index:10;"></div>
 </div>
 <script>
 window.__EPISODE_CTX__ = {
+  "sprites": {"car":"sprite-car.png","slot":"sprite-slot.png"},
   "character": {
     "name": "Sylvia"
   },
@@ -262,7 +263,9 @@ function initShellDOM() {
 function drawSceneBg(scene, sceneKey, alpha) {
   if (!scene.textures.exists('ep_bg_' + sceneKey)) return;
   var bg = scene.add.image(W/2, H/2, 'ep_bg_' + sceneKey);
-  bg.setDisplaySize(W, H);
+  var _t = bg.texture.getSourceImage();
+  var _s = Math.max(W/_t.width, H/_t.height);
+  bg.setScale(_s);
   bg.setAlpha(alpha || 0.03);
   bg.setDepth(-1);
 }
@@ -359,7 +362,9 @@ class NarrativeScene extends Phaser.Scene {
     }
     if (this.textures.exists('ep_bg_narrative')) {
       var bg = this.add.image(W/2, H/2, 'ep_bg_narrative');
-      bg.setDisplaySize(W, H);
+      var _t = bg.texture.getSourceImage();
+      var _s = Math.max(W/_t.width, H/_t.height);
+      bg.setScale(_s);
       bg.setAlpha(0.12);
       bg.setDepth(1);
     }
@@ -484,6 +489,28 @@ var config={type:Phaser.CANVAS,width:W,height:H,parent:'phaser-container',transp
 (function(){resolveTheme('mystery').then(function(theme){applyTheme(theme);if(CTX.coverImage){var coverEl=document.getElementById('cover-layer');if(coverEl){coverEl.src=CTX.coverImage;coverEl.style.display='block';}}window.__V3_THEME__=theme;window.__game=new Phaser.Game(config);window.__game.events.once('ready',function(){var c=document.querySelector('#phaser-container canvas');if(c){c.style.width=W+'px';c.style.height=H+'px';}});});})();
 fitShell();
 
+(function() {
+  var gs = GameScene.prototype || GameScene;
+  var origPre = gs.preload;
+  gs.preload = function() { if (origPre) origPre.call(this);
+    this.load.image('ep_sprite_car', 'sprite-car.png');
+    this.load.image('ep_sprite_slot', 'sprite-slot.png');
+  };
+})();
+(function() {
+  var gs = GameScene.prototype || GameScene;
+  var origCreate = gs.create;
+  gs.create = function() {
+    origCreate.call(this);
+    // Add decorative slot sprite if available
+    if (this.textures.exists('ep_sprite_slot')) {
+      var cx = this.sys.game.config.width / 2;
+      this.add.image(cx, 100, 'ep_sprite_slot')
+        .setDisplaySize(60, 60).setOrigin(0.5).setDepth(1).setAlpha(0.3);
+    }
+  };
+})();
+
 
 // ══════════════════════════════════════════════════════════════════════════════
 //  BOOT SCENE BG PATCH: preload coverImage + draw in canvas
@@ -506,7 +533,9 @@ fitShell();
     // Draw bg image on top of the solid bg, with visible opacity
     if (this.textures.exists('ep_bg_boot')) {
       var bg = this.add.image(W/2, H/2, 'ep_bg_boot');
-      bg.setDisplaySize(W, H);
+      var _t = bg.texture.getSourceImage();
+      var _s = Math.max(W/_t.width, H/_t.height);
+      bg.setScale(_s);
       bg.setAlpha(0.15);
       bg.setDepth(0);
     }

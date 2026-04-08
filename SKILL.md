@@ -135,10 +135,14 @@ End-to-end workflow for producing a **story-driven customized mini-game** from e
 
 **深度定制化核心原则**:
 - **不改原模板 UI/UX 布局**。标题栏、头像、VS、HP 条、仪表盘、按钮位置全部保持原样
-- 只通过 `window.__EPISODE_CTX__` 注入数据（角色名、标题、背景图、主题色）
-- **配色优先用 kmeans 动态取色**：设 `CTX.coverImage` 后模板自动从背景图 kmeans 聚类提取主色，生成完整 theme。若提取结果饱和度/亮度不够（`ps<0.60` 或 `pl` 超范围），自动 fallback 到 `CTX.theme` 指定的 7 preset 之一
-- 7 个 preset theme 作为 fallback：combat/mystery/nature/dark/sweet/ocean/energy
+- 只通过 `window.__EPISODE_CTX__` 注入数据（角色名、标题、背景图、主题色、精灵图）
+- **配色用 kmeans 动态取色 + 增强（不 fallback）**：设 `CTX.coverImage` 后模板自动从背景图 kmeans 聚类提取主色。**弱色自动增强**（饱和度拉到 ≥0.55，亮度夹到 0.30-0.80）而不是 fallback 到 preset。7 个 preset theme（combat/mystery/nature/dark/sweet/ocean/energy）仅作为无 coverImage 时的默认值
+- **kmeans 必须确定性初始化**：用均匀间距采样替代 `Math.random()` 初始化聚类中心，确保每次刷新配色一致
 - `CTX.coverImage` 同时控制背景淡显（cover-layer opacity 0.20）和动态取色，一举两得
+- **三层定制体系**（逐层递进，后层依赖前层）：
+  - 第一层：标签/文案替换 — 游戏名、规则、按钮、状态提示全部剧情化
+  - 第二层：emoji/符号替换 — 分类名、攻击类型、道具名等替换为剧情化标签
+  - 第三层：精灵图替换 — 用 ZenMux/Gemini 生成剧情化的图标精灵，替换程序化色块/emoji
 
 **深度定制化额外步骤**:
 1. 注入 `window.__EPISODE_CTX__`（见下方 CTX 注入结构）
@@ -146,11 +150,27 @@ End-to-end workflow for producing a **story-driven customized mini-game** from e
 3. 设置 `CTX.portraits` 使用 Step 2b 生成的 tight headshot 头像
 4. 设置 `CTX.names` 替换默认 Player/Boss 为角色名
 5. 根据剧情氛围覆写 `bgmStyle`（如紧张场景强制 `tense`）
-6. 游戏内提示文案剧情化
-7. **游戏机制隐喻重新包装**：将模板默认的机制描述替换为剧情化隐喻（如 stardew-fishing "钓鱼" → "心跳同步"），包括计数器 emoji/标签、进度条标签、状态提示文案、combo 描述
-8. **ResultScene 增加剧情结语**：按 S/A/B/C 四档编写不同剧情描述文案（如 S:"你们的心跳完美同步" / C:"心跳快得乱了节奏"）。**结语用 narrative overlay 展示**（点"继续"后弹出全屏叠层，点击淡出），不要内联在结算 UI 里（会与按钮重叠）。**不要加下集预告**——结语只聚焦本集情感收束
-9. **按钮/色系可自由调整**：色系不必严格按四大属性（ATK/WIL/INT/CHA）分配，可参考 `packs/attribute-archetypes/STYLE-POLISH-SKILL.md` 自定义 PALETTE、CANDY、按钮渐变色等，让色调完全服务于剧情氛围
-10. **游戏内素材融合**（见 Step 2c）：根据模板融合价值分级，高价值模板（lane-dash/maze-escape/spotlight-seek/qte-boss-parry）必须生成游戏内精灵/图标替换默认色块；中价值模板（stardew-fishing/will-surge/conveyor-sort）推荐生成隐喻物件图标；低价值模板（color-match/red-light-green-light/qte-hold-release/parking-rush）保持程序化渲染
+6. **游戏名剧情化**：替换模板默认游戏名（如 `Conveyor Sort` → `碎片拼图`）。同时替换 HTML `<title>`、boot card `<h2>`、Phaser 文字、ResultScene 副标题中的所有出现
+7. **游戏规则剧情化**：BootScene 的规则描述替换为剧情化中文（如"将走廊里听到的碎片分类，真相和谎言混在一起"）
+8. **考验宣告卡（Bridge Card）**：NarrativeScene 对白结束后、进入 BootScene 之前，自动插入一张全屏考验宣告卡：`—— {角色名}的{属性}考验 ——` + `{剧情化引导语}` + `点击开始考验`。这是剧情→游戏的核心衔接点
+9. **游戏机制隐喻重新包装（第一层 + 第二层）**：
+   - 第一层：所有模板的标签/文案替换为剧情化中文（分类名、攻击类型、状态提示、计数器等）
+   - 第二层：emoji/符号替换（如 conveyor-sort: DATA→证词, VIRUS→谎言; qte-boss-parry: SLASH→质问; maze-escape: 👻→🐺）
+   - 参考实现：`scripts/batch-generate-wolven.js` 中的 `STORY_RESKIN` 映射表
+10. **游戏内精灵图替换（第三层）**：用 ZenMux/Gemini 生成 128×128 绿幕精灵 → sharp chroma key 移除 → 透明 PNG → 通过 `CTX.sprites` 注入 + monkey-patch GameScene 渲染代码（见 Step 2c）
+11. **ResultScene 增加剧情结语**：按 S/A/B/C 四档编写不同剧情描述文案。**结语用 narrative overlay 展示**（点"继续"后弹出全屏叠层，点击淡出），不要内联在结算 UI 里。**不要加下集预告**。**用 monkey-patch 注入**而非修改模板 create() 内部代码
+12. **按钮/色系可自由调整**：色系不必严格按四大属性分配，让色调完全服务于剧情氛围
+
+**monkey-patch 注入模式**（已验证最可靠的注入方式）:
+
+> V3 模板代码风格不统一（有的用 `class`，有的用 `Phaser.Class`，有的是 minified），直接 regex 替换内部代码容易出错。**推荐用 monkey-patch 模式**：在 `fitShell()` 后、`</script>` 前注入 `(function(){ var proto = XXScene.prototype || XXScene; var orig = proto.create; proto.create = function() { /* 自定义逻辑 */ orig.call(this); }; })();`
+
+已验证的 monkey-patch:
+- BootScene preload（注入 coverImage 纹理加载）
+- BootScene create（注入背景图渲染）
+- ResultScene create（注入结语 overlay）
+- GameScene preload（注入精灵图加载）
+- GameScene spawnItem（注入精灵图渲染，如 conveyor-sort 的分类图标）
 
 **⚠️ V3 模板必须注入的三大组件**（V3 模板本身不内置这些功能，必须每集手动注入）:
 
@@ -160,10 +180,13 @@ End-to-end workflow for producing a **story-driven customized mini-game** from e
 - V3 模板只有 `BootScene → GameScene → ResultScene`，**不含 NarrativeScene**
 - 必须注入: ① narrative-overlay CSS（`</style>` 前）② NarrativeScene 类（`class BootScene` 前）③ Phaser config scene 数组加 `NarrativeScene`
 - Scene 顺序改为: `[NarrativeScene, BootScene, GameScene, ResultScene]`
-- NarrativeScene 用于**开场叙事**：自动读取 `CTX.narrative[]`，逐句点击推进，最后淡出进 BootScene
+- NarrativeScene 用于**开场叙事**：自动读取 `CTX.narrative[]`，逐句点击推进
+- 对白结束后自动展示**考验宣告卡（Bridge Card）**：`—— {角色名}的{属性}考验 ——` + `CTX.copy.bootSubtitle`（剧情化引导语） + `点击开始考验`。这是剧情→游戏的核心衔接，不可跳过
+- 宣告卡点击后淡出（0.5s opacity transition），进入 BootScene
 - 若 `CTX.narrative` 为空，直接跳到 BootScene（兼容无叙事场景）
-- **结束语不用 NarrativeScene**，而是在 ResultScene create() 开头以 overlay 形式展示 `CTX.resultTexts[rating]`（按评级区分内容更有意义）
-- **完整游戏流程**: NarrativeScene(开场) → BootScene → GameScene → ResultScene(评级结语overlay → 结算UI)
+- NarrativeScene 也在 `preload()` 中加载 coverImage 作为叙事背景（低透明度叠加在 Phaser canvas 上）
+- **结束语不用 NarrativeScene**，而是在 ResultScene create() 开头以 overlay 形式展示 `CTX.resultTexts[rating]`（按评级区分内容更有意义）。**ResultScene overlay 用 monkey-patch 注入**
+- **完整游戏流程**: NarrativeScene(开场对白 → 考验宣告卡) → BootScene → GameScene → ResultScene(评级结语overlay → 结算UI)
 - CSS:
   ```css
   .narrative-overlay { position:absolute;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.85);z-index:50;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:40px 32px;cursor:pointer; }
@@ -227,9 +250,9 @@ End-to-end workflow for producing a **story-driven customized mini-game** from e
 - ResultScene 全屏矩形 alpha 设为 `0.85`（半透明），让背景图透出来
 - **完整体验流程**: 游戏结束 → 结束语(narrativeOutro) → 评级结语(resultTexts) → 结算UI(评级/星/分数) → 继续
 
-**全文案中文化清单**（每集必须全部替换，不留英文）:
+**关键文案替换清单**（按钮和标题需要中文化，游戏内统计标签保留英文）:
 
-| 位置 | 英文默认 | 中文替换 |
+| 位置 | 英文默认 | 替换 |
 |------|---------|---------|
 | BootScene 按钮 | START | 开始考验 |
 | BootScene 解锁按钮 | UNLOCK S TIER 🌙 50 | 解锁 S 级 🌙 50 |
@@ -237,7 +260,7 @@ End-to-end workflow for producing a **story-driven customized mini-game** from e
 | BootScene 说明文案 | Tap to push back... | 剧情化中文描述 |
 | GameScene COPY 对象 | 全英文 | 通过 `CTX.copy` 覆写为剧情化中文 |
 | ResultScene 按钮 | CONTINUE / REPLAY | 继续 / 再来一次 |
-| ResultScene stats | Waves: / Position: | 中文标签 |
+| ResultScene stats | Combo: / Hits: / Miss: 等 | **保留英文**（不需要翻译）|
 | NarrativeScene 提示 | TAP TO CONTINUE | 点击继续 |
 | ResultScene 结语提示 | — | 点击结束 |
 
@@ -268,7 +291,8 @@ End-to-end workflow for producing a **story-driven customized mini-game** from e
 - `file://` 协议下 canvas 跨域限制会导致 `drawImage` 失败 → kmeans 取色失效 → 回退到 preset theme
 - **必须通过 `http://localhost` 访问**才能正常取色
 - 验证方式: `preview_inspect` 检查 `--primary` CSS 变量值是否与 preset 默认值不同
-- **resolveTheme 门卫条件已放宽**：原条件 `L>0.40 && L<0.75 && S>0.60` 对暗色背景太严格（如狼人杀场景 L≈0.3），已改为 `L>0.18 && L<0.82 && S>0.30`
+- **resolveTheme 不再 fallback**：原来弱色直接 fallback 到 preset theme，现在改为**增强弱色**（饱和度拉到 ≥0.55，亮度夹到合理范围），永远使用从背景图提取的颜色。只有 `CTX.coverImage` 不存在时才用 `CTX.theme` preset
+- **kmeans 必须确定性初始化**：`Math.random()` 导致每次刷新配色不同。替换为均匀间距采样：`var step = Math.max(1, Math.floor(pixels.length / k)); for (var ci = 0; ci < k; ci++) { centers.push(pixels[Math.min(ci * step, pixels.length - 1)].slice()); }`
 - **paletteToTheme 配色映射**（已优化，避免同色相血条不可区分）：
   - `playerHp` → `p.primary`（主色，最醒目）
   - `opponentHp` → `p.secondary`（不同色相，与玩家血条形成对比）
@@ -549,10 +573,16 @@ Freesound API 搜索 → 下载预览 → FreesoundAudio 类集成
 ### Step 4: 游戏实现 (~30 min)
 
 1. **基于 Step 1 选中的模板起步**: 复制 `packs/attribute-archetypes/games/<game-id>/index-v3.html` 到 `data/<story>/ep{N}/game/index.html`，在此基础上注入
-2. **注入三大组件**（深度定制化必须，见上方 ⚠️ 节）: NarrativeScene 类+CSS → initShellDOM 升级 → ResultScene 结语 overlay
-3. **Scene 顺序**: `NarrativeScene` → `BootScene` → `GameScene` → `ResultScene`（NarrativeScene 在最前，V3 模板默认不含需手动加入 scene 数组）
-4. **叙事开场**: NarrativeScene 读取 `CTX.narrative` 自定义对白, 点击推进, 最后一句淡出进 BootScene
-5. **全文案中文化**: 注入 `CTX.copy` 覆写 COPY 对象 + 替换 BootScene/ResultScene 中硬编码的英文按钮/标签（见中文化清单）
+2. **注入组件（全部用 monkey-patch 模式）**:
+   - 组件 A: NarrativeScene 类 + CSS + 考验宣告卡 (Bridge Card)
+   - 组件 B: initShellDOM 升级（头像 + 名字）
+   - 组件 C: ResultScene 结语 overlay（monkey-patch ResultScene.create）
+   - BootScene 背景图 patch（monkey-patch preload + create 加载并渲染 coverImage）
+   - 精灵图加载 patch（monkey-patch GameScene preload + 渲染函数）
+3. **Scene 顺序**: `NarrativeScene` → `BootScene` → `GameScene` → `ResultScene`
+4. **叙事开场 + 衔接**: NarrativeScene 读取 `CTX.narrative` 对白 → 考验宣告卡 → BootScene
+5. **三层文案定制**: 游戏名剧情化 + 规则描述剧情化 + 游戏内标签/emoji 剧情化（见三层定制体系）
+6. **精灵图注入**: 通过 `CTX.sprites` 注入精灵文件映射 → monkey-patch GameScene 渲染
 4. **核心机制**:
    - 每个阶段必须有 **有意义的决策** (不是无脑点击)
    - 操作错误必须有 **明确惩罚** (tension 增加, 扣分, 屏幕震动)
@@ -564,12 +594,16 @@ Freesound API 搜索 → 下载预览 → FreesoundAudio 类集成
 
 > **此步骤适用于一次性定制多集（≥3 集）游戏的场景。单集定制跳过此步。**
 
-**⚠️ 批量生成的核心陷阱：脚本只替换数据，不替换代码。** 上一次翻车就是因为批量脚本只注入了 CTX 数据块，但没有注入三大组件（NarrativeScene 类 / CSS / ResultScene overlay），导致 ep3-ep20 全部缺少开头结尾衔接。
+**已验证的批量生成方案**: `scripts/batch-generate-wolven.js`（狼人22集）是完整参考实现，包含：
+- CTX 注入 + 三大组件 monkey-patch + 考验宣告卡 + 三层文案定制 + 精灵图注入 + kmeans 确定性修复 + 弱色增强
+- 配套精灵生成脚本：`scripts/generate-wolven-sprites.js`（ZenMux/Gemini → 绿幕 → chroma key → 透明 PNG）
+
+**⚠️ 批量生成的核心陷阱：脚本只替换数据，不替换代码。** 必须用 monkey-patch 模式注入所有组件代码，而不是 regex 替换模板内部代码。
 
 **强制工作顺序**（不可调换）：
 
-1. **先完成 1 个标杆 ep 的完整深度定制**（含三大组件注入 + 浏览器验证通过）
-2. **验证标杆 ep** — 在浏览器中确认：开场叙事可点击推进 → 游戏正常 → 结语 overlay 在结算前展示 → 中文按钮
+1. **先完成 1 个标杆 ep 的完整深度定制**（含所有组件注入 + 浏览器验证通过）
+2. **验证标杆 ep** — 在浏览器中确认：开场叙事 → 考验宣告卡 → 游戏正常（精灵图加载） → 结语 overlay → 结算 UI → 中文按钮
 3. **以验证通过的标杆 ep 作为母版**运行批量脚本
 4. **批量脚本必须保留母版的所有代码结构**，只替换 CTX 数据块和少量文本；不可用 regex 意外破坏 NarrativeScene 类或 CSS
 5. **脚本运行后立即执行 Step 7b 校验**，不通过则报错中断
@@ -583,6 +617,8 @@ const REQUIRED_CHECKS = [
   ['NarrativeScene, BootScene',   'Scene 数组含 NarrativeScene'],
   ['resultTexts[rating]',         '组件C: resultTexts overlay'],
   ['backgroundImage',             '组件B: initShellDOM 头像加载'],
+  ['p.secondary',                 'paletteToTheme 用 secondary 做 opponentHp'],
+  ['bg.setScale',                 '背景图 cover 缩放（非 setDisplaySize 拉伸）'],
 ];
 for (const [needle, label] of REQUIRED_CHECKS) {
   if (!html.includes(needle)) throw new Error(`EP${ep} 缺少 ${label}`);
@@ -703,6 +739,8 @@ done
 3. 按钮全部为中文
 4. 头像圆框显示**图片**（非首字母），图片是大头照不是胸口截断
 5. 背景图可见（淡显 opacity 0.20），不是纯色
+6. 背景图**比例正常**（无拉伸变形），必须用 `setScale(Math.max(...))` cover 模式，禁止 `setDisplaySize(W,H)`
+7. VS 对战类游戏中，**我方/对方 HP 条颜色有明显区分**（不同色相），非同色系深浅
 
 **模板多样性验证**：
 ```bash
@@ -763,9 +801,12 @@ games/<game-id>/
 | 深度定制 | ResultScene 背景图消失 | ResultScene 的全屏矩形要设 `alpha: 0.85`（半透明），不是 `1`（不透明），否则盖住 cover-layer |
 | 深度定制 | 结尾加了下集预告剧透 | **不要加下集预告**。结语只聚焦本集情感收束，不剧透下集内容 |
 | 深度定制 | 不用 kmeans 动态取色，手选 preset 配色不搭 | 优先用 `CTX.coverImage` 触发 kmeans 动态取色，让配色自动匹配背景图氛围；preset theme 只作 fallback |
-| 深度定制 | 所有模板都不加游戏内素材，全是色块 | 按 Step 2c 分级：高价值模板（lane-dash/maze-escape/spotlight-seek/qte-boss-parry）**必须**生成精灵替换色块 |
-| 深度定制 | color-match/parking-rush 等低价值模板硬加图片 | 抽象机制的模板保持程序化渲染，加图片反而降低可读性和游戏性 |
-| 深度定制 | 游戏内精灵太大/太小导致碰撞判定异常 | 精灵用 `setDisplaySize()` 匹配原色块尺寸，不改碰撞体 hitArea |
+| 深度定制 | 所有模板都不加游戏内素材，全是色块 | **所有 12 个模板都做精灵替换**（见三层定制体系）。高价值模板（maze-escape/lane-dash/spotlight-seek/qte-boss-parry）精灵效果最明显，优先做；低价值模板也要做装饰性精灵 |
+| 深度定制 | 剧情对白后直接跳到游戏规则，完全断裂 | **必须加考验宣告卡（Bridge Card）**：NarrativeScene 对白结束后自动插入，是剧情→游戏的核心衔接点 |
+| 深度定制 | 游戏名/规则用模板默认名（如"传送分拣"），跟剧情无关 | 每集游戏名和规则都必须剧情化（如"碎片拼图 — 将走廊里听到的碎片分类"） |
+| 深度定制 | kmeans 配色每次刷新不同 | kmeans 初始化必须用确定性均匀采样，禁止 `Math.random()` |
+| 深度定制 | kmeans 提取的弱色直接 fallback 到 preset | 弱色用增强（拉高饱和度/夹住亮度）而非 fallback，永远使用从背景图提取的色 |
+| 深度定制 | 游戏内精灵太大/太小导致碰撞判定异常 | **游戏精灵**用 `setDisplaySize()` 匹配原色块尺寸，不改碰撞体 hitArea（注意：**背景图禁止用 setDisplaySize**，必须用 `setScale(Math.max(...))` cover 模式） |
 | 深度定制 | 游戏内精灵没走绿幕流程，白底残留 | 所有游戏内素材统一走 Step 2 绿幕→抠图 pipeline |
 | 选取 | 批量定制 21 集全用同一个模板 | **必须**按 Step 1a-1d 为每集独立选模板，相邻集不得重复，目标覆盖 ≥10/12 模板 |
 | 深度定制 | 直接用 character/ 全身图当头像，72px 圆框只能看到胸口 | 头像**必须每集用 ZenMux 生成 tight headshot**，走完绿幕→抠图→200×200 pipeline，不可跳过 |
@@ -786,7 +827,10 @@ games/<game-id>/
 | 深度定制 | 按钮/文案留着英文默认值（START/CONTINUE/Challenge） | 全部替换为中文：开始考验/继续/再来一次/考验；通过 `CTX.copy` 覆写模板 COPY 对象 |
 | 深度定制 | kmeans 取色在本地 file:// 打开时不生效 | `file://` 下 canvas 跨域限制导致 drawImage 失败；**必须通过 localhost 访问验证**取色效果 |
 | 深度定制 | 暗色背景图 kmeans 取色失败回退到 preset | resolveTheme 门卫条件原为 `L>0.40 S>0.60` 对暗色图太严格；已放宽至 `L>0.18 S>0.30` |
-| 深度定制 | 我方/对方血条颜色太接近分不清 | paletteToTheme 已改：playerHp→primary, opponentHp→**secondary**（不同色相），strokeDark→darken(accent) |
+| 深度定制 | 我方/对方血条颜色太接近分不清 | paletteToTheme 已改：playerHp→accent, opponentHp→**secondary**（不同色相），strokeDark→darken(accent)。REQUIRED_CHECKS 加了 `p.secondary` 验证 |
+| 深度定制 | 背景图在竖屏中被拉伸变形 | 禁止 `bg.setDisplaySize(W, H)`（强制拉伸到 393×852）；改用 cover 模式：`var s = Math.max(W/tex.width, H/tex.height); bg.setScale(s);`。REQUIRED_CHECKS 加了 `bg.setScale` 验证 |
+| 深度定制 | 头像文件名不匹配（batch-assets 用连字符，CTX 用简写名） | batch-generate 脚本 Step 0 已加 portrait 文件名模糊匹配 + fallback 复制逻辑 |
+| 深度定制 | 游戏内统计标签（Score/Combo/Hits/Miss）被当成本地化遗漏 | **统计标签保留英文**，不需要翻译。只有按钮和标题需要中文化 |
 | 深度定制 | 结语在结算画面之后展示（点"继续"才弹出） | `resultTexts` 必须在结算UI**之前**展示：ResultScene create() 开头弹 overlay，点击后才渲染结算UI |
 | 深度定制 | 设计了两层结语（narrativeOutro + resultTexts） | **只用一层 `resultTexts`**（按 S/A/B/C 区分），不要加 narrativeOutro，两层连续点击体验差 |
 
@@ -835,27 +879,37 @@ window.__EPISODE_CTX__ = {
     C: '你的声音被风压住了。\n但至少——你没有转身离开。'
   },
   copy: {                                   // 覆写模板 COPY 对象（全中文化 + 剧情化隐喻）
-    gameTitle: '沉默的力量',                  // 替换模板默认英文标题
-    hint: '长按蓄力，压住内心的波澜',          // BootScene dialogue（中文 + 剧情化）
+    gameTitle: '压住心跳',                    // 剧情化游戏名（替换模板默认名）
+    bootSubtitle: '压住情绪，蓄力反击',        // 考验宣告卡引导语（Bridge Card 核心文案）
+    hint: '长按蓄力，压住内心的波澜',          // BootScene dialogue
     buttonLabel: '蓄力 ✊',                  // GameScene 主按钮
-    statusHolding: '撑住了',                 // 每个模板字段不同，需逐个查看替换
+    statusHolding: '撑住了',
     statusNeutral: '坚守防线',
     statusLosing: '快撑不住了...'
+  },
+  sprites: {                                 // 精灵图映射（第三层定制，CTX.sprites）
+    charge: 'sprite-charge.png',             // 蓄力图标（128×128 透明 PNG）
+    release: 'sprite-release.png'            // 释放图标
   }
+  // 精灵图由 scripts/generate-wolven-sprites.js 生成（ZenMux/Gemini → 绿幕 → chroma key → PNG）
+  // monkey-patch GameScene preload 加载精灵，patch 渲染函数替换 emoji/色块为 this.add.image()
 };
 ```
 
-**配色机制**: `coverImage` 设置后，模板自动 kmeans 聚类提取背景图 primary/accent/secondary 三组色，分别映射到不同 UI 元素（playerHp→primary, opponentHp→secondary, strokeDark→darken(accent)），确保色相对比明显。门卫条件已放宽至 `L>0.18 && S>0.30`，暗色背景也能正常取色。若仍不达标，自动 fallback 到 `theme` 字段指定的 preset。不想动态取色时，不设 `coverImage`，仅用 `theme`。
+**配色机制**: `coverImage` 设置后，模板自动 kmeans 聚类提取背景图 primary/accent/secondary 三组色。**弱色自动增强**（饱和度 ≥0.55，亮度夹到合理范围）而不是 fallback。kmeans 必须用确定性均匀采样初始化（禁止 `Math.random()`），确保每次刷新配色一致。不想动态取色时，不设 `coverImage`，仅用 `theme`。
 
 **结语展示**: `resultTexts` 的内容通过 narrative overlay 展示（点"继续"后弹出全屏叠层，点击淡出），不要内联在结算 UI 里。**不要加下集预告**。
 
 **资源文件全部放在 `game/` 同目录下**，使用 ASCII 短名：
 ```
 data/<story>/ep{N}/game/
-  index.html         # 模板副本 + CTX 注入
-  bg-cemetery.jpg     # 背景图（800px JPEG, 30-60KB）
-  avatar-sylvia.png   # 大头照头像（200x200 PNG, 40-60KB）
+  index.html           # 模板副本 + CTX 注入 + monkey-patch
+  bg-scene.jpg         # 背景图（800px JPEG, 30-60KB）
+  avatar-sylvia.png    # 大头照头像（200x200 PNG, 40-60KB）
   avatar-james.png
+  sprite-charge.png    # 游戏内精灵（128x128 透明 PNG, 10-20KB）
+  sprite-release.png   # 由 scripts/generate-wolven-sprites.js 生成
+  sprite-cat1.png      # conveyor-sort 分类图标等（模板不同精灵不同）
 ```
 
 ### EP 常量结构（旧版 V1/V2 模板）
@@ -1196,7 +1250,7 @@ async function resolveTheme() {
       if (palette) return {
         bg: palette.bgDark, primary: palette.primary,
         primaryLight: palette.surface, playerHp: palette.accent,
-        opponentHp: palette.primary, gold: '#F5C842'
+        opponentHp: palette.secondary, gold: '#F5C842'
       };
     } catch(e) { console.warn('Dynamic palette failed, falling back to static theme'); }
   }
