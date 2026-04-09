@@ -707,6 +707,54 @@ for (const [needle, label] of REQUIRED_CHECKS) {
 5. `preview_eval` → 程序化验证机制 (热区/冷区/惩罚/评分门槛)
 6. `preview_console_logs` → 无 JS 错误
 
+#### Step 7a: 结算画面完整性检查（必检）
+
+> **此检查直接验证游戏最终输出画面，必须对每个模板类型至少执行一次。**
+> 这个检查之所以关键，是因为结算画面的 DOM 元素经过多层显示/隐藏控制：
+> `resetAllDOM()` 隐藏所有 → `ResultScene.create()` 恢复父容器 → 子元素可能仍被隐藏。
+> 仅靠 grep 代码结构无法发现此类运行时 DOM 可见性 bug。
+
+**完整流转路径测试**（叙事→游戏→结算）：
+```
+开场叙事 → 点击推进 → 考验宣告卡 → BootScene →
+开始/跳过游戏 → [有 resultTexts 时] 结语 overlay → 点击 →
+结算画面（必须完整显示 6 项内容）
+```
+
+**结算画面 6 项必检内容**：
+
+| # | 元素 | DOM ID | 合格标准 |
+|---|------|--------|---------|
+| 1 | 评级字母 | `grade-letter` | S/A/B/C 大号字母可见，颜色与评级匹配 |
+| 2 | 得分文本 | `grade-score` | "得分 XXX" 可见 |
+| 3 | 星级评定 | `stars-row` | 1-4 颗星可见，填充数与评级一致 |
+| 4 | 属性加成 | `attr-mod` | "角色名的属性 +N" 可见 |
+| 5 | 统计数据 | `stat-combo` + `stat-hits` | 连击数 + 命中/失误数据可见 |
+| 6 | 操作按钮 | `btn-area` | "继续" + "再来一次" 按钮可见可点击 |
+
+**程序化验证**（用 `preview_eval` 在结算画面执行）：
+```javascript
+// 结算画面 DOM 完整性检查 — 所有 display 不为 none 且有文本内容
+var ids = ['grade-letter','grade-score','stars-row','attr-mod','stat-combo','stat-hits'];
+var results = ids.map(function(id) {
+  var el = document.getElementById(id);
+  if (!el) return id + ': NOT_FOUND';
+  var cs = getComputedStyle(el);
+  var hidden = cs.display === 'none' || el.classList.contains('hidden');
+  var text = (el.textContent || '').trim();
+  return id + ': ' + (hidden ? 'HIDDEN ✗' : 'visible ✓') + ' text="' + text.substring(0,30) + '"';
+});
+results.join('\n');
+// 期望: 所有 6 项均为 "visible ✓" 且 text 非空
+```
+
+**快速跳过游戏的方法**：大部分模板的 BootScene 有 "解锁 S 级" 按钮（`.btn-candy.secondary`），可直接跳到 ResultScene 测试结算画面，无需实际玩游戏。
+
+**有 resultTexts 时的关键路径**：
+`resultTexts` 存在时，ResultScene 会先弹出叙事结语 overlay（`.narrative-overlay`），
+必须**点击 overlay 关闭后再验证**结算 UI。这一步是 bug 高发区——
+`resetAllDOM()` 可能将子元素标记为 hidden，而 `origCreate()` 只恢复父容器。
+
 ### Step 7b: 批量生成后强制校验（多集定制化必须）
 
 > **每次批量生成后必须执行此校验。不通过则不允许提交或标记完成。**
@@ -736,6 +784,7 @@ done
 | 5 | initShellDOM 加载头像 | `backgroundImage` | 头像框只显示首字母 |
 | 6 | 中文按钮文案 | `开始考验` 或 `继续` | 按钮还是英文 START/CONTINUE |
 | 7 | drawSceneBg（如有背景图） | `drawSceneBg` | 背景图不会渲染到各 Scene |
+| 8 | ResultScene 子元素可见性修复 | `setVisible('grade-letter'` | 结算画面评级/分数/统计全部不显示（见 Step 7a） |
 
 **素材校验**（与代码校验同等重要，同时执行）：
 
@@ -775,11 +824,12 @@ done
 **抽样浏览器验证**（至少 3 个 ep，覆盖首/中/尾）：
 1. 打开 ep → 看到开场叙事 overlay → 点击推进 2-3 句 → 淡出进游戏
 2. 完成游戏 → 看到评级结语 overlay → 点击后看到结算 UI
-3. 按钮全部为中文
-4. 头像圆框显示**图片**（非首字母），图片是大头照不是胸口截断
-5. 背景图可见（淡显 opacity 0.20），不是纯色
-6. 背景图**比例正常**（无拉伸变形），必须用 `setScale(Math.max(...))` cover 模式，禁止 `setDisplaySize(W,H)`
-7. VS 对战类游戏中，**我方/对方 HP 条颜色有明显区分**（不同色相），非同色系深浅
+3. **结算画面 6 项完整性**（见 Step 7a）：评级字母 + 得分 + 星级 + 属性加成 + 统计 + 按钮全部可见
+4. 按钮全部为中文
+5. 头像圆框显示**图片**（非首字母），图片是大头照不是胸口截断
+6. 背景图可见（淡显 opacity 0.20），不是纯色
+7. 背景图**比例正常**（无拉伸变形），必须用 `setScale(Math.max(...))` cover 模式，禁止 `setDisplaySize(W,H)`
+8. VS 对战类游戏中，**我方/对方 HP 条颜色有明显区分**（不同色相），非同色系深浅
 
 **模板多样性验证**：
 ```bash
@@ -835,6 +885,7 @@ games/<game-id>/
 | 素材 | 复用其他 EP 的素材但表情不匹配 | 表情必须匹配当前剧情氛围；紧张表情放甜蜜场景会破坏沉浸感，必须重新生成 |
 | 深度定制 | 游戏机制文案还是英文/模板默认 | 计数器 emoji、进度条标签、状态文案、combo 描述全部替换为剧情化隐喻（如钓鱼→心跳同步） |
 | 深度定制 | ResultScene 只有冰冷的评分数字 | 增加 `resultTexts` 按 S/A/B/C 四档展示不同剧情结语，让结算有情感共鸣 |
+| 深度定制 | 结算画面只有星星和按钮，评级/分数/统计全部缺失 | `resetAllDOM()` 给子元素（`grade-letter`/`grade-score`/`attr-mod`/`stat-combo`/`stat-hits`）加了 `hidden`，但 `ResultScene.create()` 只恢复父容器。**必须在 `setVisible('result-info',true)` 后加 `['grade-letter','grade-score','attr-mod','stat-combo','stat-hits'].forEach(id=>setVisible(id,true))`**。此 bug 仅在有 `resultTexts` 叙事结语时触发（见 Step 7a） |
 | 深度定制 | 色系死板跟属性走，甜蜜场景用了暗色 | 色系服务于剧情氛围，不必按四大属性分配；参考 `STYLE-POLISH-SKILL.md` 自由调整 |
 | 深度定制 | ResultScene 结语文字和按钮重叠 | 结语用 **narrativeOutro** 在结算前展示（GameScene→NarrativeScene→ResultScene），不要放在 ResultScene 的"继续"按钮后 |
 | 深度定制 | ResultScene 背景图消失 | ResultScene 的全屏矩形要设 `alpha: 0.85`（半透明），不是 `1`（不透明），否则盖住 cover-layer |
