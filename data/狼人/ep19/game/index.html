@@ -1530,6 +1530,7 @@ class ResultScene extends Phaser.Scene {
     setVisible('combo-text', false);
     setVisible('stars-row', true);
     setVisible('result-info', true);
+    ['grade-letter','grade-score','attr-mod','stat-combo','stat-hits'].forEach(function(id){setVisible(id,true);});
 
     updateHpBar('left', 1);
     updateHpBar('right', 1);

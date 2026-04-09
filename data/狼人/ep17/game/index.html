@@ -991,7 +991,8 @@ class ResultScene extends Phaser.Scene {
 
     setVisible('boot-card', false);
     setVisible('hud-bar', false); setVisible('round-text', false); setVisible('hint-text', false);
-    setVisible('combo-text', false); setVisible('stars-row', true); setVisible('result-info', true); setVisible('btn-area', true);
+    setVisible('combo-text', false); setVisible('stars-row', true); setVisible('result-info', true);
+    ['grade-letter','grade-score','attr-mod','stat-combo','stat-hits'].forEach(function(id){setVisible(id,true);}); setVisible('btn-area', true);
 
     // Gradually light up the field
     var field = this.add.rectangle(W / 2, FIELD_TOP + FIELD_H / 2, W, FIELD_H, hexToInt(T.primaryLight), 0).setDepth(1);

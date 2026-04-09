@@ -1367,6 +1367,7 @@ class ResultScene extends Phaser.Scene {
     setVisible('grade-overlay', true);
     setVisible('stars-row', true);
     setVisible('result-info', true);
+    ['grade-letter','grade-score','attr-mod','stat-combo','stat-hits'].forEach(function(id){setVisible(id,true);});
 
     var ratingHex = { S: T.gold, A: T.primary, B: '#9B7DB8', C: '#7A7A8E' };
     $('grade-letter').textContent = rating;

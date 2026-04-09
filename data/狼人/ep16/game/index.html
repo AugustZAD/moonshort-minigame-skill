@@ -1241,6 +1241,7 @@ var ResultScene = new Phaser.Class({
     setVisible('answer-timer', false); setVisible('answer-grid', false);
     setVisible('combo-text', false); setVisible('score-display', false);
     setVisible('stars-row', true); setVisible('result-info', true);
+    ['grade-letter','grade-score','attr-mod','stat-combo','stat-hits'].forEach(function(id){setVisible(id,true);});
     setVisible('color-card-wrap', true); setVisible('card-question', false);
     setVisible('card-text', true);
 

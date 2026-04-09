@@ -699,6 +699,7 @@ class ResultScene extends Phaser.Scene {
     var rating = getRating(this.finalScore); var modifier = getModifier(rating); var modText = modifier > 0 ? '+' + modifier : String(modifier);
     setVisible('status-bar', false); setVisible('combo-text', false); setVisible('rules-card', false);
     setVisible('grade-overlay', true); setVisible('stars-row', true); setVisible('result-info', true);
+    ['grade-letter','grade-score','attr-mod','stat-combo','stat-hits'].forEach(function(id){setVisible(id,true);});
     var rH = { S: T.gold, A: T.primary, B: '#9B7DB8', C: '#7A7A8E' };
     $('grade-letter').textContent = rating; $('grade-letter').style.color = rH[rating]; $('grade-score').textContent = '得分 ' + this.finalScore;
     var sc = { S: 4, A: 3, B: 2, C: 1 }[rating]; var sr = $('stars-row'); sr.innerHTML = '';

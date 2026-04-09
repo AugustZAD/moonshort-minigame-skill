@@ -708,6 +708,7 @@ var ResultScene = new Phaser.Class({
     setVisible('status-text', false); setVisible('combo-text', false);
     setVisible('score-display', true); setVisible('reel-btn', false);
     setVisible('stars-row', true); setVisible('result-info', true);
+    ['grade-letter','grade-score','attr-mod','stat-combo','stat-hits'].forEach(function(id){setVisible(id,true);});
     $('score-value').textContent = this.finalScore;
     this.add.graphics().setDepth(0).fillStyle(hexToInt(T.bg), 1).fillRect(0, 0, W, H);
     var gt = this.add.text(W/2, 360, rating, { fontFamily:'Montserrat', fontSize:'96px', fontStyle:'900', color:GC[rating], stroke:'#000', strokeThickness:4 }).setOrigin(0.5).setDepth(10).setScale(0);

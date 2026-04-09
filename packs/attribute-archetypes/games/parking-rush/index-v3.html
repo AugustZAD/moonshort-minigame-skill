@@ -302,7 +302,7 @@ class ResultScene extends Phaser.Scene{
     var GC={S:T.gold,A:T.primary,B:T.primaryLight,C:'#888'};
     setVisible('boot-card',false);setVisible('level-info',false);setVisible('streak-text',false);setVisible('combo-text',false);
     setVisible('lane-btns',false);setVisible('round-bar-wrap',false);setVisible('hint-text',false);
-    setVisible('stars-row',true);setVisible('result-info',true);setVisible('btn-area',true);
+    setVisible('stars-row',true);setVisible('result-info',true);['grade-letter','grade-score','attr-mod','stat-combo','stat-hits'].forEach(function(id){setVisible(id,true);});setVisible('btn-area',true);
     var lot=this.add.rectangle(W/2,LOT_TOP+LOT_H/2,W,LOT_H,hexToInt(darken(T.bg,-0.15)),0).setDepth(1);this.tweens.add({targets:lot,alpha:0.3,duration:1500});
     var g=this.add.text(W/2,300,rating,{fontFamily:'Montserrat',fontSize:'96px',fontStyle:'900',color:GC[rating],stroke:'#000000',strokeThickness:4}).setOrigin(0.5).setDepth(10).setScale(0);
     if(rating==='S'){spawnParticles(this,W/2,300,hexToInt(T.gold),16,600);audio.success();this.time.delayedCall(100,function(){audio.success();});}else if(rating==='A')audio.success();

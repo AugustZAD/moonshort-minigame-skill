@@ -966,6 +966,7 @@ class ResultScene extends Phaser.Scene {
     setVisible('timer-text', false); setVisible('surge-bar-area', false);
     setVisible('tug-bar-area', false);
     setVisible('stars-row', true); setVisible('result-info', true);
+    ['grade-letter','grade-score','attr-mod','stat-combo','stat-hits'].forEach(function(id){setVisible(id,true);});
 
     var cx = W / 2, cy = 410;
     this.add.circle(cx, cy, 90, hexToInt(rColor), 0.08).setDepth(2);

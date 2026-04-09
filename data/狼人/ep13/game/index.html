@@ -1214,7 +1214,8 @@ class ResultScene extends Phaser.Scene {
 
     setVisible('boot-card', false);
     setVisible('maze-info', false); setVisible('maze-label', false); setVisible('dpad-area', false);
-    setVisible('combo-text', false); setVisible('stars-row', true); setVisible('result-info', true); setVisible('btn-area', true);
+    setVisible('combo-text', false); setVisible('stars-row', true); setVisible('result-info', true);
+    ['grade-letter','grade-score','attr-mod','stat-combo','stat-hits'].forEach(function(id){setVisible(id,true);}); setVisible('btn-area', true);
 
     var g = this.add.text(W / 2, 300, rating, { fontFamily: 'Montserrat', fontSize: '96px', fontStyle: '900', color: rcHex, stroke: '#000000', strokeThickness: 4 }).setOrigin(0.5).setDepth(10).setScale(0);
     if (rating === 'S') { spawnParticles(this, W / 2, 300, hexToInt(T.gold), 16, 600); audio.success(); this.time.delayedCall(100, function() { audio.success(); }); }
