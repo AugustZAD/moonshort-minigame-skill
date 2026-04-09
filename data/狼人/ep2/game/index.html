@@ -123,13 +123,20 @@
   .track-finish { position: absolute; top: 4px; right: 0; font-size: 24px; }
   .track-dist { position: absolute; top: 28px; left: 50%; transform: translateX(-50%); font-weight: 700; font-size: 12px; color: rgba(255,255,255,0.45); }
 
-  /* ── Stamina ── */
+  /* ── Sprint Speed ── */
   .stamina-area { position: absolute; top: 406px; left: 24px; right: 24px; height: 20px; z-index: 10; }
-  .stamina-label { font-weight: 700; font-size: 11px; color: rgba(255,255,255,0.45); letter-spacing: 1px; text-transform: uppercase; }
+  .stamina-label { font-weight: 700; font-size: 11px; color: rgba(255,255,255,0.60); letter-spacing: 1px; text-transform: uppercase; }
   .stamina-track { position: absolute; top: 0; left: 70px; right: 0; height: 10px; background: var(--white-20); border-radius: 5px; overflow: hidden; }
   .stamina-fill {
     height: 100%; border-radius: 5px; background: #4FECA2;
-    transition: width 0.1s linear, background 0.3s ease;
+    transition: width 0.15s linear, background 0.3s ease;
+    box-shadow: 0 0 8px rgba(79, 236, 162, 0.3);
+  }
+  .speed-text {
+    position: absolute; top: -2px; right: 0; font-weight: 900; font-size: 13px;
+    color: #4FECA2; letter-spacing: 0.5px;
+    transition: color 0.3s ease;
+    text-shadow: 0 0 8px rgba(79, 236, 162, 0.4);
   }
 
   .combo-text {
@@ -286,9 +293,14 @@
     background: radial-gradient(circle, rgba(140,170,220,0.06) 0%, transparent 65%);
     pointer-events: none; z-index: 0;
   }
-  /* 体力条 → 意志力条 */
+  /* 速度条 */
   .stamina-fill {
     background: linear-gradient(90deg, #7a3adf, #df5a8a) !important;
+    box-shadow: 0 0 10px rgba(122, 58, 223, 0.4) !important;
+  }
+  .speed-text {
+    color: #df5a8a !important;
+    text-shadow: 0 0 8px rgba(223, 90, 138, 0.5) !important;
   }
   /* 跑道 */
   .track-bg {
@@ -321,10 +333,10 @@
   <div class="traffic-light hidden" id="traffic-light"><div class="light red" id="light-red"></div><div class="light yellow" id="light-yellow"></div><div class="light green" id="light-green"></div></div>
   <div class="light-label hidden" id="light-label">站起来！</div>
   <div class="progress-track hidden" id="progress-track"><div class="track-bg"></div><div class="track-fill" id="track-fill" style="width:0%"></div><span class="track-runner" id="track-runner" style="left:0%">&#127939;</span><span class="track-finish">&#127937;</span><span class="track-dist" id="track-dist">0m / 100m</span></div>
-  <div class="stamina-area hidden" id="stamina-area"><span class="stamina-label">意志力</span><div class="stamina-track"><div class="stamina-fill" id="stamina-fill" style="width:100%"></div></div></div>
+  <div class="stamina-area hidden" id="stamina-area"><span class="stamina-label">速度</span><div class="stamina-track"><div class="stamina-fill" id="stamina-fill" style="width:0%"></div></div><span class="speed-text" id="speed-text">1.0x</span></div>
   <div class="combo-text hidden" id="combo-text"></div>
   <div class="switch-bar-area hidden" id="switch-bar-area"><div class="switch-bar-track"><div class="switch-bar-fill" id="switch-bar-fill" style="width:100%"></div></div></div>
-  <div class="rules-card hidden" id="rules-card"><h2>不跪的理由</h2><p>他移开目光时前进，注视你时停下<br>在Alpha的威压下保持站立<br>撑过100步 = 证明自己</p></div>
+  <div class="rules-card hidden" id="rules-card"><h2>不跪的理由</h2><p>他移开目光时前进，注视你时停下<br>持续奔前进加速，最高2倍速<br>被抓或松手速度归零<br>撑过100步 = 证明自己</p></div>
   <div class="grade-overlay hidden" id="grade-overlay"><div class="grade-letter pop-in" id="grade-letter"></div><div class="grade-score" id="grade-score"></div></div>
   <div class="stars-row hidden" id="stars-row"></div>
   <div class="result-info hidden" id="result-info"><div class="attr-mod" id="attr-mod"></div><div class="stats"><span id="stat-combo"></span><span id="stat-hits"></span></div></div>
@@ -472,7 +484,11 @@ function setTrafficLight(color) {
   else { $('light-label').textContent = ''; $('light-label').style.color = '#888'; }
 }
 function updateProgress(dist, maxDist) { var pct = clamp(dist / maxDist * 100, 0, 100); $('track-fill').style.width = pct + '%'; $('track-runner').style.left = Math.min(pct, 92) + '%'; $('track-dist').textContent = Math.floor(dist) + 'm / ' + maxDist + 'm'; }
-function updateStamina(ratio) { var pct = Math.round(clamp(ratio, 0, 1) * 100); $('stamina-fill').style.width = pct + '%'; if (ratio > 0.5) $('stamina-fill').style.background = '#4FECA2'; else if (ratio > 0.2) $('stamina-fill').style.background = '#FFB347'; else $('stamina-fill').style.background = '#FF4D6A'; }
+function updateSpeedBar(speedMultiplier) {
+  var pct = Math.round(clamp((speedMultiplier - 1) / 1.0, 0, 1) * 100);
+  $('stamina-fill').style.width = pct + '%';
+  var st = $('speed-text'); if (st) st.textContent = speedMultiplier.toFixed(1) + 'x';
+}
 
 
 function drawSceneBg(scene, sceneKey, alpha) {
@@ -596,7 +612,7 @@ class BootScene extends Phaser.Scene {
 // ══════════════════════════════════════════════════════════════════════════════
 class GameScene extends Phaser.Scene {
   constructor() { super('GameScene'); }
-  init() { this.timeLeft = ROUND_SECONDS; this.isOver = false; this.light = 'green'; this.running = false; this.distance = 0; this.combo = 0; this.maxCombo = 0; this.totalHits = 0; this.totalMiss = 0; this.lastTickSec = -1; this.audioStarted = false; this.difficulty = 1; this.stamina = 100; this.maxStamina = 100; this.penaltyStack = 0; this.comboRunTime = 0; this.lastComboMilestone = 0; this.switchTimer = 2400; this.greenDurationBase = 2400; this.redDurationBase = 1600; this.switchTimerMax = 2400; this._holding = false; this._runBtn = null; this.fakeOutCooldown = 0; this.fakeOutActive = false; this.fakeOutTimer = 0; }
+  init() { this.timeLeft = ROUND_SECONDS; this.isOver = false; this.light = 'green'; this.running = false; this.distance = 0; this.combo = 0; this.maxCombo = 0; this.totalHits = 0; this.totalMiss = 0; this.lastTickSec = -1; this.audioStarted = false; this.difficulty = 1; this.speed = 1.0; this.penaltyStack = 0; this.comboRunTime = 0; this.lastComboMilestone = 0; this.switchTimer = 2400; this.greenDurationBase = 2400; this.redDurationBase = 1600; this.switchTimerMax = 2400; this._holding = false; this._runBtn = null; this.fakeOutCooldown = 0; this.fakeOutActive = false; this.fakeOutTimer = 0; }
   create() {
     this.children.removeAll(true);
     this.cameras.main.resetFX();
@@ -605,7 +621,7 @@ class GameScene extends Phaser.Scene {
     setVisible('progress-track', true); setVisible('stamina-area', true); setVisible('combo-text', true); setVisible('switch-bar-area', true);
     setVisible('grade-overlay', false); setVisible('stars-row', false); setVisible('result-info', false);
     $('score-value').textContent = '0m'; $('timer-value').textContent = ROUND_SECONDS + 's'; $('timer-value').classList.remove('warn'); $('combo-text').textContent = '';
-    setTrafficLight('green'); updateProgress(0, 100); updateStamina(1);
+    setTrafficLight('green'); updateProgress(0, 100); updateSpeedBar(1.0);
     this.switchTimer = this.greenDurationBase + Math.random() * 1000; this.switchTimerMax = this.switchTimer;
     clearBtnArea();
     var runBtn = document.createElement('div'); runBtn.className = 'btn-candy full';
@@ -658,17 +674,20 @@ class GameScene extends Phaser.Scene {
       if (this.fakeOutTimer <= 0) { this.fakeOutActive = false; this.fakeOutCooldown = 3000; setTrafficLight('green'); $('light-label').textContent = '站起来！'; $('light-label').style.color = '#4FECA2'; }
     }
     if (this.fakeOutCooldown > 0) this.fakeOutCooldown -= delta;
-    if (!this.running) { this.stamina = Math.min(this.maxStamina, this.stamina + 18 * dt); }
-    if (this.light === 'green' && this.running && this.stamina > 0) {
-      this.stamina = Math.max(0, this.stamina - 25 * dt); this.distance = Math.min(100, this.distance + 6 * dt); this.comboRunTime += dt; this.totalHits += dt * 0.5;
+    if (!this.running) { this.speed = Math.max(1.0, this.speed - 1.5 * dt); }
+    if (this.light === 'green' && this.running) {
+      this.speed = Math.min(2.0, this.speed + 0.35 * dt);
+      var moveSpeed = 5 * this.speed;
+      this.distance = Math.min(100, this.distance + moveSpeed * dt); this.comboRunTime += dt; this.totalHits += dt * 0.5;
       $('score-value').textContent = Math.floor(this.distance) + 'm';
       if (this.comboRunTime - this.lastComboMilestone >= 1.5) { this.lastComboMilestone = this.comboRunTime; this.combo += 1; this.maxCombo = Math.max(this.maxCombo, this.combo); $('combo-text').textContent = '连击 x' + this.combo; if (this.combo % 6 === 0) { audio.success(); spawnParticles(this, W / 2, 500, hexToInt(T.gold), 8, 400); this.applyDistance(10); showToast(this, '连击 x' + this.combo + '! +10m', T.gold, W / 2, 480); } else if (this.combo % 3 === 0) { audio.success(); spawnParticles(this, W / 2, 500, hexToInt(T.gold), 6, 350); this.applyDistance(5); showToast(this, '连击 x' + this.combo + '! +5m', T.primary, W / 2, 480); } }
     } else if (this.light === 'red' && this.running && !this.fakeOutActive) {
       this.penaltyStack += 1; var distPen = this.penaltyStack === 1 ? 5 : (this.penaltyStack === 2 ? 8 : 12); this.totalMiss += 1; this.combo = 0; this.comboRunTime = 0; this.lastComboMilestone = 0; $('combo-text').textContent = '';
+      this.speed = 1.0;
       this.applyDistance(-distPen); showToast(this, 'RED! -' + distPen + 'm', '#FF4D6A', W / 2, 480); audio.fail(); damageFlash(this); screenShake(this, 0.012);
       this.running = false; this._holding = false; if (this._runBtn) this._runBtn.classList.remove('holding');
     }
-    updateStamina(this.stamina / this.maxStamina); updateProgress(this.distance, 100);
+    updateSpeedBar(this.speed); updateProgress(this.distance, 100);
     if (this.distance >= 100) this.finishGame('finish');
     if (this.timeLeft <= 0) this.finishGame('time');
   }

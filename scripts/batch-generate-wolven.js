@@ -47,7 +47,7 @@ const TEMPLATE_MAP = {
 // ── Per-episode story-themed game title + rules (replaces generic template names) ─
 const STORY_GAME = {
   ep1:  { title: '压住心跳', rules: '长按蓄力，在正确时机开口<br>太早暴露情绪，太晚错过窗口<br>精准释放 = 致命一击' },
-  ep2:  { title: '不跪的理由', rules: '他移开目光时前进，注视你时停下<br>在Alpha的威压下保持站立<br>撑过100步 = 证明自己' },
+  ep2:  { title: '不跪的理由', rules: '他移开目光时前进，注视你时停下<br>持续奔跑加速，最高2倍速<br>被抓或松手速度归零<br>撑过100步 = 证明自己' },
   ep3:  { title: '碎片拼图', rules: '将走廊里听到的碎片分类<br>真相和谎言混在一起<br>速度越来越快，别选错' },
   ep4:  { title: '权力棋盘', rules: '记住关键人物的位置<br>灯光熄灭后精准锁定<br>在人群中找到你的棋子' },
   ep5:  { title: '撑住', rules: '意志被一波波冲击<br>每一次点击都是在说"我还在"<br>坚持到最后一秒' },
@@ -125,10 +125,10 @@ const STORY_RESKIN = {
   },
   // ── red-light-green-light ──
   ep2:  { // 在Alpha命令下撑住不跪
-    labels: { '体力':'意志力', '跑':'前进', '停！':'跪下！', '走！':'站起来！' },
+    labels: { '跑':'前进', '停！':'跪下！', '走！':'站起来！' },
   },
   ep12_minor: { // 坐着别动
-    labels: { '体力':'忍耐值', '跑':'喘息', '停！':'别动！', '走！':'可以了' },
+    labels: { '跑':'喘息', '停！':'别动！', '走！':'可以了' },
   },
   // ── lane-dash ──
   ep12: { // 翻窗逃离
@@ -211,9 +211,14 @@ const STORY_THEME = {
     background: radial-gradient(circle, rgba(140,170,220,0.06) 0%, transparent 65%);
     pointer-events: none; z-index: 0;
   }
-  /* 体力条 → 意志力条 */
+  /* 速度条 */
   .stamina-fill {
     background: linear-gradient(90deg, #7a3adf, #df5a8a) !important;
+    box-shadow: 0 0 10px rgba(122, 58, 223, 0.4) !important;
+  }
+  .speed-text {
+    color: #df5a8a !important;
+    text-shadow: 0 0 8px rgba(223, 90, 138, 0.5) !important;
   }
   /* 跑道 */
   .track-bg {
@@ -906,9 +911,9 @@ function generateGame(ep, templateId) {
       ['Tap the correct color name', '点击正确的颜色名'],
     ],
     'red-light-green-light': [
-      ['Reach 100m to get S rank!<br>Hold RUN on GREEN, STOP on RED.<br>Yellow flash is a bluff — keep running!<br>Red violation pushes you back -5/-8/-12m<br>Combos reward +5m / +10m bonus<br>Quick release before RED = +3m', storyGame ? storyGame.rules : '达到100m获S级！<br>绿灯长按跑，红灯松手停。<br>黄灯是虚晃——继续跑！<br>红灯违规后退 -5/-8/-12m<br>连击奖励 +5m / +10m<br>红灯前松手 = +3m'],
+      ['Reach 100m to get S rank!<br>Hold RUN on GREEN, STOP on RED.<br>Keep running to accelerate — up to 2x speed!<br>Penalty or release resets speed to 1x<br>Yellow flash is a bluff — keep running!<br>Combos reward +5m / +10m bonus', storyGame ? storyGame.rules : '达到100m获S级！<br>绿灯长按跑，红灯松手停。<br>持续奔跑加速，最高2倍速！<br>被罚或松手速度归零<br>黄灯是虚晃——继续跑！<br>连击奖励 +5m / +10m'],
       ['TRAFFIC LIGHT SPRINT', storyGame ? storyGame.title : '红绿灯冲刺'],
-      ['STAMINA', '体力'],
+      ['SPEED', '速度'],
       ['STOP!', '停！'],
       ['GO!', '走！'],
       ['READY...', sub || '准备...'],
