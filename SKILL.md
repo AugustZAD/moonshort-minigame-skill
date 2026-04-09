@@ -141,8 +141,9 @@ End-to-end workflow for producing a **story-driven customized mini-game** from e
 - `CTX.coverImage` 同时控制背景淡显（cover-layer opacity 0.20）和动态取色，一举两得
 - **三层定制体系**（逐层递进，后层依赖前层）：
   - 第一层：标签/文案替换 — 游戏名、规则、按钮、状态提示全部剧情化
-  - 第二层：emoji/符号替换 — 分类名、攻击类型、道具名等替换为剧情化标签
-  - 第三层：精灵图替换 — 用 ZenMux/Gemini 生成剧情化的图标精灵，替换程序化色块/emoji
+  - 第二层：精灵图替换 — 用 ZenMux/Gemini 生成 128×128 绿幕精灵 → chroma key → 透明 PNG，替换程序化色块/图标
+  - 第三层：游戏环境替换（STORY_THEME）— 替换游戏核心视觉"外壳"（信号灯→狼眼、背景、特效），**不改游戏逻辑**，通过 `cssOverride` + `jsOverride` 注入
+- **素材生成原则**：所有视觉素材优先用 AI 图像生成（ZenMux/Gemini），禁止手工 CSS 绘图或程序化作图。即使是简单图形（如交通灯→狼眼），也应生成真实质感的 AI 图片而非用 CSS shapes/SVG 拼凑
 
 **深度定制化额外步骤**:
 1. 注入 `window.__EPISODE_CTX__`（见下方 CTX 注入结构）
@@ -153,13 +154,20 @@ End-to-end workflow for producing a **story-driven customized mini-game** from e
 6. **游戏名剧情化**：替换模板默认游戏名（如 `Conveyor Sort` → `碎片拼图`）。同时替换 HTML `<title>`、boot card `<h2>`、Phaser 文字、ResultScene 副标题中的所有出现
 7. **游戏规则剧情化**：BootScene 的规则描述替换为剧情化中文（如"将走廊里听到的碎片分类，真相和谎言混在一起"）
 8. **考验宣告卡（Bridge Card）**：NarrativeScene 对白结束后、进入 BootScene 之前，自动插入一张全屏考验宣告卡：`—— {角色名}的{属性}考验 ——` + `{剧情化引导语}` + `点击开始考验`。这是剧情→游戏的核心衔接点
-9. **游戏机制隐喻重新包装（第一层 + 第二层）**：
-   - 第一层：所有模板的标签/文案替换为剧情化中文（分类名、攻击类型、状态提示、计数器等）
-   - 第二层：emoji/符号替换（如 conveyor-sort: DATA→证词, VIRUS→谎言; qte-boss-parry: SLASH→质问; maze-escape: 👻→🐺）
-   - 参考实现：`scripts/batch-generate-wolven.js` 中的 `STORY_RESKIN` 映射表
-10. **游戏内精灵图替换（第三层）**：用 ZenMux/Gemini 生成 128×128 绿幕精灵 → sharp chroma key 移除 → 透明 PNG → 通过 `CTX.sprites` 注入 + monkey-patch GameScene 渲染代码（见 Step 2c）
-11. **ResultScene 增加剧情结语**：按 S/A/B/C 四档编写不同剧情描述文案。**结语用 narrative overlay 展示**（点"继续"后弹出全屏叠层，点击淡出），不要内联在结算 UI 里。**不要加下集预告**。**用 monkey-patch 注入**而非修改模板 create() 内部代码
-12. **按钮/色系可自由调整**：色系不必严格按四大属性分配，让色调完全服务于剧情氛围
+9. **游戏机制隐喻重新包装（第一层）**：
+   - 所有模板的标签/文案替换为剧情化中文（分类名、攻击类型、状态提示、计数器等）
+   - 参考实现：`scripts/batch-generate-wolven.js` 中的 `STORY_RESKIN.labels` 映射表
+10. **游戏内精灵图替换（第二层）**：用 ZenMux/Gemini 生成 128×128 绿幕精灵 → sharp chroma key 移除 → 透明 PNG → 通过 `CTX.sprites` 注入 + monkey-patch GameScene 渲染代码（见 Step 2c）。**所有视觉素材必须用 AI 生成，禁止 CSS 手绘**
+11. **游戏环境替换（第三层，STORY_THEME）**：当模板默认视觉与剧情强烈冲突时，替换游戏核心视觉外壳。实现方式：
+   - `STORY_THEME[ep].cssOverride` — 注入到 `</style>` 前（隐藏原 UI + 定义新视觉样式）
+   - `STORY_THEME[ep].jsOverride` — 注入到 `fitShell()` 后（创建 DOM + monkey-patch 状态函数）
+   - 注入时机：构建脚本 Step 15，在精灵图注入（Step 14）之后
+   - **素材要求**：用 AI 生成多状态图片（如狼眼 open/half/closed 三张），通过 opacity 交叉淡入实现动画，CSS `mask-image: radial-gradient()` 柔化边缘
+   - **核心原则**：换皮不换芯 — hook 原函数（如 `setTrafficLight()`）控制新视觉状态，不修改游戏逻辑代码
+   - 已验证 demo：ep2 红绿灯 → 狼眼（三张 1024×1024 AI 生成图，黑底血红虹膜金色竖瞳）
+   - **大多数集不需要第三层**，仅在视觉冲突严重时使用
+12. **ResultScene 增加剧情结语**：按 S/A/B/C 四档编写不同剧情描述文案。**结语用 narrative overlay 展示**（点"继续"后弹出全屏叠层，点击淡出），不要内联在结算 UI 里。**不要加下集预告**。**用 monkey-patch 注入**而非修改模板 create() 内部代码
+13. **按钮/色系可自由调整**：色系不必严格按四大属性分配，让色调完全服务于剧情氛围
 
 **monkey-patch 注入模式**（已验证最可靠的注入方式）:
 
@@ -620,8 +628,8 @@ Freesound API 搜索 → 下载预览 → FreesoundAudio 类集成
    - 精灵图加载 patch（monkey-patch GameScene preload + 渲染函数）
 3. **Scene 顺序**: `NarrativeScene` → `BootScene` → `GameScene` → `ResultScene`
 4. **叙事开场 + 衔接**: NarrativeScene 读取 `CTX.narrative` 对白 → 考验宣告卡 → BootScene
-5. **三层文案定制**: 游戏名剧情化 + 规则描述剧情化 + 游戏内标签/emoji 剧情化（见三层定制体系）
-6. **精灵图注入**: 通过 `CTX.sprites` 注入精灵文件映射 → monkey-patch GameScene 渲染
+5. **三层定制体系**: 第一层（标签/文案剧情化）→ 第二层（AI 精灵图替换色块）→ 第三层（STORY_THEME 游戏环境替换，仅需时启用）
+6. **素材生成**: 所有视觉素材用 AI 图像生成（ZenMux/Gemini），禁止 CSS 手绘。通过 `CTX.sprites` 注入精灵 + monkey-patch 渲染
 4. **核心机制**:
    - 每个阶段必须有 **有意义的决策** (不是无脑点击)
    - 操作错误必须有 **明确惩罚** (tension 增加, 扣分, 屏幕震动)
@@ -634,7 +642,7 @@ Freesound API 搜索 → 下载预览 → FreesoundAudio 类集成
 > **此步骤适用于一次性定制多集（≥3 集）游戏的场景。单集定制跳过此步。**
 
 **已验证的批量生成方案**: `scripts/batch-generate-wolven.js`（狼人22集）是完整参考实现，包含：
-- CTX 注入 + 三大组件 monkey-patch + 考验宣告卡 + 三层文案定制 + 精灵图注入 + kmeans 确定性修复 + 弱色增强
+- CTX 注入 + 三大组件 monkey-patch + 考验宣告卡 + 三层定制（标签→精灵→环境替换）+ STORY_THEME 注入 + kmeans 确定性修复 + 弱色增强
 - 配套精灵生成脚本：`scripts/generate-wolven-sprites.js`（ZenMux/Gemini → 绿幕 → chroma key → 透明 PNG）
 
 **⚠️ 批量生成的核心陷阱：脚本只替换数据，不替换代码。** 必须用 monkey-patch 模式注入所有组件代码，而不是 regex 替换模板内部代码。
@@ -898,6 +906,11 @@ games/<game-id>/
 | 深度定制 | kmeans 提取的弱色直接 fallback 到 preset | 弱色用增强（拉高饱和度/夹住亮度）而非 fallback，永远使用从背景图提取的色 |
 | 深度定制 | 游戏内精灵太大/太小导致碰撞判定异常 | **游戏精灵**用 `setDisplaySize()` 匹配原色块尺寸，不改碰撞体 hitArea（注意：**背景图禁止用 setDisplaySize**，必须用 `setScale(Math.max(...))` cover 模式） |
 | 深度定制 | 游戏内精灵没走绿幕流程，白底残留 | 所有游戏内素材统一走 Step 2 绿幕→抠图 pipeline |
+| STORY_THEME | 用 CSS shapes/SVG 手绘游戏视觉替换元素 | **禁止手工作图**。所有视觉素材用 AI 图像生成（ZenMux/Gemini），确保真实质感。即使是简单形状也要用 AI 生成 |
+| STORY_THEME | 环境替换图片边缘生硬，与背景不融合 | 用 CSS `mask-image: radial-gradient(ellipse 70% 60% at 50% 50%, #000 35%, transparent 72%)` 柔化边缘过渡 |
+| STORY_THEME | 多状态切换没有动画衔接 | 用多张 AI 图片堆叠 + `opacity` 交叉淡入（`transition: opacity 0.35s ease`），不要用 clip-path/scaleY 等 CSS 变换模拟 |
+| STORY_THEME | 环境替换改了游戏逻辑 | STORY_THEME 只 hook 视觉函数（如 `setTrafficLight`），不修改 GameScene 的 update/计分/碰撞等逻辑代码 |
+| STORY_THEME | 死机制（如体力系统永远耗不空） | 审查模板内置机制是否有实际游戏影响，无意义的机制用有决策价值的机制替换（如体力→冲刺加速） |
 | 选取 | 批量定制 21 集全用同一个模板 | **必须**按 Step 1a-1d 为每集独立选模板，相邻集不得重复，目标覆盖 ≥10/12 模板 |
 | 深度定制 | 直接用 character/ 全身图当头像，72px 圆框只能看到胸口 | 头像**必须每集用 ZenMux 生成 tight headshot**，走完绿幕→抠图→200×200 pipeline，不可跳过 |
 | 深度定制 | 背景图 PNG 直接改扩展名为 .jpg | 必须用 `sharp.resize(800).jpeg({quality:55})` **真正转码**为 JPEG；否则 canvas drawImage 失败导致 kmeans 取色无效 |
@@ -977,7 +990,7 @@ window.__EPISODE_CTX__ = {
     statusNeutral: '坚守防线',
     statusLosing: '快撑不住了...'
   },
-  sprites: {                                 // 精灵图映射（第三层定制，CTX.sprites）
+  sprites: {                                 // 精灵图映射（第二层定制，CTX.sprites）
     charge: 'sprite-charge.png',             // 蓄力图标（128×128 透明 PNG）
     release: 'sprite-release.png'            // 释放图标
   }
