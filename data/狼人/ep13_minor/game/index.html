@@ -42,6 +42,7 @@
   .sort-legend { position: absolute; top: 126px; left: 0; width: 100%; display: flex; justify-content: center; gap: 16px; padding: 6px 12px; z-index: 11; }
   .legend-item { display: flex; align-items: center; gap: 4px; font-weight: 700; font-size: 11px; color: #ccc; }
   .legend-dot { width: 10px; height: 10px; border-radius: 50%; }
+  .legend-sprite { width: 22px; height: 22px; object-fit: contain; filter: drop-shadow(0 0 3px var(--glow-color)) drop-shadow(0 0 6px var(--glow-color)) drop-shadow(0 0 10px var(--glow-color)); }
 
   .score-display { position: absolute; top: 600px; left: 0; width: 100%; display: flex; flex-direction: column; align-items: center; z-index: 11; }
   .score-display .label { font-weight: 700; font-size: 13px; color: rgba(255,255,255,0.45); letter-spacing: 2px; text-transform: uppercase; }
@@ -395,27 +396,91 @@ window.addEventListener('resize',fitShell);fitShell();
     this.load.image('ep_sprite_decoy', 'sprite-decoy.png');
   };
 })();
+// ── Sprite silhouette-glow + sprite bins + sprite legend ──
 (function() {
+  var SMAP = {data:'cat1', code:'cat2', mail:'cat3', media:'cat4', decoy:'decoy'};
+
+  // Override legend to use sprite images with edge glow
+  window.buildLegend = function(cats) {
+    var el = document.getElementById('sort-legend');
+    el.innerHTML = '';
+    cats.forEach(function(c) {
+      var d = document.createElement('div');
+      d.className = 'legend-item';
+      var spriteFile = 'sprite-' + (SMAP[c.key] || c.key) + '.png';
+      d.innerHTML = '<img class="legend-sprite" src="' + spriteFile + '" style="--glow-color:' + c.color + '" /> ' + c.label;
+      el.appendChild(d);
+    });
+  };
+
   var gs = GameScene.prototype || GameScene;
+
+  // Patch spawnItem: silhouette edge glow via tinted scaled copies
   var origSpawn = gs.spawnItem;
   gs.spawnItem = function() {
     origSpawn.call(this);
     var last = this.items[this.items.length - 1];
     if (!last || !last.container) return;
     var ct = last.container;
-    var children = ct.list || ct.getAll();
-    for (var i = 0; i < children.length; i++) {
-      if (children[i].type === 'Text' && children[i].text) {
-        var sMap = {data:'cat1',code:'cat2',mail:'cat3',media:'cat4',decoy:'decoy'};
-        var sKey = 'ep_sprite_' + (sMap[last.targetKey] || last.targetKey);
-        if (this.textures.exists(sKey)) {
-          var old = children[i];
-          var img = this.add.image(0, 2, sKey).setDisplaySize(28, 28).setOrigin(0.5);
-          ct.replace(old, img);
-          old.destroy();
-        }
-        break;
+    var self = this;
+    var cats = this.getActiveCategories();
+    var col = hexToInt(DECOY_DEF.color);
+    for (var c = 0; c < cats.length; c++) {
+      if (cats[c].key === last.targetKey) { col = hexToInt(cats[c].color); break; }
+    }
+    if (last.isDecoy) col = hexToInt(DECOY_DEF.color);
+    var kids = ct.getAll();
+    for (var k = kids.length - 1; k >= 0; k--) { kids[k].destroy(); }
+    var sKey = 'ep_sprite_' + (SMAP[last.targetKey] || last.targetKey);
+    if (self.textures.exists(sKey)) {
+      var g3 = self.add.image(0, 0, sKey).setDisplaySize(58, 58).setOrigin(0.5);
+      g3.setTint(col); g3.setAlpha(0.15); ct.add(g3);
+      var g2 = self.add.image(0, 0, sKey).setDisplaySize(52, 52).setOrigin(0.5);
+      g2.setTint(col); g2.setAlpha(0.3); ct.add(g2);
+      var g1 = self.add.image(0, 0, sKey).setDisplaySize(48, 48).setOrigin(0.5);
+      g1.setTint(col); g1.setAlpha(0.45); ct.add(g1);
+      var img = self.add.image(0, 0, sKey).setDisplaySize(44, 44).setOrigin(0.5);
+      ct.add(img);
+    } else {
+      var def = last.isDecoy ? DECOY_DEF : (cats.find(function(c){return c.key===last.targetKey}) || cats[0]);
+      ct.add(self.add.text(0, 0, def.emoji, {fontSize:'28px'}).setOrigin(0.5));
+    }
+    ct.setSize(56, 56);
+    ct.setInteractive({ hitArea: new Phaser.Geom.Circle(0, 0, 28), hitAreaCallback: Phaser.Geom.Circle.Contains, draggable: !last.isDecoy, useHandCursor: true });
+    if (!last.isDecoy) self.input.setDraggable(ct);
+  };
+
+  // Patch updateBins: sprite icons with silhouette glow
+  var origBins = gs.updateBins;
+  gs.updateBins = function() {
+    if (this.binGfx) this.binGfx.clear();
+    if (this.binLabels) this.binLabels.forEach(function(l) { l.destroy(); });
+    this.binLabels = [];
+    if (this._binSprites) this._binSprites.forEach(function(s) { s.destroy(); });
+    this._binSprites = [];
+    var cats = this.getActiveCategories();
+    var bW = Math.min(90, (this.playRight - this.playLeft - 16) / cats.length);
+    var tW = bW * cats.length + (cats.length - 1) * 8;
+    var sX = W / 2 - tW / 2 + bW / 2;
+    var bY = this.playBottom - 30;
+    this.binRects = [];
+    for (var i = 0; i < cats.length; i++) {
+      var bx = sX + i * (bW + 8);
+      var col = hexToInt(cats[i].color);
+      var sKey = 'ep_sprite_' + (SMAP[cats[i].key] || cats[i].key);
+      if (this.textures.exists(sKey)) {
+        var bg2 = this.add.image(bx, bY - 2, sKey).setDisplaySize(44, 44).setOrigin(0.5).setDepth(5);
+        bg2.setTint(col); bg2.setAlpha(0.18); this._binSprites.push(bg2);
+        var bg1 = this.add.image(bx, bY - 2, sKey).setDisplaySize(38, 38).setOrigin(0.5).setDepth(5);
+        bg1.setTint(col); bg1.setAlpha(0.35); this._binSprites.push(bg1);
+        var binImg = this.add.image(bx, bY - 2, sKey).setDisplaySize(32, 32).setOrigin(0.5).setDepth(5);
+        binImg.setAlpha(0.8); this._binSprites.push(binImg);
       }
+      var label = this.add.text(bx, bY + 22, cats[i].label, {
+        fontFamily: 'Montserrat', fontSize: '9px', fontStyle: '700', color: '#ffffff', align: 'center'
+      }).setOrigin(0.5).setDepth(5).setAlpha(0.6);
+      this.binLabels.push(label);
+      this.binRects.push({x: bx, y: bY, w: bW, h: 50, key: cats[i].key, color: col});
     }
   };
 })();
