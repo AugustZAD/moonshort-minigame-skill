@@ -369,7 +369,7 @@ class BootScene extends Phaser.Scene {
 // ══════════════════════════════════════════════════════════════════════════════
 class GameScene extends Phaser.Scene {
   constructor() { super('GameScene'); }
-  init() { this.score = 0; this.timeLeft = ROUND_SECONDS; this.isOver = false; this.light = 'green'; this.running = false; this.distance = 0; this.combo = 0; this.maxCombo = 0; this.totalHits = 0; this.totalMiss = 0; this.lastTickSec = -1; this.audioStarted = false; this.difficulty = 1; this.stamina = 100; this.maxStamina = 100; this.penaltyStack = 0; this.comboRunTime = 0; this.lastComboMilestone = 0; this.switchTimer = 2400; this.greenDurationBase = 2400; this.redDurationBase = 1600; this.switchTimerMax = 2400; this._holding = false; this._runBtn = null; this.fakeOutCooldown = 0; this.fakeOutActive = false; this.fakeOutTimer = 0; }
+  init() { this.timeLeft = ROUND_SECONDS; this.isOver = false; this.light = 'green'; this.running = false; this.distance = 0; this.combo = 0; this.maxCombo = 0; this.totalHits = 0; this.totalMiss = 0; this.lastTickSec = -1; this.audioStarted = false; this.difficulty = 1; this.stamina = 100; this.maxStamina = 100; this.penaltyStack = 0; this.comboRunTime = 0; this.lastComboMilestone = 0; this.switchTimer = 2400; this.greenDurationBase = 2400; this.redDurationBase = 1600; this.switchTimerMax = 2400; this._holding = false; this._runBtn = null; this.fakeOutCooldown = 0; this.fakeOutActive = false; this.fakeOutTimer = 0; }
   create() {
     this.children.removeAll(true);
     this.cameras.main.resetFX();
@@ -410,9 +410,8 @@ class GameScene extends Phaser.Scene {
       audio.swoosh();
     }
   }
-  addScore(d) { this.score = Math.max(0, this.score + d); $('score-value').textContent = Math.floor(this.distance) + 'm'; }
   applyDistance(d) { this.distance = Math.max(0, Math.min(100, this.distance + d)); $('score-value').textContent = Math.floor(this.distance) + 'm'; var r = Math.round(d); if (r !== 0) deltaPop(r); }
-  finishGame(reason) { if (this.isOver) return; this.isOver = true; audio.stopBgm(600); this.scene.start('ResultScene', { score: Math.round(this.score), maxCombo: this.maxCombo, hits: Math.round(this.totalHits), misses: this.totalMiss, distance: Math.floor(this.distance), reason: reason || 'time' }); }
+  finishGame(reason) { if (this.isOver) return; this.isOver = true; audio.stopBgm(600); this.scene.start('ResultScene', { score: Math.floor(this.distance), maxCombo: this.maxCombo, hits: Math.round(this.totalHits), misses: this.totalMiss, distance: Math.floor(this.distance), reason: reason || 'time' }); }
   update(time, delta) {
     if (this.isOver) return; var dt = delta / 1000;
     var T = window.__V3_THEME__;
@@ -456,13 +455,13 @@ class ResultScene extends Phaser.Scene {
     this.children.removeAll(true);
     this.cameras.main.resetFX();
     var self = this; var T = window.__V3_THEME__;
-    var rating = getRating(this.distance); var modifier = getModifier(rating); var modText = modifier > 0 ? '+' + modifier : String(modifier);
+    var rating = getRating(this.finalScore); var modifier = getModifier(rating); var modText = modifier > 0 ? '+' + modifier : String(modifier);
     setVisible('info-strip', false); setVisible('traffic-light', false); setVisible('light-label', false);
     setVisible('progress-track', false); setVisible('stamina-area', false); setVisible('combo-text', false); setVisible('switch-bar-area', false);
     setVisible('rules-card', false); setVisible('grade-overlay', true); setVisible('stars-row', true); setVisible('result-info', true);
     ['grade-letter','grade-score','attr-mod','stat-combo','stat-hits'].forEach(function(id){setVisible(id,true);});
     var rH = { S: T.gold, A: T.primary, B: '#9B7DB8', C: '#7A7A8E' };
-    $('grade-letter').textContent = rating; $('grade-letter').style.color = rH[rating]; $('grade-score').textContent = this.distance + 'm / 100m';
+    $('grade-letter').textContent = rating; $('grade-letter').style.color = rH[rating]; $('grade-score').textContent = this.finalScore + 'm / 100m';
     var sc = { S: 4, A: 3, B: 2, C: 1 }[rating]; var sr = $('stars-row'); sr.innerHTML = '';
     for (var i = 0; i < 4; i++) { var star = document.createElement('span'); star.className = 'star ' + (i < sc ? 'filled' : 'empty'); star.textContent = '\u2605'; star.style.animationDelay = (0.2 + i * 0.08) + 's'; sr.appendChild(star); }
     $('attr-mod').textContent = DISPLAY_ATTRIBUTE + ' ' + modText; $('stat-combo').textContent = 'Combo ' + this.maxCombo; $('stat-hits').textContent = 'Penalties ' + this.misses;

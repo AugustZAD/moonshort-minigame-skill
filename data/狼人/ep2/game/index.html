@@ -239,6 +239,71 @@
   .narrative-overlay .narrator { font-weight:800;font-size:14px;color:var(--primary-light,#C4B5FD);letter-spacing:2px;text-transform:uppercase;margin-bottom:16px; }
   .narrative-overlay .line { font-weight:700;font-size:16px;color:#fff;text-align:center;line-height:1.6;max-width:320px; }
   .narrative-overlay .tap-hint { position:absolute;bottom:60px;font-weight:700;font-size:12px;color:rgba(255,255,255,0.4);letter-spacing:2px; }
+
+  /* ═══ STORY_THEME injection ═══ */
+  /* ═══ Layer 3 Theme: Alpha 注视（狼眼） ═══ */
+
+  /* 隐藏原交通灯，用狼眼替代 */
+  .traffic-light { display: none !important; }
+
+  /* ── 狼眼容器 ── */
+  .wolf-eye {
+    position: absolute; top: 96px; left: 50%; transform: translateX(-50%);
+    width: 200px; height: 200px; z-index: 10;
+    display: flex; align-items: center; justify-content: center;
+  }
+
+  /* ── 眼球图层（三张叠加） ── */
+  .wolf-eye img {
+    position: absolute; top: 0; left: 0;
+    width: 100%; height: 100%;
+    object-fit: contain;
+    transition: opacity 0.35s ease, filter 0.35s ease;
+    pointer-events: none;
+    -webkit-mask-image: radial-gradient(ellipse 70% 60% at 50% 50%, #000 35%, transparent 72%);
+    mask-image: radial-gradient(ellipse 70% 60% at 50% 50%, #000 35%, transparent 72%);
+  }
+  .wolf-eye .eye-open   { z-index: 1; }
+  .wolf-eye .eye-half   { z-index: 2; }
+  .wolf-eye .eye-closed { z-index: 3; }
+
+  /* ── 信号标签 ── */
+  .light-label {
+    top: 310px !important;
+    font-size: 28px !important;
+    letter-spacing: 4px !important;
+    text-shadow: 0 0 20px currentColor, 0 2px 10px rgba(0,0,0,0.7) !important;
+  }
+
+  /* ── 背景：深夜集会场 ── */
+  body, #game-shell {
+    background: linear-gradient(180deg, #06000a 0%, #150812 35%, #0a0610 70%, #050308 100%) !important;
+  }
+  /* 月光光晕 */
+  #game-shell::after {
+    content: ''; position: absolute; top: -60px; left: 50%; transform: translateX(-50%);
+    width: 260px; height: 260px;
+    background: radial-gradient(circle, rgba(140,170,220,0.06) 0%, transparent 65%);
+    pointer-events: none; z-index: 0;
+  }
+  /* 体力条 → 意志力条 */
+  .stamina-fill {
+    background: linear-gradient(90deg, #7a3adf, #df5a8a) !important;
+  }
+  /* 跑道 */
+  .track-bg {
+    background: rgba(100, 80, 60, 0.25) !important;
+    border: 1px solid rgba(100, 80, 60, 0.15);
+  }
+  .track-fill {
+    background: linear-gradient(90deg, #7a3adf, #b05adf) !important;
+  }
+  /* 底部雾气 */
+  .btn-area::before {
+    content: ''; position: absolute; bottom: 100%; left: -12px; right: -12px; height: 80px;
+    background: linear-gradient(180deg, transparent 0%, rgba(5,3,8,0.6) 100%);
+    pointer-events: none;
+  }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
 </head>
@@ -254,12 +319,12 @@
     <div class="right"><span class="timer-val" id="timer-value">36s</span></div>
   </div>
   <div class="traffic-light hidden" id="traffic-light"><div class="light red" id="light-red"></div><div class="light yellow" id="light-yellow"></div><div class="light green" id="light-green"></div></div>
-  <div class="light-label hidden" id="light-label">走！</div>
+  <div class="light-label hidden" id="light-label">站起来！</div>
   <div class="progress-track hidden" id="progress-track"><div class="track-bg"></div><div class="track-fill" id="track-fill" style="width:0%"></div><span class="track-runner" id="track-runner" style="left:0%">&#127939;</span><span class="track-finish">&#127937;</span><span class="track-dist" id="track-dist">0m / 100m</span></div>
-  <div class="stamina-area hidden" id="stamina-area"><span class="stamina-label">体力</span><div class="stamina-track"><div class="stamina-fill" id="stamina-fill" style="width:100%"></div></div></div>
+  <div class="stamina-area hidden" id="stamina-area"><span class="stamina-label">意志力</span><div class="stamina-track"><div class="stamina-fill" id="stamina-fill" style="width:100%"></div></div></div>
   <div class="combo-text hidden" id="combo-text"></div>
   <div class="switch-bar-area hidden" id="switch-bar-area"><div class="switch-bar-track"><div class="switch-bar-fill" id="switch-bar-fill" style="width:100%"></div></div></div>
-  <div class="rules-card hidden" id="rules-card"><h2>不跪的理由</h2><p>绿灯时前进，红灯时停下<br>在Alpha的注视下保持镇定<br>撑过100步 = 证明自己</p></div>
+  <div class="rules-card hidden" id="rules-card"><h2>不跪的理由</h2><p>他移开目光时前进，注视你时停下<br>在Alpha的威压下保持站立<br>撑过100步 = 证明自己</p></div>
   <div class="grade-overlay hidden" id="grade-overlay"><div class="grade-letter pop-in" id="grade-letter"></div><div class="grade-score" id="grade-score"></div></div>
   <div class="stars-row hidden" id="stars-row"></div>
   <div class="result-info hidden" id="result-info"><div class="attr-mod" id="attr-mod"></div><div class="stats"><span id="stat-combo"></span><span id="stat-hits"></span></div></div>
@@ -401,9 +466,9 @@ function initShellDOM() {
 
 function setTrafficLight(color) {
   $('light-red').classList.remove('active'); $('light-yellow').classList.remove('active'); $('light-green').classList.remove('active');
-  if (color === 'red') { $('light-red').classList.add('active'); $('light-label').textContent = '停！'; $('light-label').style.color = '#FF4D6A'; }
+  if (color === 'red') { $('light-red').classList.add('active'); $('light-label').textContent = '跪下！'; $('light-label').style.color = '#FF4D6A'; }
   else if (color === 'yellow') { $('light-yellow').classList.add('active'); $('light-label').textContent = '在Alpha的命令下撑住不跪'; $('light-label').style.color = '#FFB347'; }
-  else if (color === 'green') { $('light-green').classList.add('active'); $('light-label').textContent = '走！'; $('light-label').style.color = '#4FECA2'; }
+  else if (color === 'green') { $('light-green').classList.add('active'); $('light-label').textContent = '站起来！'; $('light-label').style.color = '#4FECA2'; }
   else { $('light-label').textContent = ''; $('light-label').style.color = '#888'; }
 }
 function updateProgress(dist, maxDist) { var pct = clamp(dist / maxDist * 100, 0, 100); $('track-fill').style.width = pct + '%'; $('track-runner').style.left = Math.min(pct, 92) + '%'; $('track-dist').textContent = Math.floor(dist) + 'm / ' + maxDist + 'm'; }
@@ -414,8 +479,8 @@ function drawSceneBg(scene, sceneKey, alpha) {
   if (!scene.textures.exists('ep_bg_' + sceneKey)) return;
   var bg = scene.add.image(W/2, H/2, 'ep_bg_' + sceneKey);
   var _t = bg.texture.getSourceImage();
-var _s = Math.max(W/_t.width, H/_t.height);
-bg.setScale(_s);
+  var _s = Math.max(W/_t.width, H/_t.height);
+  bg.setScale(_s);
   bg.setAlpha(alpha || 0.03);
   bg.setDepth(-1);
 }
@@ -500,8 +565,8 @@ class NarrativeScene extends Phaser.Scene {
     if (this.textures.exists('ep_bg_narrative')) {
       var bg = this.add.image(W/2, H/2, 'ep_bg_narrative');
       var _t = bg.texture.getSourceImage();
-var _s = Math.max(W/_t.width, H/_t.height);
-bg.setScale(_s);
+      var _s = Math.max(W/_t.width, H/_t.height);
+      bg.setScale(_s);
       bg.setAlpha(0.12);
       bg.setDepth(1);
     }
@@ -531,7 +596,7 @@ class BootScene extends Phaser.Scene {
 // ══════════════════════════════════════════════════════════════════════════════
 class GameScene extends Phaser.Scene {
   constructor() { super('GameScene'); }
-  init() { this.score = 0; this.timeLeft = ROUND_SECONDS; this.isOver = false; this.light = 'green'; this.running = false; this.distance = 0; this.combo = 0; this.maxCombo = 0; this.totalHits = 0; this.totalMiss = 0; this.lastTickSec = -1; this.audioStarted = false; this.difficulty = 1; this.stamina = 100; this.maxStamina = 100; this.penaltyStack = 0; this.comboRunTime = 0; this.lastComboMilestone = 0; this.switchTimer = 2400; this.greenDurationBase = 2400; this.redDurationBase = 1600; this.switchTimerMax = 2400; this._holding = false; this._runBtn = null; this.fakeOutCooldown = 0; this.fakeOutActive = false; this.fakeOutTimer = 0; }
+  init() { this.timeLeft = ROUND_SECONDS; this.isOver = false; this.light = 'green'; this.running = false; this.distance = 0; this.combo = 0; this.maxCombo = 0; this.totalHits = 0; this.totalMiss = 0; this.lastTickSec = -1; this.audioStarted = false; this.difficulty = 1; this.stamina = 100; this.maxStamina = 100; this.penaltyStack = 0; this.comboRunTime = 0; this.lastComboMilestone = 0; this.switchTimer = 2400; this.greenDurationBase = 2400; this.redDurationBase = 1600; this.switchTimerMax = 2400; this._holding = false; this._runBtn = null; this.fakeOutCooldown = 0; this.fakeOutActive = false; this.fakeOutTimer = 0; }
   create() {
     this.children.removeAll(true);
     this.cameras.main.resetFX();
@@ -544,7 +609,7 @@ class GameScene extends Phaser.Scene {
     this.switchTimer = this.greenDurationBase + Math.random() * 1000; this.switchTimerMax = this.switchTimer;
     clearBtnArea();
     var runBtn = document.createElement('div'); runBtn.className = 'btn-candy full';
-    runBtn.innerHTML = '<div class="base"></div><div class="glass"></div><div class="highlight"></div><div class="glow"></div><div class="label" style="font-size:20px">&#127939; HOLD TO 跑</div>';
+    runBtn.innerHTML = '<div class="base"></div><div class="glass"></div><div class="highlight"></div><div class="glow"></div><div class="label" style="font-size:20px">&#127939; HOLD TO 前进</div>';
     this._runBtn = runBtn;
     runBtn.addEventListener('pointerdown', function(e) { e.preventDefault(); audio.tap(); if (self.isOver) return; if (!self.audioStarted) { audio.unlock(); audio.bgm('action'); self.audioStarted = true; } self._holding = true; self.running = true; runBtn.classList.add('holding'); });
     runBtn.addEventListener('pointerup', function(e) { e.preventDefault(); if (self.running && self.light === 'green' && self.switchTimer <= 400 && !self.fakeOutActive) { self.applyDistance(3); showToast(self, 'Quick! +3m', '#4FECA2', W / 2, 480); audio.tick(); } self._holding = false; self.running = false; runBtn.classList.remove('holding'); });
@@ -572,9 +637,8 @@ class GameScene extends Phaser.Scene {
       audio.swoosh();
     }
   }
-  addScore(d) { this.score = Math.max(0, this.score + d); $('score-value').textContent = Math.floor(this.distance) + 'm'; }
   applyDistance(d) { this.distance = Math.max(0, Math.min(100, this.distance + d)); $('score-value').textContent = Math.floor(this.distance) + 'm'; var r = Math.round(d); if (r !== 0) deltaPop(r); }
-  finishGame(reason) { if (this.isOver) return; this.isOver = true; audio.stopBgm(600); this.scene.start('ResultScene', { score: Math.round(this.score), maxCombo: this.maxCombo, hits: Math.round(this.totalHits), misses: this.totalMiss, distance: Math.floor(this.distance), reason: reason || 'time' }); }
+  finishGame(reason) { if (this.isOver) return; this.isOver = true; audio.stopBgm(600); this.scene.start('ResultScene', { score: Math.floor(this.distance), maxCombo: this.maxCombo, hits: Math.round(this.totalHits), misses: this.totalMiss, distance: Math.floor(this.distance), reason: reason || 'time' }); }
   update(time, delta) {
     if (this.isOver) return; var dt = delta / 1000;
     var T = window.__V3_THEME__;
@@ -591,7 +655,7 @@ class GameScene extends Phaser.Scene {
     }
     if (this.fakeOutActive) {
       this.fakeOutTimer -= delta;
-      if (this.fakeOutTimer <= 0) { this.fakeOutActive = false; this.fakeOutCooldown = 3000; setTrafficLight('green'); $('light-label').textContent = '走！'; $('light-label').style.color = '#4FECA2'; }
+      if (this.fakeOutTimer <= 0) { this.fakeOutActive = false; this.fakeOutCooldown = 3000; setTrafficLight('green'); $('light-label').textContent = '站起来！'; $('light-label').style.color = '#4FECA2'; }
     }
     if (this.fakeOutCooldown > 0) this.fakeOutCooldown -= delta;
     if (!this.running) { this.stamina = Math.min(this.maxStamina, this.stamina + 18 * dt); }
@@ -618,13 +682,13 @@ class ResultScene extends Phaser.Scene {
     this.children.removeAll(true);
     this.cameras.main.resetFX();
     var self = this; var T = window.__V3_THEME__;
-    var rating = getRating(this.distance); var modifier = getModifier(rating); var modText = modifier > 0 ? '+' + modifier : String(modifier);
+    var rating = getRating(this.finalScore); var modifier = getModifier(rating); var modText = modifier > 0 ? '+' + modifier : String(modifier);
     setVisible('info-strip', false); setVisible('traffic-light', false); setVisible('light-label', false);
     setVisible('progress-track', false); setVisible('stamina-area', false); setVisible('combo-text', false); setVisible('switch-bar-area', false);
     setVisible('rules-card', false); setVisible('grade-overlay', true); setVisible('stars-row', true); setVisible('result-info', true);
     ['grade-letter','grade-score','attr-mod','stat-combo','stat-hits'].forEach(function(id){setVisible(id,true);});
     var rH = { S: T.gold, A: T.primary, B: '#9B7DB8', C: '#7A7A8E' };
-    $('grade-letter').textContent = rating; $('grade-letter').style.color = rH[rating]; $('grade-score').textContent = this.distance + 'm / 100m';
+    $('grade-letter').textContent = rating; $('grade-letter').style.color = rH[rating]; $('grade-score').textContent = this.finalScore + 'm / 100m';
     var sc = { S: 4, A: 3, B: 2, C: 1 }[rating]; var sr = $('stars-row'); sr.innerHTML = '';
     for (var i = 0; i < 4; i++) { var star = document.createElement('span'); star.className = 'star ' + (i < sc ? 'filled' : 'empty'); star.textContent = '\u2605'; star.style.animationDelay = (0.2 + i * 0.08) + 's'; sr.appendChild(star); }
     $('attr-mod').textContent = DISPLAY_ATTRIBUTE + ' ' + modText; $('stat-combo').textContent = '连击 ' + this.maxCombo; $('stat-hits').textContent = 'Penalties ' + this.misses;
@@ -652,6 +716,68 @@ var config = { type: Phaser.CANVAS, parent: 'phaser-container', width: W, height
 
 function fitShell() { var shell = $('game-shell'), sw = window.innerWidth, sh = window.innerHeight, sx = sw / W, sy = sh / H, sc = Math.min(sx, sy, 1); shell.style.transform = 'scale(' + sc + ')'; shell.style.transformOrigin = 'top center'; if (sy < sx) shell.style.marginTop = '0px'; else shell.style.marginTop = Math.max(0, (sh - H * sc) / 2) + 'px'; }
 window.addEventListener('resize', fitShell); fitShell();
+// ═══ STORY_THEME JS ═══
+
+(function() {
+  // ── 创建狼眼 DOM ──
+  var shell = document.getElementById('game-shell');
+  var eye = document.createElement('div');
+  eye.className = 'wolf-eye hidden';
+  eye.id = 'wolf-eye';
+  eye.setAttribute('data-state', 'green');
+  eye.innerHTML = '<img class="eye-open" src="theme-eye.png" alt=""><img class="eye-half" src="theme-eye-half.png" alt=""><img class="eye-closed" src="theme-eye-closed.png" alt="">';
+  // 插入到 traffic-light 之后
+  var tl = document.getElementById('traffic-light');
+  if (tl && tl.parentNode) tl.parentNode.insertBefore(eye, tl.nextSibling);
+
+  // ── Hook setTrafficLight 同步狼眼状态 ──
+  var origSetTL = window.setTrafficLight;
+  window.setTrafficLight = function(color) {
+    origSetTL(color);
+    var eyeEl = document.getElementById('wolf-eye');
+    if (!eyeEl) return;
+    eyeEl.setAttribute('data-state', color || 'off');
+    var eOpen = eyeEl.querySelector('.eye-open');
+    var eHalf = eyeEl.querySelector('.eye-half');
+    var eClosed = eyeEl.querySelector('.eye-closed');
+    if (!eOpen) return;
+    if (color === 'red') {
+      eOpen.style.opacity = '1';
+      eHalf.style.opacity = '0';
+      eClosed.style.opacity = '0';
+      eOpen.style.filter = 'drop-shadow(0 0 30px rgba(255,20,20,0.8)) brightness(1.15)';
+    } else if (color === 'yellow') {
+      eOpen.style.opacity = '0';
+      eHalf.style.opacity = '1';
+      eClosed.style.opacity = '0';
+      eHalf.style.filter = 'drop-shadow(0 0 15px rgba(255,160,30,0.5)) brightness(0.9)';
+    } else if (color === 'green') {
+      eOpen.style.opacity = '0';
+      eHalf.style.opacity = '0';
+      eClosed.style.opacity = '1';
+      eClosed.style.filter = 'drop-shadow(0 0 4px rgba(60,10,10,0.2)) brightness(0.6)';
+    } else {
+      eOpen.style.opacity = '0';
+      eHalf.style.opacity = '0';
+      eClosed.style.opacity = '1';
+      eClosed.style.filter = 'brightness(0.3)';
+    }
+  };
+
+  // ── 让狼眼跟 traffic-light 同步显隐 ──
+  // traffic-light 被 setVisible 控制，我们同步 wolf-eye
+  var origSetVisible = window.setVisible;
+  window.setVisible = function(id, visible) {
+    origSetVisible(id, visible);
+    if (id === 'traffic-light') {
+      var eyeEl = document.getElementById('wolf-eye');
+      if (eyeEl) {
+        if (visible) eyeEl.classList.remove('hidden');
+        else eyeEl.classList.add('hidden');
+      }
+    }
+  };
+})();
 
 (function() {
   var gs = GameScene.prototype || GameScene;
@@ -733,8 +859,8 @@ window.addEventListener('resize', fitShell); fitShell();
     if (this.textures.exists('ep_bg_boot')) {
       var bg = this.add.image(W/2, H/2, 'ep_bg_boot');
       var _t = bg.texture.getSourceImage();
-var _s = Math.max(W/_t.width, H/_t.height);
-bg.setScale(_s);
+      var _s = Math.max(W/_t.width, H/_t.height);
+      bg.setScale(_s);
       bg.setAlpha(0.15);
       bg.setDepth(0);
     }

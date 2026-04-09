@@ -254,12 +254,12 @@
     <div class="right"><span class="timer-val" id="timer-value">36s</span></div>
   </div>
   <div class="traffic-light hidden" id="traffic-light"><div class="light red" id="light-red"></div><div class="light yellow" id="light-yellow"></div><div class="light green" id="light-green"></div></div>
-  <div class="light-label hidden" id="light-label">走！</div>
+  <div class="light-label hidden" id="light-label">可以了</div>
   <div class="progress-track hidden" id="progress-track"><div class="track-bg"></div><div class="track-fill" id="track-fill" style="width:0%"></div><span class="track-runner" id="track-runner" style="left:0%">&#127939;</span><span class="track-finish">&#127937;</span><span class="track-dist" id="track-dist">0m / 100m</span></div>
-  <div class="stamina-area hidden" id="stamina-area"><span class="stamina-label">体力</span><div class="stamina-track"><div class="stamina-fill" id="stamina-fill" style="width:100%"></div></div></div>
+  <div class="stamina-area hidden" id="stamina-area"><span class="stamina-label">忍耐值</span><div class="stamina-track"><div class="stamina-fill" id="stamina-fill" style="width:100%"></div></div></div>
   <div class="combo-text hidden" id="combo-text"></div>
   <div class="switch-bar-area hidden" id="switch-bar-area"><div class="switch-bar-track"><div class="switch-bar-fill" id="switch-bar-fill" style="width:100%"></div></div></div>
-  <div class="rules-card hidden" id="rules-card"><h2>坐到最后</h2><p>在座位上承受所有压力<br>绿灯时可以喘息<br>红灯时一动不动</p></div>
+  <div class="rules-card hidden" id="rules-card"><h2>坐到最后</h2><p>在座位上承受所有压力<br>压力松开时可以喘息<br>压力来袭时一动不动</p></div>
   <div class="grade-overlay hidden" id="grade-overlay"><div class="grade-letter pop-in" id="grade-letter"></div><div class="grade-score" id="grade-score"></div></div>
   <div class="stars-row hidden" id="stars-row"></div>
   <div class="result-info hidden" id="result-info"><div class="attr-mod" id="attr-mod"></div><div class="stats"><span id="stat-combo"></span><span id="stat-hits"></span></div></div>
@@ -401,9 +401,9 @@ function initShellDOM() {
 
 function setTrafficLight(color) {
   $('light-red').classList.remove('active'); $('light-yellow').classList.remove('active'); $('light-green').classList.remove('active');
-  if (color === 'red') { $('light-red').classList.add('active'); $('light-label').textContent = '停！'; $('light-label').style.color = '#FF4D6A'; }
+  if (color === 'red') { $('light-red').classList.add('active'); $('light-label').textContent = '别动！'; $('light-label').style.color = '#FF4D6A'; }
   else if (color === 'yellow') { $('light-yellow').classList.add('active'); $('light-label').textContent = '在议事厅的座位上坐到最后一刻'; $('light-label').style.color = '#FFB347'; }
-  else if (color === 'green') { $('light-green').classList.add('active'); $('light-label').textContent = '走！'; $('light-label').style.color = '#4FECA2'; }
+  else if (color === 'green') { $('light-green').classList.add('active'); $('light-label').textContent = '可以了'; $('light-label').style.color = '#4FECA2'; }
   else { $('light-label').textContent = ''; $('light-label').style.color = '#888'; }
 }
 function updateProgress(dist, maxDist) { var pct = clamp(dist / maxDist * 100, 0, 100); $('track-fill').style.width = pct + '%'; $('track-runner').style.left = Math.min(pct, 92) + '%'; $('track-dist').textContent = Math.floor(dist) + 'm / ' + maxDist + 'm'; }
@@ -531,7 +531,7 @@ class BootScene extends Phaser.Scene {
 // ══════════════════════════════════════════════════════════════════════════════
 class GameScene extends Phaser.Scene {
   constructor() { super('GameScene'); }
-  init() { this.score = 0; this.timeLeft = ROUND_SECONDS; this.isOver = false; this.light = 'green'; this.running = false; this.distance = 0; this.combo = 0; this.maxCombo = 0; this.totalHits = 0; this.totalMiss = 0; this.lastTickSec = -1; this.audioStarted = false; this.difficulty = 1; this.stamina = 100; this.maxStamina = 100; this.penaltyStack = 0; this.comboRunTime = 0; this.lastComboMilestone = 0; this.switchTimer = 2400; this.greenDurationBase = 2400; this.redDurationBase = 1600; this.switchTimerMax = 2400; this._holding = false; this._runBtn = null; this.fakeOutCooldown = 0; this.fakeOutActive = false; this.fakeOutTimer = 0; }
+  init() { this.timeLeft = ROUND_SECONDS; this.isOver = false; this.light = 'green'; this.running = false; this.distance = 0; this.combo = 0; this.maxCombo = 0; this.totalHits = 0; this.totalMiss = 0; this.lastTickSec = -1; this.audioStarted = false; this.difficulty = 1; this.stamina = 100; this.maxStamina = 100; this.penaltyStack = 0; this.comboRunTime = 0; this.lastComboMilestone = 0; this.switchTimer = 2400; this.greenDurationBase = 2400; this.redDurationBase = 1600; this.switchTimerMax = 2400; this._holding = false; this._runBtn = null; this.fakeOutCooldown = 0; this.fakeOutActive = false; this.fakeOutTimer = 0; }
   create() {
     this.children.removeAll(true);
     this.cameras.main.resetFX();
@@ -544,7 +544,7 @@ class GameScene extends Phaser.Scene {
     this.switchTimer = this.greenDurationBase + Math.random() * 1000; this.switchTimerMax = this.switchTimer;
     clearBtnArea();
     var runBtn = document.createElement('div'); runBtn.className = 'btn-candy full';
-    runBtn.innerHTML = '<div class="base"></div><div class="glass"></div><div class="highlight"></div><div class="glow"></div><div class="label" style="font-size:20px">&#127939; HOLD TO 跑</div>';
+    runBtn.innerHTML = '<div class="base"></div><div class="glass"></div><div class="highlight"></div><div class="glow"></div><div class="label" style="font-size:20px">&#127939; HOLD TO 喘息</div>';
     this._runBtn = runBtn;
     runBtn.addEventListener('pointerdown', function(e) { e.preventDefault(); audio.tap(); if (self.isOver) return; if (!self.audioStarted) { audio.unlock(); audio.bgm('action'); self.audioStarted = true; } self._holding = true; self.running = true; runBtn.classList.add('holding'); });
     runBtn.addEventListener('pointerup', function(e) { e.preventDefault(); if (self.running && self.light === 'green' && self.switchTimer <= 400 && !self.fakeOutActive) { self.applyDistance(3); showToast(self, 'Quick! +3m', '#4FECA2', W / 2, 480); audio.tick(); } self._holding = false; self.running = false; runBtn.classList.remove('holding'); });
@@ -572,9 +572,8 @@ class GameScene extends Phaser.Scene {
       audio.swoosh();
     }
   }
-  addScore(d) { this.score = Math.max(0, this.score + d); $('score-value').textContent = Math.floor(this.distance) + 'm'; }
   applyDistance(d) { this.distance = Math.max(0, Math.min(100, this.distance + d)); $('score-value').textContent = Math.floor(this.distance) + 'm'; var r = Math.round(d); if (r !== 0) deltaPop(r); }
-  finishGame(reason) { if (this.isOver) return; this.isOver = true; audio.stopBgm(600); this.scene.start('ResultScene', { score: Math.round(this.score), maxCombo: this.maxCombo, hits: Math.round(this.totalHits), misses: this.totalMiss, distance: Math.floor(this.distance), reason: reason || 'time' }); }
+  finishGame(reason) { if (this.isOver) return; this.isOver = true; audio.stopBgm(600); this.scene.start('ResultScene', { score: Math.floor(this.distance), maxCombo: this.maxCombo, hits: Math.round(this.totalHits), misses: this.totalMiss, distance: Math.floor(this.distance), reason: reason || 'time' }); }
   update(time, delta) {
     if (this.isOver) return; var dt = delta / 1000;
     var T = window.__V3_THEME__;
@@ -591,7 +590,7 @@ class GameScene extends Phaser.Scene {
     }
     if (this.fakeOutActive) {
       this.fakeOutTimer -= delta;
-      if (this.fakeOutTimer <= 0) { this.fakeOutActive = false; this.fakeOutCooldown = 3000; setTrafficLight('green'); $('light-label').textContent = '走！'; $('light-label').style.color = '#4FECA2'; }
+      if (this.fakeOutTimer <= 0) { this.fakeOutActive = false; this.fakeOutCooldown = 3000; setTrafficLight('green'); $('light-label').textContent = '可以了'; $('light-label').style.color = '#4FECA2'; }
     }
     if (this.fakeOutCooldown > 0) this.fakeOutCooldown -= delta;
     if (!this.running) { this.stamina = Math.min(this.maxStamina, this.stamina + 18 * dt); }
@@ -618,13 +617,13 @@ class ResultScene extends Phaser.Scene {
     this.children.removeAll(true);
     this.cameras.main.resetFX();
     var self = this; var T = window.__V3_THEME__;
-    var rating = getRating(this.distance); var modifier = getModifier(rating); var modText = modifier > 0 ? '+' + modifier : String(modifier);
+    var rating = getRating(this.finalScore); var modifier = getModifier(rating); var modText = modifier > 0 ? '+' + modifier : String(modifier);
     setVisible('info-strip', false); setVisible('traffic-light', false); setVisible('light-label', false);
     setVisible('progress-track', false); setVisible('stamina-area', false); setVisible('combo-text', false); setVisible('switch-bar-area', false);
     setVisible('rules-card', false); setVisible('grade-overlay', true); setVisible('stars-row', true); setVisible('result-info', true);
     ['grade-letter','grade-score','attr-mod','stat-combo','stat-hits'].forEach(function(id){setVisible(id,true);});
     var rH = { S: T.gold, A: T.primary, B: '#9B7DB8', C: '#7A7A8E' };
-    $('grade-letter').textContent = rating; $('grade-letter').style.color = rH[rating]; $('grade-score').textContent = this.distance + 'm / 100m';
+    $('grade-letter').textContent = rating; $('grade-letter').style.color = rH[rating]; $('grade-score').textContent = this.finalScore + 'm / 100m';
     var sc = { S: 4, A: 3, B: 2, C: 1 }[rating]; var sr = $('stars-row'); sr.innerHTML = '';
     for (var i = 0; i < 4; i++) { var star = document.createElement('span'); star.className = 'star ' + (i < sc ? 'filled' : 'empty'); star.textContent = '\u2605'; star.style.animationDelay = (0.2 + i * 0.08) + 's'; sr.appendChild(star); }
     $('attr-mod').textContent = DISPLAY_ATTRIBUTE + ' ' + modText; $('stat-combo').textContent = '连击 ' + this.maxCombo; $('stat-hits').textContent = 'Penalties ' + this.misses;

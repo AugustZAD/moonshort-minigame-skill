@@ -689,8 +689,8 @@ function drawSceneBg(scene, sceneKey, alpha) {
   if (!scene.textures.exists('ep_bg_' + sceneKey)) return;
   var bg = scene.add.image(W/2, H/2, 'ep_bg_' + sceneKey);
   var _t = bg.texture.getSourceImage();
-var _s = Math.max(W/_t.width, H/_t.height);
-bg.setScale(_s);
+  var _s = Math.max(W/_t.width, H/_t.height);
+  bg.setScale(_s);
   bg.setAlpha(alpha || 0.03);
   bg.setDepth(-1);
 }
@@ -884,9 +884,6 @@ function screenShake(scene, intensity) {
   scene.cameras.main.shake(150, intensity || 0.008);
 }
 
-// ══════════════════════════════════════════════════════════════════════════════
-//  BOOT SCENE
-// ══════════════════════════════════════════════════════════════════════════════
 
 // ══════════════════════════════════════════════════════════════════════════════
 //  COMPONENT A: NARRATIVE SCENE
@@ -957,8 +954,8 @@ class NarrativeScene extends Phaser.Scene {
     if (this.textures.exists('ep_bg_narrative')) {
       var bg = this.add.image(W/2, H/2, 'ep_bg_narrative');
       var _t = bg.texture.getSourceImage();
-var _s = Math.max(W/_t.width, H/_t.height);
-bg.setScale(_s);
+      var _s = Math.max(W/_t.width, H/_t.height);
+      bg.setScale(_s);
       bg.setAlpha(0.12);
       bg.setDepth(1);
     }
@@ -967,6 +964,9 @@ bg.setScale(_s);
   }
 }
 
+// ══════════════════════════════════════════════════════════════════════════════
+//  BOOT SCENE
+// ══════════════════════════════════════════════════════════════════════════════
 class BootScene extends Phaser.Scene {
   constructor() { super('BootScene'); }
 
@@ -1292,7 +1292,7 @@ class GameScene extends Phaser.Scene {
           }
           this.addScore(gain);
           var toastColor = target.tier === 3 ? T.gold : (target.tier === 2 ? T.primaryLight : T.primary);
-          var toastMsg = target.tier === 3 ? '+' + gain + ' 🔥' : '+' + gain;
+          var toastMsg = target.tier === 3 ? '+' + gain + ' 🎯' : '+' + gain;
           showToast(this, toastMsg, toastColor, target.x, target.y - 30);
           spawnParticles(this, target.x, target.y, target.color, 10, 400);
           audio.success();
@@ -1542,8 +1542,8 @@ fitShell();
     if (this.textures.exists('ep_bg_boot')) {
       var bg = this.add.image(W/2, H/2, 'ep_bg_boot');
       var _t = bg.texture.getSourceImage();
-var _s = Math.max(W/_t.width, H/_t.height);
-bg.setScale(_s);
+      var _s = Math.max(W/_t.width, H/_t.height);
+      bg.setScale(_s);
       bg.setAlpha(0.15);
       bg.setDepth(0);
     }

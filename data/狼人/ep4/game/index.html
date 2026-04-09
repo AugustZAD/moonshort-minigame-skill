@@ -638,8 +638,8 @@ function drawSceneBg(scene, sceneKey, alpha) {
   if (!scene.textures.exists('ep_bg_' + sceneKey)) return;
   var bg = scene.add.image(W/2, H/2, 'ep_bg_' + sceneKey);
   var _t = bg.texture.getSourceImage();
-var _s = Math.max(W/_t.width, H/_t.height);
-bg.setScale(_s);
+  var _s = Math.max(W/_t.width, H/_t.height);
+  bg.setScale(_s);
   bg.setAlpha(alpha || 0.03);
   bg.setDepth(-1);
 }
@@ -672,9 +672,6 @@ var FIELD_TOP = 170;
 var FIELD_H = 620;
 var FIELD_BOT = FIELD_TOP + FIELD_H;
 
-// ══════════════════════════════════════════════════════════════════════════════
-//  BOOT SCENE
-// ══════════════════════════════════════════════════════════════════════════════
 
 // ══════════════════════════════════════════════════════════════════════════════
 //  COMPONENT A: NARRATIVE SCENE
@@ -745,8 +742,8 @@ class NarrativeScene extends Phaser.Scene {
     if (this.textures.exists('ep_bg_narrative')) {
       var bg = this.add.image(W/2, H/2, 'ep_bg_narrative');
       var _t = bg.texture.getSourceImage();
-var _s = Math.max(W/_t.width, H/_t.height);
-bg.setScale(_s);
+      var _s = Math.max(W/_t.width, H/_t.height);
+      bg.setScale(_s);
       bg.setAlpha(0.12);
       bg.setDepth(1);
     }
@@ -755,6 +752,9 @@ bg.setScale(_s);
   }
 }
 
+// ══════════════════════════════════════════════════════════════════════════════
+//  BOOT SCENE
+// ══════════════════════════════════════════════════════════════════════════════
 class BootScene extends Phaser.Scene {
   constructor() { super('BootScene'); }
   create() {
@@ -1145,8 +1145,8 @@ fitShell();
     if (this.textures.exists('ep_bg_boot')) {
       var bg = this.add.image(W/2, H/2, 'ep_bg_boot');
       var _t = bg.texture.getSourceImage();
-var _s = Math.max(W/_t.width, H/_t.height);
-bg.setScale(_s);
+      var _s = Math.max(W/_t.width, H/_t.height);
+      bg.setScale(_s);
       bg.setAlpha(0.15);
       bg.setDepth(0);
     }

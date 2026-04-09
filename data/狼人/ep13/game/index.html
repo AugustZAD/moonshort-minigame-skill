@@ -749,9 +749,6 @@ function showToast(sc, text, col, x, y) { var t = sc.add.text(x, y, text, { font
 function damageFlash(sc) { var f = sc.add.rectangle(W / 2, H / 2, W, H, 0xff4d6a, 0).setDepth(80); sc.tweens.add({ targets: f, alpha: 0.3, yoyo: true, duration: 80, onComplete: function() { f.destroy(); } }); }
 function screenShake(sc, i) { sc.cameras.main.shake(150, i || 0.008); }
 
-// ══════════════════════════════════════════════════════════════════════════════
-//  BOOT SCENE
-// ══════════════════════════════════════════════════════════════════════════════
 
 // ══════════════════════════════════════════════════════════════════════════════
 //  COMPONENT A: NARRATIVE SCENE
@@ -832,6 +829,9 @@ class NarrativeScene extends Phaser.Scene {
   }
 }
 
+// ══════════════════════════════════════════════════════════════════════════════
+//  BOOT SCENE
+// ══════════════════════════════════════════════════════════════════════════════
 class BootScene extends Phaser.Scene {
   constructor() { super('BootScene'); }
   create() {

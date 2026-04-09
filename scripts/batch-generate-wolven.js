@@ -47,7 +47,7 @@ const TEMPLATE_MAP = {
 // ── Per-episode story-themed game title + rules (replaces generic template names) ─
 const STORY_GAME = {
   ep1:  { title: '压住心跳', rules: '长按蓄力，在正确时机开口<br>太早暴露情绪，太晚错过窗口<br>精准释放 = 致命一击' },
-  ep2:  { title: '不跪的理由', rules: '绿灯时前进，红灯时停下<br>在Alpha的注视下保持镇定<br>撑过100步 = 证明自己' },
+  ep2:  { title: '不跪的理由', rules: '他移开目光时前进，注视你时停下<br>在Alpha的威压下保持站立<br>撑过100步 = 证明自己' },
   ep3:  { title: '碎片拼图', rules: '将走廊里听到的碎片分类<br>真相和谎言混在一起<br>速度越来越快，别选错' },
   ep4:  { title: '权力棋盘', rules: '记住关键人物的位置<br>灯光熄灭后精准锁定<br>在人群中找到你的棋子' },
   ep5:  { title: '撑住', rules: '意志被一波波冲击<br>每一次点击都是在说"我还在"<br>坚持到最后一秒' },
@@ -58,7 +58,7 @@ const STORY_GAME = {
   ep10: { title: '最后一口气', rules: '他扼住你的咽喉<br>长按蓄力，在窒息前开口<br>这句话只有一次机会' },
   ep11: { title: '规则战争', rules: '在议事厅的压力中调度资源<br>用程序而非武力<br>每一步都必须精准' },
   ep12: { title: '翻窗逃离', rules: '在黑暗走廊中躲避追兵<br>左右闪避，不能停下<br>高烧中跑向唯一的出口' },
-  ep12_minor: { title: '坐到最后', rules: '在座位上承受所有压力<br>绿灯时可以喘息<br>红灯时一动不动' },
+  ep12_minor: { title: '坐到最后', rules: '在座位上承受所有压力<br>压力松开时可以喘息<br>压力来袭时一动不动' },
   ep13: { title: '踏过边界', rules: '背着行囊穿越迷宫<br>找到钥匙，跑向自由<br>追兵就在身后' },
   ep13_minor: { title: '独自前行', rules: '将混乱的信息分类<br>哪些是真的，哪些是干扰<br>靠自己走到边界线' },
   ep14: { title: '黑暗奔逃', rules: '在树线间躲避追兵<br>左右闪避，越跑越快<br>撑到Iris出现的那一刻' },
@@ -70,18 +70,16 @@ const STORY_GAME = {
   ep20: { title: '找到方向', rules: '在新领地的迷宫中探索<br>找到钥匙，推开那扇门<br>这一次，没有人追你' },
 };
 
-// ── Per-episode in-game element reskin (labels, emoji, categories) ───────────
+// ── Per-episode in-game element reskin (labels, categories) ──────────────────
 // Each entry maps template-specific game elements to story-themed equivalents
 const STORY_RESKIN = {
   // ── conveyor-sort: category bins ──
   ep3:  { // 偷听Luna书房情报
     categories: { DATA:'证词', CODE:'线索', MAIL:'密信', MEDIA:'档案', VIRUS:'谎言' },
-    emoji: { '📊':'📝', '💻':'🔍', '✉️':'💌', '🎥':'📁', '⚠️':'🚫' },
     hints: { 'Watch out for VIRUS packages!': '小心混入的谎言！' },
   },
   ep13_minor: { // 靠自己走到边界线
     categories: { DATA:'补给', CODE:'路线', MAIL:'信号', MEDIA:'地图', VIRUS:'陷阱' },
-    emoji: { '📊':'🎒', '💻':'🗺️', '✉️':'📡', '🎥':'🧭', '⚠️':'⚠️' },
     hints: { 'Watch out for VIRUS packages!': '小心路上的陷阱！' },
   },
   // ── qte-boss-parry: attack/counter types ──
@@ -100,11 +98,9 @@ const STORY_RESKIN = {
   // ── cannon-aim: target types ──
   ep7:  { // 在嫉妒中锻造武器
     targetLabels: { 'Big balloon':'大破绽', 'Medium':'中等弱点', 'Small gold':'关键真相' },
-    emoji: { '🎯':'🔥' },
   },
   ep18: { // 咖啡馆重逢
     targetLabels: { 'Big balloon':'大信号', 'Medium':'微表情', 'Small gold':'心意' },
-    emoji: { '🎯':'💫' },
   },
   // ── stardew-fishing: fish/reel metaphor ──
   ep8:  { // 拉扯真相
@@ -129,10 +125,10 @@ const STORY_RESKIN = {
   },
   // ── red-light-green-light ──
   ep2:  { // 在Alpha命令下撑住不跪
-    labels: { 'STAMINA':'意志力', 'RUN':'前进', 'STOP!':'跪下！', 'GO!':'站起来！' },
+    labels: { '体力':'意志力', '跑':'前进', '停！':'跪下！', '走！':'站起来！' },
   },
   ep12_minor: { // 坐着别动
-    labels: { 'STAMINA':'忍耐值', 'RUN':'喘息', 'STOP!':'别动！', 'GO!':'可以了' },
+    labels: { '体力':'忍耐值', '跑':'喘息', '停！':'别动！', '走！':'可以了' },
   },
   // ── lane-dash ──
   ep12: { // 翻窗逃离
@@ -162,6 +158,138 @@ const STORY_RESKIN = {
   // ── color-match ──
   ep16: { // 月光辨认
     labels: { 'Tricky! Read the WORD, ignore the color!':'注意！看清面孔，别被月光干扰！', 'Tap the matching swatch':'点击匹配的面孔', 'Tap the correct color name':'选择正确的判断' },
+  },
+};
+
+// ── Per-episode environment theme (Layer 3: game shell → story world) ────────
+// cssOverride is injected before </style>; jsOverride is appended after sprite patches
+const STORY_THEME = {
+  ep2: { // 不跪的理由 — red-light-green-light → Alpha 威压下的站稳考验
+    cssOverride: `
+  /* ═══ Layer 3 Theme: Alpha 注视（狼眼） ═══ */
+
+  /* 隐藏原交通灯，用狼眼替代 */
+  .traffic-light { display: none !important; }
+
+  /* ── 狼眼容器 ── */
+  .wolf-eye {
+    position: absolute; top: 96px; left: 50%; transform: translateX(-50%);
+    width: 200px; height: 200px; z-index: 10;
+    display: flex; align-items: center; justify-content: center;
+  }
+
+  /* ── 眼球图层（三张叠加） ── */
+  .wolf-eye img {
+    position: absolute; top: 0; left: 0;
+    width: 100%; height: 100%;
+    object-fit: contain;
+    transition: opacity 0.35s ease, filter 0.35s ease;
+    pointer-events: none;
+    -webkit-mask-image: radial-gradient(ellipse 70% 60% at 50% 50%, #000 35%, transparent 72%);
+    mask-image: radial-gradient(ellipse 70% 60% at 50% 50%, #000 35%, transparent 72%);
+  }
+  .wolf-eye .eye-open   { z-index: 1; }
+  .wolf-eye .eye-half   { z-index: 2; }
+  .wolf-eye .eye-closed { z-index: 3; }
+
+  /* ── 信号标签 ── */
+  .light-label {
+    top: 310px !important;
+    font-size: 28px !important;
+    letter-spacing: 4px !important;
+    text-shadow: 0 0 20px currentColor, 0 2px 10px rgba(0,0,0,0.7) !important;
+  }
+
+  /* ── 背景：深夜集会场 ── */
+  body, #game-shell {
+    background: linear-gradient(180deg, #06000a 0%, #150812 35%, #0a0610 70%, #050308 100%) !important;
+  }
+  /* 月光光晕 */
+  #game-shell::after {
+    content: ''; position: absolute; top: -60px; left: 50%; transform: translateX(-50%);
+    width: 260px; height: 260px;
+    background: radial-gradient(circle, rgba(140,170,220,0.06) 0%, transparent 65%);
+    pointer-events: none; z-index: 0;
+  }
+  /* 体力条 → 意志力条 */
+  .stamina-fill {
+    background: linear-gradient(90deg, #7a3adf, #df5a8a) !important;
+  }
+  /* 跑道 */
+  .track-bg {
+    background: rgba(100, 80, 60, 0.25) !important;
+    border: 1px solid rgba(100, 80, 60, 0.15);
+  }
+  .track-fill {
+    background: linear-gradient(90deg, #7a3adf, #b05adf) !important;
+  }
+  /* 底部雾气 */
+  .btn-area::before {
+    content: ''; position: absolute; bottom: 100%; left: -12px; right: -12px; height: 80px;
+    background: linear-gradient(180deg, transparent 0%, rgba(5,3,8,0.6) 100%);
+    pointer-events: none;
+  }`,
+    jsOverride: `
+(function() {
+  // ── 创建狼眼 DOM ──
+  var shell = document.getElementById('game-shell');
+  var eye = document.createElement('div');
+  eye.className = 'wolf-eye hidden';
+  eye.id = 'wolf-eye';
+  eye.setAttribute('data-state', 'green');
+  eye.innerHTML = '<img class="eye-open" src="theme-eye.png" alt=""><img class="eye-half" src="theme-eye-half.png" alt=""><img class="eye-closed" src="theme-eye-closed.png" alt="">';
+  // 插入到 traffic-light 之后
+  var tl = document.getElementById('traffic-light');
+  if (tl && tl.parentNode) tl.parentNode.insertBefore(eye, tl.nextSibling);
+
+  // ── Hook setTrafficLight 同步狼眼状态 ──
+  var origSetTL = window.setTrafficLight;
+  window.setTrafficLight = function(color) {
+    origSetTL(color);
+    var eyeEl = document.getElementById('wolf-eye');
+    if (!eyeEl) return;
+    eyeEl.setAttribute('data-state', color || 'off');
+    var eOpen = eyeEl.querySelector('.eye-open');
+    var eHalf = eyeEl.querySelector('.eye-half');
+    var eClosed = eyeEl.querySelector('.eye-closed');
+    if (!eOpen) return;
+    if (color === 'red') {
+      eOpen.style.opacity = '1';
+      eHalf.style.opacity = '0';
+      eClosed.style.opacity = '0';
+      eOpen.style.filter = 'drop-shadow(0 0 30px rgba(255,20,20,0.8)) brightness(1.15)';
+    } else if (color === 'yellow') {
+      eOpen.style.opacity = '0';
+      eHalf.style.opacity = '1';
+      eClosed.style.opacity = '0';
+      eHalf.style.filter = 'drop-shadow(0 0 15px rgba(255,160,30,0.5)) brightness(0.9)';
+    } else if (color === 'green') {
+      eOpen.style.opacity = '0';
+      eHalf.style.opacity = '0';
+      eClosed.style.opacity = '1';
+      eClosed.style.filter = 'drop-shadow(0 0 4px rgba(60,10,10,0.2)) brightness(0.6)';
+    } else {
+      eOpen.style.opacity = '0';
+      eHalf.style.opacity = '0';
+      eClosed.style.opacity = '1';
+      eClosed.style.filter = 'brightness(0.3)';
+    }
+  };
+
+  // ── 让狼眼跟 traffic-light 同步显隐 ──
+  // traffic-light 被 setVisible 控制，我们同步 wolf-eye
+  var origSetVisible = window.setVisible;
+  window.setVisible = function(id, visible) {
+    origSetVisible(id, visible);
+    if (id === 'traffic-light') {
+      var eyeEl = document.getElementById('wolf-eye');
+      if (eyeEl) {
+        if (visible) eyeEl.classList.remove('hidden');
+        else eyeEl.classList.add('hidden');
+      }
+    }
+  };
+})();`,
   },
 };
 
@@ -902,12 +1030,6 @@ function generateGame(ep, templateId) {
         html = html.replace(new RegExp("'" + en + "'", 'g'), "'" + cn + "'");
       }
     }
-    // Emoji replacements
-    if (reskin.emoji) {
-      for (const [from, to] of Object.entries(reskin.emoji)) {
-        html = html.replace(new RegExp(from.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), to);
-      }
-    }
     // Attack/counter labels (qte-boss-parry)
     if (reskin.attacks) {
       for (const [en, cn] of Object.entries(reskin.attacks)) {
@@ -1427,6 +1549,18 @@ ${preloadLines}
     ['backgroundImage', '组件B: initShellDOM 头像加载'],
     ['ep_bg_boot', 'BootScene 背景图加载'],
   ];
+
+  // ── 15. Inject environment theme (Layer 3) ──────────────────────────────────
+  const theme = STORY_THEME[ep];
+  if (theme) {
+    if (theme.cssOverride) {
+      const cssInjection = '\n  /* ═══ STORY_THEME injection ═══ */' + theme.cssOverride + '\n';
+      html = html.replace(/<\/style>/, cssInjection + '</style>');
+    }
+    if (theme.jsOverride) {
+      html = html.replace(/(fitShell\(\);)/, '$1\n// ═══ STORY_THEME JS ═══\n' + theme.jsOverride);
+    }
+  }
 
   // Scene array: check for either formatted or minified
   const hasSceneFormatted = html.includes('NarrativeScene, BootScene');

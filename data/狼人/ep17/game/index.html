@@ -637,7 +637,9 @@ function initShellDOM() {
 function drawSceneBg(scene, sceneKey, alpha) {
   if (!scene.textures.exists('ep_bg_' + sceneKey)) return;
   var bg = scene.add.image(W/2, H/2, 'ep_bg_' + sceneKey);
-  bg.setDisplaySize(W, H);
+  var _t = bg.texture.getSourceImage();
+  var _s = Math.max(W/_t.width, H/_t.height);
+  bg.setScale(_s);
   bg.setAlpha(alpha || 0.03);
   bg.setDepth(-1);
 }
@@ -670,9 +672,6 @@ var FIELD_TOP = 170;
 var FIELD_H = 620;
 var FIELD_BOT = FIELD_TOP + FIELD_H;
 
-// ══════════════════════════════════════════════════════════════════════════════
-//  BOOT SCENE
-// ══════════════════════════════════════════════════════════════════════════════
 
 // ══════════════════════════════════════════════════════════════════════════════
 //  COMPONENT A: NARRATIVE SCENE
@@ -753,6 +752,9 @@ class NarrativeScene extends Phaser.Scene {
   }
 }
 
+// ══════════════════════════════════════════════════════════════════════════════
+//  BOOT SCENE
+// ══════════════════════════════════════════════════════════════════════════════
 class BootScene extends Phaser.Scene {
   constructor() { super('BootScene'); }
   create() {
