@@ -434,7 +434,7 @@ End-to-end workflow for producing a **story-driven customized mini-game** from e
    |------|---------|-----------|------|
    | **stardew-fishing** | 鱼 emoji 🐟 → 剧情隐喻物件 | `sprite-catch.png`（如真相碎片/内狼/信件） | 30×30 |
    | **will-surge** | 程序化发光核心 → 狼族徽记/月亮符号 | `sprite-core.png` | 70×70 |
-   | **conveyor-sort** | 包裹 emoji → 故事相关分类物件 | `item-<type>.png`×4（如信件/证据/草药/地图） | 44×34 |
+   | **conveyor-sort** | 包裹 emoji → 故事相关分类物件 + 精灵轮廓光晕 | `sprite-cat1/2/3.png` + `sprite-decoy.png`（分类图标） | 44×44（掉落物）/ 32×32（底栏） |
 
    **🟢 低价值（保持程序化渲染）— 加图片反而降低可读性**:
 
@@ -495,6 +495,45 @@ End-to-end workflow for producing a **story-driven customized mini-game** from e
    // GameScene create — 替换程序化图形
    // 原: this.add.rectangle(x, y, 40, 64, 0xffffff)
    // 改: this.add.image(x, y, 'player').setDisplaySize(40, 64)
+   ```
+
+   **精灵轮廓光晕（Silhouette Edge Glow）**:
+
+   **三处统一原则**：凡是同一类别的精灵图标，在游戏画面中出现的所有位置必须使用同一张精灵图 + 同样的光晕风格，包括：
+   - **顶部图例（DOM）**：`buildLegend()` 用 `<img class="legend-sprite">` + CSS `drop-shadow` 轮廓光晕
+   - **掉落物（Phaser）**：`spawnItem` patch 用 tinted scaled copies 轮廓光晕（44px 主体）
+   - **底栏接收区（Phaser）**：`updateBins` patch 用同样的 tinted scaled copies 轮廓光晕（32px 主体）
+
+   三处必须统一使用精灵图，不能出现"图例用 emoji + 色点、掉落物用精灵、底栏用色块矩形"这种不一致。
+
+   用 tinted scaled copies 实现精灵图本身形状的边缘发光效果（比 Graphics 圆形光晕更高级，光晕贴合实际轮廓）：
+   ```javascript
+   // 原理：同一精灵图多层叠放，外层放大+染色+半透明，模拟边缘发光
+   var col = hexToInt(categoryColor);
+   // Layer 1: 最外层 — 放大到 1.3x，染色，低透明度
+   var g3 = this.add.image(0, 0, spriteKey).setDisplaySize(58, 58).setOrigin(0.5);
+   g3.setTint(col); g3.setAlpha(0.15);
+   // Layer 2: 中间层
+   var g2 = this.add.image(0, 0, spriteKey).setDisplaySize(52, 52).setOrigin(0.5);
+   g2.setTint(col); g2.setAlpha(0.3);
+   // Layer 3: 内层 — 接近原尺寸
+   var g1 = this.add.image(0, 0, spriteKey).setDisplaySize(48, 48).setOrigin(0.5);
+   g1.setTint(col); g1.setAlpha(0.45);
+   // Layer 4: 主体精灵 — 原色原尺寸
+   var img = this.add.image(0, 0, spriteKey).setDisplaySize(44, 44).setOrigin(0.5);
+   ```
+   适用场景：conveyor-sort 掉落物/底栏、所有需要类别色区分的精灵图标。
+   注意：Canvas 模式下无法用 WebGL postFX，此方案是 Canvas 兼容的最佳替代。
+
+   **DOM 元素精灵光晕（CSS drop-shadow）**:
+   ```css
+   /* 用于 sort-legend 等 DOM 元素的精灵图标，三层 drop-shadow 叠加出轮廓发光 */
+   .legend-sprite {
+     width: 22px; height: 22px; object-fit: contain;
+     filter: drop-shadow(0 0 3px var(--glow-color))
+             drop-shadow(0 0 6px var(--glow-color))
+             drop-shadow(0 0 10px var(--glow-color));
+   }
    ```
 
 > 详细 pipeline 见下方 **Asset Generation & Processing Pipeline** 章节。
@@ -1514,6 +1553,17 @@ graphics.fillCircle(x, y, radius);
 // 高光：白色, alpha 0.65, 左上角 ≈ 35% radius
 graphics.fillStyle(0xffffff, 0.65);
 graphics.fillCircle(x - radius*0.3, y - radius*0.3, radius * 0.35);
+```
+
+**精灵图轮廓光晕**（优先于上方 Graphics 圆形光晕，效果更高级）：
+```javascript
+// 用 tinted + scaled 副本叠放实现（光晕贴合精灵实际形状而非圆形）
+// 外层: setDisplaySize(原尺寸×1.3), setTint(类别色), setAlpha(0.15)
+// 中层: setDisplaySize(原尺寸×1.18), setTint(类别色), setAlpha(0.3)
+// 内层: setDisplaySize(原尺寸×1.09), setTint(类别色), setAlpha(0.45)
+// 主体: setDisplaySize(原尺寸), 无 tint, alpha 1.0
+// 适用：conveyor-sort 掉落物/底栏、所有带精灵图的游戏对象
+// Canvas 模式兼容（不依赖 WebGL postFX）
 ```
 
 **射线 / 炮管类元素**：双层叠加模拟高光
