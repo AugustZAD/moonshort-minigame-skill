@@ -221,14 +221,16 @@ module.exports = {
     ],
   },
 
-  // ── ep20 maze-escape · 找到方向 — wall tile replacement ────
+  // ── ep20 maze-escape · 找到方向 — wall tile (illustration style) ──
   // 替换迷宫墙体（核心视觉外壳），背景保持原样不动。
-  // SKILL.md L145: 替换游戏核心视觉"外壳"（信号灯→狼眼、背景、特效）
+  // 风格必须匹配 bg-scene.jpg / sprite-* / avatar-* 的手绘插画调性：
+  // 数字插画 / 半写实动画风 / 扁平上色 / 软描边 / 冷色调
   ep20: {
     assets: [
       {
         name: 'theme-wall',
-        prompt: 'A seamless tileable square texture of a moss-covered dark stone block, top-down view, weathered grey rock with vibrant green moss patches, small ferns at corners, photorealistic, the four edges must connect smoothly when tiled with copies of itself, square 512x512, solid pure #00FF00 chroma green background outside the stone area',
+        prompt: 'A flat top-down square texture tile of a moss-covered stone surface, viewed straight from above (orthographic top view, NO 3D perspective, NO isometric angle), hand-painted digital illustration in the style of a cozy 2D top-down adventure game like Stardew Valley, anime-inspired soft brushwork, flat shading with gentle gradients, soft outlines, cool blue-green palette with deep slate stone and sage green moss, scattered small wildflowers and tiny leaves, painterly texture (NOT photorealistic, NOT 3D-rendered, NOT isometric), the entire square frame is filled edge-to-edge with the stone surface, perfectly square 1:1 composition, the four edges connect seamlessly when tiled with copies of itself, 512x512, no green background, full coverage stone tile',
+        noChromaKey: true,
       },
     ],
   },
