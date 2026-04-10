@@ -1785,6 +1785,10 @@ Canvas/Phaser
 | Layer 3 墙/地板纹理在深色背景里看不清 | 生成的素材本身太暗，和深色背景融成一团 | 可读性是底线。深色背景用的覆盖素材要 "MEDIUM-BRIGHTNESS, light enough to clearly read against dark backgrounds, NOT dark, NOT black" |
 | Layer 3 改了背景导致和 Layer 2 的 bg-scene.jpg 冲突 | 误以为 Layer 3 要把整个氛围重做 | Layer 3 **只换核心视觉外壳**（信号灯/墙/车道），bg-scene.jpg 由 Layer 2 定，Layer 3 不动。背景的剧情基调已经在 Layer 2 对齐过了 |
 | Layer 3 hook 抢先一步，GameScene 还没就绪就报错 | 直接 `game.scene.getScene('GameScene')` 拿不到或者 scene 还在 init | 用 `setInterval(fn, 80)` 轮询，检查 `window.__game && game.scene && gs` 都就绪再 hook，最多尝试 80 次（~6s）后放弃。hook 成功后立刻 `clearInterval`，并用 `gs.__XXXHooked` 标志防重入 |
+| Layer 3 和 Layer 2 按钮/HP 条配色打架 | jsOverride 里硬编码色值（`0x8a6438`/`#d4a24a`），和 Layer 2 kmeans 从 bg-scene 提取出来的 primary 完全两个色相 | **绝不硬编码带色相的色值**。读 `window.__V3_THEME__`（Layer 2 kmeans 结果），用 `hexInt(T.primary)` / `hexInt(T.strokeDark)` / `hexInt(T.bg)` / `T.primaryLight` 派生所有 graphics fill/stroke/tint/text 色值。这样 Layer 3 和 Layer 2 永远是同一个色相家族 |
+| 肉眼看 bg-scene 是暖棕，硬编码暖棕色结果和蓝色按钮对不上 | 视觉印象 ≠ kmeans 结果。ep11 议政厅看着暖棕，kmeans 提取出来却是亮蓝 `#66A7E8`（木纹反光 + 阴影里大量冷色像素主导） | 不要凭肉眼判断 bg-scene 的主色。kmeans 说什么就是什么 —— 全部从 `window.__V3_THEME__` 派生。要验证的话 `window.__V3_THEME__` 一打印就知道真实结果 |
+| Layer 3 顺手把 HTML UI 也"主题化" | cssOverride 里改了 `#lane-btns .btn-lane` / `.combo-text` / HP 条，引入第二套配色 | HTML UI 由 Layer 2 kmeans 驱动，**已经和 bg 一致**。Layer 3 不动它们。如果 canvas 内全部搞定了，`cssOverride: ''` 空字符串即可 |
+| Layer 3 灌到 `index.html`（普通定制版）里 | `batch-generate-wolven.js` Step 15 无条件注入 STORY_THEME，没按 `isVariant` 分流 | Step 15 必须写成 `const theme = isVariant ? STORY_THEME[ep] : null;`。普通定制版是第一、二层稳定基线，所有集都要走；Layer 3 只放进 `variant-themed.html` |
 
 ### V2/V3 文件约定
 
