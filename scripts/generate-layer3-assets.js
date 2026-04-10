@@ -148,11 +148,16 @@ async function main() {
         continue;
       }
 
-      console.log(`  [GEN] ${asset.name}`);
+      console.log(`  [GEN] ${asset.name}${asset.noChromaKey ? ' (no chroma)' : ''}`);
       try {
         const imgBuf = await callZenMux(asset.prompt);
         console.log(`    API → ${Math.round(imgBuf.length / 1024)}KB`);
-        await chromaKey(imgBuf, outPath);
+        if (asset.noChromaKey) {
+          // Direct write — no transparency processing
+          fs.writeFileSync(outPath, imgBuf);
+        } else {
+          await chromaKey(imgBuf, outPath);
+        }
         const outSize = fs.statSync(outPath).size;
         console.log(`    ✓ ${rel} (${Math.round(outSize / 1024)}KB)`);
         ok++;

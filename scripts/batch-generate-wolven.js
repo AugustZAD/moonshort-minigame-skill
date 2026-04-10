@@ -162,125 +162,15 @@ const STORY_RESKIN = {
   },
 };
 
-// ── Layer 3 theme builder (asset-based shell replacement) ────────────────────
-// Injects an AI-generated PNG overlay onto the game shell as the narrative visual.
-// Follows SKILL.md L142-168 spec: AI imagery only, no CSS drawing.
-//
-// opts: {
-//   name,              // narrative label (comment only)
-//   bg,                // [top, mid, bot] background gradient
-//   asset,             // PNG filename without .png (e.g., 'theme-gauge')
-//   hide,              // CSS selector(s) to hide (original shell element, optional)
-//   rect,              // { top, left, width, height, transform? } overlay position
-//   soft,              // bool — apply radial mask for soft edges (default true)
-//   glow,              // CSS box-shadow / drop-shadow color (optional)
-//   statePatch,        // { fn, charge?, idle? } — monkey-patch window[fn] to toggle '.charging' class
-// }
-function layer3Theme(opts) {
-  const {
-    name, bg, asset, hide, rect, soft = true, glow, statePatch,
-  } = opts;
-  const cls = 'theme-' + asset;
-  const mask = soft
-    ? 'mask-image:radial-gradient(ellipse 85% 85% at 50% 50%,#000 50%,transparent 92%);-webkit-mask-image:radial-gradient(ellipse 85% 85% at 50% 50%,#000 50%,transparent 92%);'
-    : '';
-  const filter = glow
-    ? `filter:drop-shadow(0 0 18px ${glow}) drop-shadow(0 0 40px ${glow});`
-    : 'filter:drop-shadow(0 4px 20px rgba(0,0,0,0.6));';
-  const pos = `position:absolute;top:${rect.top};left:${rect.left};width:${rect.width};height:${rect.height};${rect.transform ? 'transform:' + rect.transform + ';' : ''}z-index:15;pointer-events:none;`;
-
-  let css = `\n  /* ═══ Layer 3 Theme: ${name} ═══ */`;
-  if (bg) {
-    css += `\n  body, #game-shell { background: linear-gradient(180deg, ${bg[0]} 0%, ${bg[1]} 45%, ${bg[2]} 100%) !important; }`;
-  }
-  if (hide) {
-    css += `\n  ${hide} { visibility: hidden !important; }`;
-  }
-  css += `\n  .${cls} { ${pos} }`;
-  css += `\n  .${cls} img { width:100%; height:100%; object-fit:contain; ${mask} ${filter} transition:filter 0.25s ease, transform 0.25s ease; }`;
-  if (statePatch) {
-    css += `\n  .${cls}.active img { filter:drop-shadow(0 0 30px ${glow || 'rgba(255,255,255,0.6)'}) drop-shadow(0 0 60px ${glow || 'rgba(255,255,255,0.3)'}) brightness(1.15); transform: scale(1.04); }`;
-  }
-  // Soft vignette across whole shell (subtle, never overpowers the asset)
-  css += `\n  #theme-l3-vig { position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:2; background:radial-gradient(ellipse at 50% 45%, transparent 55%, rgba(0,0,0,0.35) 100%); }`;
-
-  // JS: inject overlay element, optionally monkey-patch state function
-  let js = `(function(){`;
-  js += `var shell=document.getElementById('game-shell');if(!shell)return;`;
-  js += `var vig=document.createElement('div');vig.id='theme-l3-vig';shell.appendChild(vig);`;
-  js += `var ov=document.createElement('div');ov.className='${cls}';ov.id='${cls}-el';`;
-  js += `ov.innerHTML='<img src="${asset}.png" alt="">';`;
-  js += `shell.appendChild(ov);`;
-  if (statePatch && statePatch.fn) {
-    js += `var origFn=window.${statePatch.fn};`;
-    js += `if(typeof origFn==='function'){`;
-    js += `window.${statePatch.fn}=function(){var r=origFn.apply(this,arguments);`;
-    if (statePatch.trigger) {
-      js += `try{if(${statePatch.trigger}){ov.classList.add('active');}else{ov.classList.remove('active');}}catch(e){}`;
-    }
-    js += `return r;};}`;
-  }
-  js += `})();`;
-
-  return { cssOverride: css, jsOverride: js };
-}
-
-// Multi-state asset helper (for ep12_minor's 3-state eye). Creates 3 layered <img>
-// with opacity cross-fade driven by monkey-patching setTrafficLight.
-function layer3MultiStateEye(opts) {
-  const { name, bg, open, half, closed, top = '120px', size = '200px' } = opts;
-  const css = `
-  /* ═══ Layer 3 Theme: ${name} ═══ */
-  body, #game-shell { background: linear-gradient(180deg, ${bg[0]} 0%, ${bg[1]} 45%, ${bg[2]} 100%) !important; }
-  .traffic-light { visibility: hidden !important; }
-  .theme-eye-multi { position:absolute; top:${top}; left:50%; transform:translateX(-50%); width:${size}; height:${size}; z-index:15; pointer-events:none; }
-  .theme-eye-multi img { position:absolute; top:0; left:0; width:100%; height:100%; object-fit:contain; transition:opacity 0.35s ease, filter 0.35s ease; -webkit-mask-image:radial-gradient(ellipse 70% 70% at 50% 50%,#000 40%,transparent 80%); mask-image:radial-gradient(ellipse 70% 70% at 50% 50%,#000 40%,transparent 80%); }
-  .theme-eye-multi .eye-open { z-index:1; }
-  .theme-eye-multi .eye-half { z-index:2; }
-  .theme-eye-multi .eye-closed { z-index:3; }
-  #theme-l3-vig { position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:2; background:radial-gradient(ellipse at 50% 45%, transparent 55%, rgba(0,0,0,0.35) 100%); }`;
-  const js = `(function(){
-  var shell=document.getElementById('game-shell');
-  var vig=document.createElement('div');vig.id='theme-l3-vig';shell.appendChild(vig);
-  var e=document.createElement('div');e.className='theme-eye-multi';e.id='theme-eye-multi';
-  e.innerHTML='<img class="eye-open" src="${open}.png" alt=""><img class="eye-half" src="${half}.png" alt=""><img class="eye-closed" src="${closed}.png" alt="">';
-  var tl=document.getElementById('traffic-light');
-  if(tl&&tl.parentNode)tl.parentNode.insertBefore(e,tl.nextSibling); else shell.appendChild(e);
-  var origSet=window.setTrafficLight;
-  if(typeof origSet==='function'){
-    window.setTrafficLight=function(color){
-      origSet(color);
-      var o=e.querySelector('.eye-open'),h=e.querySelector('.eye-half'),c=e.querySelector('.eye-closed');
-      if(!o)return;
-      if(color==='red'){o.style.opacity='1';h.style.opacity='0';c.style.opacity='0';o.style.filter='drop-shadow(0 0 30px rgba(255,50,50,0.75)) brightness(1.15)';}
-      else if(color==='yellow'){o.style.opacity='0';h.style.opacity='1';c.style.opacity='0';h.style.filter='drop-shadow(0 0 15px rgba(255,160,30,0.5))';}
-      else if(color==='green'){o.style.opacity='0';h.style.opacity='0';c.style.opacity='1';c.style.filter='brightness(0.65)';}
-      else {o.style.opacity='0';h.style.opacity='0';c.style.opacity='1';c.style.filter='brightness(0.35)';}
-    };
-  }
-  var origVis=window.setVisible;
-  if(typeof origVis==='function'){
-    window.setVisible=function(id,v){origVis(id,v);if(id==='traffic-light'){e.style.visibility=v?'visible':'hidden';}};
-  }
-})();`;
-  return { cssOverride: css, jsOverride: js };
-}
+// Layer 3 是有针对性的"换皮不换芯"——只在原模板视觉与剧情强烈冲突时使用
+// (SKILL.md L168). 不为所有集做，不做装饰图覆盖. 详见 STORY_THEME 注释.
 
 // ── Per-episode environment theme (Layer 3: game shell → story world) ────────
 // cssOverride is injected before </style>; jsOverride is appended after sprite patches
 const STORY_THEME = {
-  // ── ep1: qte-hold-release — 心电图 ───────────────────────────────
-  ep1: layer3Theme({
-    name: '压住心跳 — 心电监护仪',
-    bg: ['#0a0408', '#1a0a10', '#0d0408'],
-    asset: 'theme-gauge',
-    hide: '.gauge-area .gauge-ring, .gauge-area .gauge-center, .gauge-pct',
-    rect: { top: '290px', left: '50%', width: '280px', height: '280px', transform: 'translateX(-50%)' },
-    glow: 'rgba(204,51,68,0.5)',
-    statePatch: { fn: 'updateGaugeUI', trigger: 'arguments[0]&&arguments[0]>0.1' },
-  }),
-
-  // ── ep2: red-light-green-light — 狼眼替换（完整自定义） ────────────
+  // ── ep2: red-light-green-light — 狼眼替换（完整自定义，验证基准） ──
+  // 这是已验证的 Layer 3 demo（信号灯→狼眼），保留为模板参考。
+  // 其它 21 集的 Layer 3 已撤销 — 大多数集不需要第三层 (SKILL.md L168)。
   ep2: {
     cssOverride: `
   /* ═══ Layer 3 Theme: Alpha 注视（狼眼） ═══ */
@@ -326,222 +216,107 @@ const STORY_THEME = {
 })();`,
   },
 
-  // ── ep3: conveyor-sort — 证据墙 ───────────────────────────────────
-  ep3: layer3Theme({
-    name: '碎片拼图 — 暗室证据墙',
-    bg: ['#0d0a06', '#1a1408', '#0f0c06'],
-    asset: 'theme-overlay',
-    rect: { top: '120px', left: '0', width: '100%', height: '40%' },
-    glow: 'rgba(196,163,90,0.35)',
-    soft: true,
-  }),
+  // ── ep20: maze-escape — 找到方向（墙体替换型 Layer 3） ────────────
+  // 剧情："在新领地的迷宫中探索，找到钥匙，推开那扇门"
+  // 替换迷宫的核心视觉外壳——墙体（24×24 灰圆角矩形 → 苔藓石块）。
+  // SKILL.md L145: 替换游戏核心视觉"外壳"。
+  // 玩法保持 100% — 只在原 graphics depth 5 之上 (depth 5.5) 叠加 Phaser
+  // image 覆盖原灰矩形，碰撞/路径/计分/玩家移动/鬼追击全部不动。
+  // 钩 GameScene.loadMaze: 每次新关 map 重生成时，重画墙图。
+  // 背景保持原样不动（沿用第一/二层定制版的 BG）。
+  ep20: {
+    cssOverride: `
+  /* ═══ Layer 3 Theme: 找到方向 — 苔藓石墙 ═══ */
+  /* 墙体替换由 Phaser image 在 canvas 内完成，CSS 仅做轻微氛围调整 */`,
+    jsOverride: `
+(function(){
+  // Wait for Phaser game to exist + GameScene to be ready
+  var attempts = 0;
+  var hookInterval = setInterval(function(){
+    attempts++;
+    var game = window.__game;
+    if (!game || !game.scene || attempts > 80) {
+      if (attempts > 80) clearInterval(hookInterval);
+      return;
+    }
+    var gs = game.scene.getScene('GameScene');
+    var bs = game.scene.getScene('BootScene');
+    if (!gs || gs.__themeWallHooked) return;
 
-  // ── ep4: spotlight-seek — 棋盘聚光 ────────────────────────────────
-  ep4: layer3Theme({
-    name: '权力棋盘 — 金色聚光',
-    bg: ['#06080d', '#0a1020', '#060810'],
-    asset: 'theme-overlay',
-    rect: { top: '200px', left: '50%', width: '340px', height: '340px', transform: 'translateX(-50%)' },
-    glow: 'rgba(212,168,64,0.55)',
-    soft: true,
-  }),
+    gs.__themeWallHooked = true;
+    clearInterval(hookInterval);
 
-  // ── ep5: will-surge — 意志核心 ────────────────────────────────────
-  ep5: layer3Theme({
-    name: '撑住 — 紫色意志核心',
-    bg: ['#08040d', '#180a20', '#0a0610'],
-    asset: 'theme-surge',
-    hide: '.tug-bar-area',
-    rect: { top: '200px', left: '20px', width: 'calc(100% - 40px)', height: '80px' },
-    glow: 'rgba(144,64,204,0.55)',
-    statePatch: { fn: 'updateTugBar', trigger: 'true' },
-  }),
+    // Hook BootScene preload to register wall texture (loads on first scene boot)
+    if (bs && !bs.__themeWallPreloaded) {
+      bs.__themeWallPreloaded = true;
+      // Direct load via the active loader if available
+      if (bs.load) {
+        bs.load.image('ep_theme_wall', 'theme-wall.png');
+        bs.load.once('complete', function(){});
+        bs.load.start();
+      }
+    }
+    // Also load via GameScene loader as fallback
+    if (gs.load && !gs.textures.exists('ep_theme_wall')) {
+      gs.load.image('ep_theme_wall', 'theme-wall.png');
+      gs.load.once('complete', function(){
+        if (gs.__themeWallNeedRender) renderWalls();
+      });
+      gs.load.start();
+    }
 
-  // ── ep6: qte-boss-parry — Luna 肖像 ───────────────────────────────
-  ep6: layer3Theme({
-    name: '最后摊牌 — Luna 肖像',
-    bg: ['#0a0406', '#200a10', '#0d0408'],
-    asset: 'theme-boss',
-    hide: '#circle-content',
-    rect: { top: '294px', left: '50%', width: '300px', height: '300px', transform: 'translateX(-50%)' },
-    glow: 'rgba(232,64,64,0.45)',
-  }),
+    // Render walls based on current map
+    function renderWalls() {
+      if (!gs.map || !gs.textures.exists('ep_theme_wall')) {
+        gs.__themeWallNeedRender = true;
+        return;
+      }
+      gs.__themeWallNeedRender = false;
+      // Clear previous wall sprites
+      if (gs._themeWalls && gs._themeWalls.length) {
+        gs._themeWalls.forEach(function(w){ if (w && w.destroy) w.destroy(); });
+      }
+      gs._themeWalls = [];
+      // Place a Phaser image at every '#' cell, depth 5.5 (above original
+      // graphics depth 5, below player which we'll bump to 7 if needed)
+      for (var y = 0; y < gs.map.length; y++) {
+        for (var x = 0; x < gs.map[y].length; x++) {
+          if (gs.map[y][x] === '#') {
+            var px = gs.boardX + x * gs.cell + gs.cell / 2;
+            var py = gs.boardY + y * gs.cell + gs.cell / 2;
+            var img = gs.add.image(px, py, 'ep_theme_wall')
+              .setDisplaySize(gs.cell - 1, gs.cell - 1)
+              .setOrigin(0.5)
+              .setDepth(5.5);
+            gs._themeWalls.push(img);
+          }
+        }
+      }
+    }
 
-  // ── ep7: cannon-aim — 锻造炉火 ────────────────────────────────────
-  ep7: layer3Theme({
-    name: '锻造武器 — 红热锻造',
-    bg: ['#0d0804', '#201008', '#100a04'],
-    asset: 'theme-overlay',
-    rect: { top: '140px', left: '0', width: '100%', height: '40%' },
-    glow: 'rgba(232,112,48,0.5)',
-    soft: true,
-  }),
+    // Initial render (if GameScene is currently active)
+    if (gs.map) renderWalls();
 
-  // ── ep8: stardew-fishing — 拉扯之绳 ───────────────────────────────
-  ep8: layer3Theme({
-    name: '拉扯真相 — 紧绷之绳',
-    bg: ['#06080a', '#0a1018', '#060a0d'],
-    asset: 'theme-overlay',
-    rect: { top: '220px', left: '0', width: '100%', height: '30%' },
-    glow: 'rgba(68,136,204,0.35)',
-    soft: true,
-  }),
+    // Hook loadMaze: every new maze regenerates the map, so we re-tile walls
+    var origLoadMaze = gs.loadMaze;
+    if (typeof origLoadMaze === 'function') {
+      gs.loadMaze = function(idx) {
+        var r = origLoadMaze.call(this, idx);
+        renderWalls();
+        return r;
+      };
+    }
 
-  // ── ep9: will-surge — 握紧声音 ────────────────────────────────────
-  ep9: layer3Theme({
-    name: '握紧声音 — 紧握麦克风',
-    bg: ['#040608', '#081020', '#040810'],
-    asset: 'theme-surge',
-    hide: '.tug-bar-area',
-    rect: { top: '200px', left: '20px', width: 'calc(100% - 40px)', height: '80px' },
-    glow: 'rgba(48,96,170,0.55)',
-    statePatch: { fn: 'updateTugBar', trigger: 'true' },
-  }),
-
-  // ── ep10: qte-hold-release — 氧气表 ───────────────────────────────
-  ep10: layer3Theme({
-    name: '最后一口气 — 氧气压力表',
-    bg: ['#04060a', '#081520', '#040810'],
-    asset: 'theme-gauge',
-    hide: '.gauge-area .gauge-ring, .gauge-area .gauge-center, .gauge-pct',
-    rect: { top: '290px', left: '50%', width: '280px', height: '280px', transform: 'translateX(-50%)' },
-    glow: 'rgba(48,136,204,0.55)',
-    statePatch: { fn: 'updateGaugeUI', trigger: 'arguments[0]&&arguments[0]>0.1' },
-  }),
-
-  // ── ep11: parking-rush — 议事厅 ───────────────────────────────────
-  ep11: layer3Theme({
-    name: '规则战争 — 议事厅讲台',
-    bg: ['#080806', '#141410', '#0a0a06'],
-    asset: 'theme-overlay',
-    rect: { top: '180px', left: '0', width: '100%', height: '30%' },
-    glow: 'rgba(212,168,64,0.35)',
-    soft: true,
-  }),
-
-  // ── ep12: lane-dash — 月下走廊 ────────────────────────────────────
-  ep12: layer3Theme({
-    name: '翻窗逃离 — 月下走廊',
-    bg: ['#060406', '#100810', '#080408'],
-    asset: 'theme-overlay',
-    rect: { top: '140px', left: '0', width: '100%', height: '65%' },
-    glow: 'rgba(170,120,200,0.35)',
-    soft: true,
-  }),
-
-  // ── ep12_minor: red-light-green-light — 审讯之眼（多态） ──────────
-  ep12_minor: layer3MultiStateEye({
-    name: '坐到最后 — 审讯之眼',
-    bg: ['#080604', '#18100a', '#0d0a06'],
-    open: 'theme-eye',
-    half: 'theme-eye-half',
-    closed: 'theme-eye-closed',
-    top: '100px',
-    size: '220px',
-  }),
-
-  // ── ep13: maze-escape — 森林边境 ──────────────────────────────────
-  ep13: layer3Theme({
-    name: '踏过边界 — 迷雾森林',
-    bg: ['#04060a', '#0a1018', '#060a10'],
-    asset: 'theme-overlay',
-    rect: { top: '180px', left: '0', width: '100%', height: '60%' },
-    glow: 'rgba(100,170,120,0.35)',
-    soft: true,
-  }),
-
-  // ── ep13_minor: conveyor-sort — 破碎家书 ──────────────────────────
-  ep13_minor: layer3Theme({
-    name: '独自前行 — 旧照片',
-    bg: ['#060808', '#0e1418', '#080a0a'],
-    asset: 'theme-overlay',
-    rect: { top: '140px', left: '0', width: '100%', height: '40%' },
-    glow: 'rgba(140,160,190,0.35)',
-    soft: true,
-  }),
-
-  // ── ep14: lane-dash — 月下森林 ────────────────────────────────────
-  ep14: layer3Theme({
-    name: '黑暗奔逃 — 月下松林',
-    bg: ['#040806', '#081810', '#040a06'],
-    asset: 'theme-overlay',
-    rect: { top: '140px', left: '0', width: '100%', height: '65%' },
-    glow: 'rgba(170,210,180,0.35)',
-    soft: true,
-  }),
-
-  // ── ep15: stardew-fishing — 宁静水面 ──────────────────────────────
-  ep15: layer3Theme({
-    name: '重新呼吸 — 晨雾水面',
-    bg: ['#060a08', '#0e1a14', '#080d0a'],
-    asset: 'theme-overlay',
-    rect: { top: '240px', left: '0', width: '100%', height: '30%' },
-    glow: 'rgba(100,200,160,0.45)',
-    soft: true,
-  }),
-
-  // ── ep16: color-match — 月光面孔（3 张） ──────────────────────────
-  ep16: (() => {
-    const base = layer3Theme({
-      name: '月光辨认 — 月下面孔',
-      bg: ['#060810', '#101830', '#080a18'],
-      asset: 'theme-face-0',
-      rect: { top: '200px', left: '30%', width: '40%', height: '240px' },
-      glow: 'rgba(140,170,220,0.4)',
-      soft: true,
-    });
-    // Append second + third face as additional absolute elements
-    base.cssOverride += `
-  .theme-face-extra { position:absolute; width:140px; height:140px; z-index:14; pointer-events:none; }
-  .theme-face-extra img { width:100%; height:100%; object-fit:contain; -webkit-mask-image:radial-gradient(ellipse 80% 80% at 50% 50%,#000 45%,transparent 88%); mask-image:radial-gradient(ellipse 80% 80% at 50% 50%,#000 45%,transparent 88%); filter:drop-shadow(0 0 15px rgba(140,170,220,0.35)); opacity:0.75; }
-  .theme-face-1-el { top: 190px; left: 20px; }
-  .theme-face-2-el { top: 190px; right: 20px; }`;
-    base.jsOverride = base.jsOverride.replace('})();', `
-  var f1=document.createElement('div');f1.className='theme-face-extra theme-face-1-el';f1.innerHTML='<img src="theme-face-1.png" alt="">';shell.appendChild(f1);
-  var f2=document.createElement('div');f2.className='theme-face-extra theme-face-2-el';f2.innerHTML='<img src="theme-face-2.png" alt="">';shell.appendChild(f2);
-})();`);
-    return base;
-  })(),
-
-  // ── ep17: spotlight-seek — 夕阳聚光 ───────────────────────────────
-  ep17: layer3Theme({
-    name: '道别的勇气 — 夕阳聚光',
-    bg: ['#0d0806', '#201410', '#140e08'],
-    asset: 'theme-overlay',
-    rect: { top: '180px', left: '50%', width: '340px', height: '340px', transform: 'translateX(-50%)' },
-    glow: 'rgba(221,136,68,0.5)',
-    soft: true,
-  }),
-
-  // ── ep18: cannon-aim — 咖啡重逢 ───────────────────────────────────
-  ep18: layer3Theme({
-    name: '迈出第一步 — 咖啡馆桌面',
-    bg: ['#0a0806', '#1a1410', '#100d08'],
-    asset: 'theme-overlay',
-    rect: { top: '180px', left: '0', width: '100%', height: '35%' },
-    glow: 'rgba(221,168,100,0.4)',
-    soft: true,
-  }),
-
-  // ── ep19: qte-boss-parry — 满月 ───────────────────────────────────
-  ep19: layer3Theme({
-    name: '满月之约 — 银月',
-    bg: ['#06080d', '#0e1828', '#080a14'],
-    asset: 'theme-boss',
-    hide: '#circle-content',
-    rect: { top: '294px', left: '50%', width: '300px', height: '300px', transform: 'translateX(-50%)' },
-    glow: 'rgba(180,210,240,0.55)',
-  }),
-
-  // ── ep20: maze-escape — 晨雾新路 ──────────────────────────────────
-  ep20: layer3Theme({
-    name: '找到方向 — 晨雾之路',
-    bg: ['#060808', '#101a18', '#080d0c'],
-    asset: 'theme-overlay',
-    rect: { top: '180px', left: '0', width: '100%', height: '55%' },
-    glow: 'rgba(140,200,170,0.45)',
-    soft: true,
-  }),
+    // Also hook scene 'create' so re-entering GameScene re-tiles walls
+    if (gs.events && gs.events.on) {
+      gs.events.on('create', function(){
+        // delay one tick so map is initialized
+        setTimeout(renderWalls, 0);
+      });
+    }
+  }, 80);
+})();`,
+  },
 };
 
 // ── Narrative overlay CSS ───────────────────────────────────────────────────

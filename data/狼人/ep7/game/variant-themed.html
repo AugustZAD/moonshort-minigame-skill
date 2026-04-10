@@ -212,13 +212,6 @@
   .narrative-overlay .narrator { font-weight:800;font-size:14px;color:var(--primary-light,#C4B5FD);letter-spacing:2px;text-transform:uppercase;margin-bottom:16px; }
   .narrative-overlay .line { font-weight:700;font-size:16px;color:#fff;text-align:center;line-height:1.6;max-width:320px; }
   .narrative-overlay .tap-hint { position:absolute;bottom:60px;font-weight:700;font-size:12px;color:rgba(255,255,255,0.4);letter-spacing:2px; }
-
-  /* ═══ STORY_THEME injection ═══ */
-  /* ═══ Layer 3 Theme: 锻造武器 — 红热锻造 ═══ */
-  body, #game-shell { background: linear-gradient(180deg, #0d0804 0%, #201008 45%, #100a04 100%) !important; }
-  .theme-theme-overlay { position:absolute;top:140px;left:0;width:100%;height:40%;z-index:15;pointer-events:none; }
-  .theme-theme-overlay img { width:100%; height:100%; object-fit:contain; mask-image:radial-gradient(ellipse 85% 85% at 50% 50%,#000 50%,transparent 92%);-webkit-mask-image:radial-gradient(ellipse 85% 85% at 50% 50%,#000 50%,transparent 92%); filter:drop-shadow(0 0 18px rgba(232,112,48,0.5)) drop-shadow(0 0 40px rgba(232,112,48,0.5)); transition:filter 0.25s ease, transform 0.25s ease; }
-  #theme-l3-vig { position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:2; background:radial-gradient(ellipse at 50% 45%, transparent 55%, rgba(0,0,0,0.35) 100%); }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
 </head>
@@ -1481,8 +1474,6 @@ function fitShell() {
 }
 window.addEventListener('resize', fitShell);
 fitShell();
-// ═══ STORY_THEME JS ═══
-(function(){var shell=document.getElementById('game-shell');if(!shell)return;var vig=document.createElement('div');vig.id='theme-l3-vig';shell.appendChild(vig);var ov=document.createElement('div');ov.className='theme-theme-overlay';ov.id='theme-theme-overlay-el';ov.innerHTML='<img src="theme-overlay.png" alt="">';shell.appendChild(ov);})();
 
 (function() {
   var gs = GameScene.prototype || GameScene;

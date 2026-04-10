@@ -246,17 +246,6 @@
   .narrative-overlay .narrator { font-weight:800;font-size:14px;color:var(--primary-light,#C4B5FD);letter-spacing:2px;text-transform:uppercase;margin-bottom:16px; }
   .narrative-overlay .line { font-weight:700;font-size:16px;color:#fff;text-align:center;line-height:1.6;max-width:320px; }
   .narrative-overlay .tap-hint { position:absolute;bottom:60px;font-weight:700;font-size:12px;color:rgba(255,255,255,0.4);letter-spacing:2px; }
-
-  /* ═══ STORY_THEME injection ═══ */
-  /* ═══ Layer 3 Theme: 坐到最后 — 审讯之眼 ═══ */
-  body, #game-shell { background: linear-gradient(180deg, #080604 0%, #18100a 45%, #0d0a06 100%) !important; }
-  .traffic-light { visibility: hidden !important; }
-  .theme-eye-multi { position:absolute; top:100px; left:50%; transform:translateX(-50%); width:220px; height:220px; z-index:15; pointer-events:none; }
-  .theme-eye-multi img { position:absolute; top:0; left:0; width:100%; height:100%; object-fit:contain; transition:opacity 0.35s ease, filter 0.35s ease; -webkit-mask-image:radial-gradient(ellipse 70% 70% at 50% 50%,#000 40%,transparent 80%); mask-image:radial-gradient(ellipse 70% 70% at 50% 50%,#000 40%,transparent 80%); }
-  .theme-eye-multi .eye-open { z-index:1; }
-  .theme-eye-multi .eye-half { z-index:2; }
-  .theme-eye-multi .eye-closed { z-index:3; }
-  #theme-l3-vig { position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:2; background:radial-gradient(ellipse at 50% 45%, transparent 55%, rgba(0,0,0,0.35) 100%); }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
 </head>
@@ -676,31 +665,6 @@ var config = { type: Phaser.CANVAS, parent: 'phaser-container', width: W, height
 
 function fitShell() { var shell = $('game-shell'), sw = window.innerWidth, sh = window.innerHeight, sx = sw / W, sy = sh / H, sc = Math.min(sx, sy, 1); shell.style.transform = 'scale(' + sc + ')'; shell.style.transformOrigin = 'top center'; if (sy < sx) shell.style.marginTop = '0px'; else shell.style.marginTop = Math.max(0, (sh - H * sc) / 2) + 'px'; }
 window.addEventListener('resize', fitShell); fitShell();
-// ═══ STORY_THEME JS ═══
-(function(){
-  var shell=document.getElementById('game-shell');
-  var vig=document.createElement('div');vig.id='theme-l3-vig';shell.appendChild(vig);
-  var e=document.createElement('div');e.className='theme-eye-multi';e.id='theme-eye-multi';
-  e.innerHTML='<img class="eye-open" src="theme-eye.png" alt=""><img class="eye-half" src="theme-eye-half.png" alt=""><img class="eye-closed" src="theme-eye-closed.png" alt="">';
-  var tl=document.getElementById('traffic-light');
-  if(tl&&tl.parentNode)tl.parentNode.insertBefore(e,tl.nextSibling); else shell.appendChild(e);
-  var origSet=window.setTrafficLight;
-  if(typeof origSet==='function'){
-    window.setTrafficLight=function(color){
-      origSet(color);
-      var o=e.querySelector('.eye-open'),h=e.querySelector('.eye-half'),c=e.querySelector('.eye-closed');
-      if(!o)return;
-      if(color==='red'){o.style.opacity='1';h.style.opacity='0';c.style.opacity='0';o.style.filter='drop-shadow(0 0 30px rgba(255,50,50,0.75)) brightness(1.15)';}
-      else if(color==='yellow'){o.style.opacity='0';h.style.opacity='1';c.style.opacity='0';h.style.filter='drop-shadow(0 0 15px rgba(255,160,30,0.5))';}
-      else if(color==='green'){o.style.opacity='0';h.style.opacity='0';c.style.opacity='1';c.style.filter='brightness(0.65)';}
-      else {o.style.opacity='0';h.style.opacity='0';c.style.opacity='1';c.style.filter='brightness(0.35)';}
-    };
-  }
-  var origVis=window.setVisible;
-  if(typeof origVis==='function'){
-    window.setVisible=function(id,v){origVis(id,v);if(id==='traffic-light'){e.style.visibility=v?'visible':'hidden';}};
-  }
-})();
 
 (function() {
   var gs = GameScene.prototype || GameScene;

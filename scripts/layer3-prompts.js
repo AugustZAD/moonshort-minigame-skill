@@ -221,12 +221,14 @@ module.exports = {
     ],
   },
 
-  // ── ep20 maze-escape · 找到方向 — sunrise path ─────────────
+  // ── ep20 maze-escape · 找到方向 — wall tile replacement ────
+  // 替换迷宫墙体（核心视觉外壳），背景保持原样不动。
+  // SKILL.md L145: 替换游戏核心视觉"外壳"（信号灯→狼眼、背景、特效）
   ep20: {
     assets: [
       {
-        name: 'theme-overlay',
-        prompt: 'A misty morning stone pathway winding through low green hills with the first sunrise glow peeking over the horizon, peaceful hopeful atmosphere, top-down perspective, photorealistic, solid pure #00FF00 chroma green background at the corners, 1024x1024',
+        name: 'theme-wall',
+        prompt: 'A seamless tileable square texture of a moss-covered dark stone block, top-down view, weathered grey rock with vibrant green moss patches, small ferns at corners, photorealistic, the four edges must connect smoothly when tiled with copies of itself, square 512x512, solid pure #00FF00 chroma green background outside the stone area',
       },
     ],
   },
