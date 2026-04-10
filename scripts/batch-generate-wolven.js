@@ -332,14 +332,8 @@ const STORY_THEME = {
   // 玩法保持 100%：hitZones、freeIndex、pickLane 全部不动
   // 背景保持不动（第二层 bg-scene.jpg 已是议事厅画，风格匹配）
   ep11: {
-    cssOverride: `
-  /* ═══ Layer 3 Theme: 规则战争 — 议政席 ═══ */
-  /* 视觉外壳替换由 Phaser image/graphics 在 canvas 内完成 */
-  /* CSS 仅做下方 HTML 按钮的配色微调，让它们也呼应议政主题 */
-  #lane-btns .btn-lane .base { background: linear-gradient(180deg, #3a2816 0%, #1a1008 100%) !important; }
-  #lane-btns .btn-lane { border-color: rgba(212, 162, 74, 0.4) !important; box-shadow: 0 4px 0 0 rgba(0,0,0,0.5), inset 0 0 4px 2px rgba(212, 162, 74, 0.15) !important; }
-  #lane-btns .btn-lane .label { color: #e8d8a8 !important; text-shadow: 0 1px 3px rgba(0,0,0,0.8) !important; letter-spacing: 1px !important; }
-  .combo-text { color: #d4a24a !important; text-shadow: 0 0 6px rgba(212, 162, 74, 0.5) !important; }`,
+    // Layer 3 注入纯 Phaser canvas 外壳替换 — 按钮 / combo / HP / 背景等 HTML UI 全部保持 Layer 2 默认
+    cssOverride: '',
     jsOverride: `
 (function(){
   // Wait for Phaser game + GameScene ready
@@ -375,6 +369,8 @@ const STORY_THEME = {
       // Clear the original colorful lane graphics (they redraw themselves every drawLanes call)
       if (gs.laneGfx) gs.laneGfx.clear();
 
+      // Harmonized palette — matches the warm-brown council chamber bg-scene
+      // and the parchment/wood Layer 2 sprites. No highlighter-yellow gold.
       for (var i = 0; i < 3; i++) {
         var cx = LANE_XS[i];
         var cy = LOT_TOP + 160;
@@ -383,19 +379,19 @@ const STORY_THEME = {
         // Wooden podium base (replaces the parking lane rectangle)
         var base = gs.add.graphics().setDepth(5.5);
         if (isFree) {
-          // Gold-lit free podium
-          base.fillStyle(0x3a2816, 0.92);
+          // Free podium — deeper warm brown + muted aged-bronze frame
+          base.fillStyle(0x241610, 0.88);
           base.fillRoundedRect(cx - 48, LOT_TOP + 58, 96, 204, 10);
-          base.lineStyle(3, 0xd4a24a, 0.95);
+          base.lineStyle(2, 0x8a6438, 0.85);
           base.strokeRoundedRect(cx - 48, LOT_TOP + 58, 96, 204, 10);
-          // Inner highlight bar
-          base.fillStyle(0xd4a24a, 0.15);
-          base.fillRoundedRect(cx - 44, LOT_TOP + 62, 88, 10, 4);
+          // Inner highlight bar (aged bronze, very low alpha)
+          base.fillStyle(0x8a6438, 0.18);
+          base.fillRoundedRect(cx - 44, LOT_TOP + 62, 88, 8, 4);
         } else {
-          // Dark sealed (blocked) podium
-          base.fillStyle(0x1a1008, 0.92);
+          // Sealed podium — desaturated, darker, recedes
+          base.fillStyle(0x160d08, 0.9);
           base.fillRoundedRect(cx - 48, LOT_TOP + 58, 96, 204, 10);
-          base.lineStyle(2, 0x5a2a1a, 0.6);
+          base.lineStyle(1.5, 0x3a2418, 0.65);
           base.strokeRoundedRect(cx - 48, LOT_TOP + 58, 96, 204, 10);
         }
         gs._themeLaneObjs.push(base);
@@ -403,30 +399,32 @@ const STORY_THEME = {
         // Sprite overlay (reuse Layer 2 assets)
         var key = isFree ? 'ep_sprite_slot' : 'ep_sprite_car';
         if (isFree) {
-          // Gold glow under-layer (scaled up + tinted + low alpha)
+          // Warm amber glow (not highlighter yellow) — lets the sprite's own
+          // warmth come through without fighting the bg
           var glow = gs.add.image(cx, cy, key)
-            .setDisplaySize(115, 115).setOrigin(0.5).setDepth(5.8)
-            .setTint(0xffd47a).setAlpha(0.45);
+            .setDisplaySize(110, 110).setOrigin(0.5).setDepth(5.8)
+            .setTint(0xc08a46).setAlpha(0.38);
           gs._themeLaneObjs.push(glow);
-          // Main podium sprite — full brightness
+          // Main podium sprite — untinted (sprite itself is already warm wood)
           var img = gs.add.image(cx, cy, key)
             .setDisplaySize(90, 90).setOrigin(0.5).setDepth(6);
           gs._themeLaneObjs.push(img);
-          // "空席" label below
+          // "空席" label — parchment cream, not bright gold
           var lbl = gs.add.text(cx, LOT_TOP + 242, '空席', {
             fontFamily: 'Montserrat, sans-serif', fontSize: '12px', fontStyle: '900',
-            color: '#ffd47a', stroke: '#1a1008', strokeThickness: 3
+            color: '#d4b080', stroke: '#1a1008', strokeThickness: 3
           }).setOrigin(0.5).setDepth(6.5);
           gs._themeLaneObjs.push(lbl);
         } else {
-          // Sealed scroll — muted
+          // Sealed scroll — more muted so it recedes
           var img = gs.add.image(cx, cy, key)
-            .setDisplaySize(80, 80).setOrigin(0.5).setDepth(6).setAlpha(0.85);
+            .setDisplaySize(78, 78).setOrigin(0.5).setDepth(6).setAlpha(0.7)
+            .setTint(0xa08878);
           gs._themeLaneObjs.push(img);
-          // "封印" label below
+          // "封印" label — faded ink
           var lbl = gs.add.text(cx, LOT_TOP + 242, '封印', {
             fontFamily: 'Montserrat, sans-serif', fontSize: '11px', fontStyle: '700',
-            color: '#7a5a4a', stroke: '#0a0604', strokeThickness: 2
+            color: '#6a4a36', stroke: '#0a0604', strokeThickness: 2
           }).setOrigin(0.5).setDepth(6.5);
           gs._themeLaneObjs.push(lbl);
         }
@@ -1720,7 +1718,9 @@ ${preloadLines}
   ];
 
   // ── 15. Inject environment theme (Layer 3) ──────────────────────────────────
-  const theme = STORY_THEME[ep];
+  // IMPORTANT: Layer 3 is ONLY applied to variant-themed.html (深度定制版).
+  // index.html (普通定制版) stays at Layer 2 — labels + sprites only.
+  const theme = isVariant ? STORY_THEME[ep] : null;
   if (theme) {
     if (theme.cssOverride) {
       const cssInjection = '\n  /* ═══ STORY_THEME injection ═══ */' + theme.cssOverride + '\n';

@@ -196,6 +196,18 @@ End-to-end workflow for producing a **story-driven customized mini-game** from e
 
    **背景禁动**：Layer 3 只换核心视觉外壳，**绝不换 Layer 2 已经定好的 bg-scene.jpg**。背景的视觉基调已经通过 Layer 2 对齐剧情（如 ep11 的议事厅、ep20 的月下森林），动它只会破坏整体一致性
 
+   **Layer 3 与普通定制版严格隔离**（关键）：Layer 3 只注入到 `variant-themed.html`（深度定制版），**绝不注入到 `index.html`（普通定制版）**。构建脚本 Step 15 的入口必须写成 `const theme = isVariant ? STORY_THEME[ep] : null;`。原因：普通定制版是第一、二层标签+精灵的稳定基线，所有集都要走；Layer 3 是少数几集的"换皮"实验，混进普通版会让基线不稳定、风险扩散到所有集
+
+   **换壳范围的边界**（只动"核心视觉外壳"，不动别的 HTML UI）：Layer 3 的靶点 **只是** 游戏核心视觉那几个元素（红绿灯、迷宫墙、车道）。**不要** 顺手改 `#lane-btns .btn-lane` 按钮配色、`.combo-text` 连击文字颜色、HP 条、score label 这些已经由 Layer 2 kmeans 从 bg-scene 派生好的 HTML UI。它们已经和背景和谐了，动它们只会引入第二套配色和 kmeans 配色打架。如果 `cssOverride` 不需要任何样式（canvas 内已经全部搞定），直接写 `cssOverride: ''` 即可
+
+   **配色和谐守则**（Layer 3 新视觉必须让路给既有素材）：
+   1. **禁用饱和亮色**：不要用 `#d4a24a`（亮金）、`#ff0000`（大红）、`#ffd700`（highlighter yellow）这类高饱和亮色做边框/高亮。用同色相的 **muted/aged** 变体：亮金 → `#8a6438`（aged bronze），饱和红 → `#5a2a1a`（锈褐）
+   2. **从现有 sprite 采样**：打开 Layer 2 sprite (`sprite-*.png`) 和 `bg-scene.jpg`，肉眼确定主基调色系（暖棕/冷蓝/冷灰），Layer 3 新增的 graphics/text 色值 **全部落在这个色系内**，不引入新色相
+   3. **层级通过明度分离而非色相**：free（活跃）vs sealed（锁定）这类二态对比，用同色相的明度差（暗棕 `#241610` vs 更暗 `#160d08` + 边框从 `#8a6438` 降到 `#3a2418`），不要用"金 vs 红"这种色相对立
+   4. **tint 用暖琥珀不用荧光黄**：给 sprite 加 glow/tint 时，`0xc08a46`（warm amber）远胜 `0xffd47a`（看起来像 highlighter）
+   5. **label 用 parchment cream 不用 gold**：文字颜色用 `#d4b080`（羊皮纸奶油）而不是 `#ffd47a`（亮金），和 bg 中出现的任何 aged-wood/parchment 元素呼应
+   6. **sealed/blocked 态要退后**：不仅用暗色 bg，还要给 sprite 加 `.setAlpha(0.7).setTint(0xa08878)` 让它真正"淡出视觉前景"，不要和 free 态抢戏
+
    - **大多数集不需要第三层**，仅在视觉冲突严重时使用
 12. **ResultScene 增加剧情结语**：按 S/A/B/C 四档编写不同剧情描述文案。**结语用 narrative overlay 展示**（点"继续"后弹出全屏叠层，点击淡出），不要内联在结算 UI 里。**不要加下集预告**。**用 monkey-patch 注入**而非修改模板 create() 内部代码
 13. **按钮/色系可自由调整**：色系不必严格按四大属性分配，让色调完全服务于剧情氛围
