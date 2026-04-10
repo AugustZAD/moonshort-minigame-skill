@@ -822,8 +822,7 @@ class GameScene extends Phaser.Scene {
     $('round-text').textContent = 'Round 1'; $('hint-text').textContent = '注意观察...';
     $('combo-text').textContent = '';
 
-    // Dark field background
-    this.add.rectangle(W / 2, FIELD_TOP + FIELD_H / 2, W, FIELD_H, 0x050810, 1).setDepth(1);
+    // Transparent field — bg scene shows through (V5)
 
     // Spotlight glow graphics
     this.spotGfx = this.add.graphics().setDepth(2);
@@ -835,12 +834,17 @@ class GameScene extends Phaser.Scene {
         var idx = r * 3 + c;
         var cx = sx + c * gap, cy = sy + r * gap;
 
-        // Cell background (very dark, barely visible)
+        // Cell outline — transparent, border only (V5)
         var cellBg = this.add.graphics().setDepth(4);
-        cellBg.fillStyle(0x111827, 0.8);
+        // Very faint dark wash for legibility over bright bgs
+        cellBg.fillStyle(0x000000, 0.22);
         cellBg.fillRoundedRect(cx - 36, cy - 36, 72, 72, 12);
-        cellBg.lineStyle(1, priI, 0.15);
+        // Primary-tinted outer border
+        cellBg.lineStyle(1.5, priI, 0.6);
         cellBg.strokeRoundedRect(cx - 36, cy - 36, 72, 72, 12);
+        // Inner rim highlight
+        cellBg.lineStyle(1, 0xffffff, 0.18);
+        cellBg.strokeRoundedRect(cx - 34, cy - 34, 68, 68, 10);
 
         var cellOverlay = this.add.graphics().setDepth(6);
 
@@ -885,7 +889,7 @@ class GameScene extends Phaser.Scene {
         while (decoys.length < this.decoyCount) { var di = Math.floor(Math.random() * 9); if (di !== this.targetIndex && decoys.indexOf(di) === -1) decoys.push(di); }
         for (var d = 0; d < decoys.length; d++) {
           var dc = this.cells[decoys[d]];
-          dc.overlay.fillStyle(plI, 0.45);
+          dc.overlay.fillStyle(priI, 0.6);
           dc.overlay.fillRoundedRect(dc.x - 34, dc.y - 34, 68, 68, 10);
         }
       }
