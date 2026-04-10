@@ -154,7 +154,7 @@ const STORY_RESKIN = {
   },
   // ── parking-rush ──
   ep11: { // 规则战争
-    labels: { 'Parked! +':'到位！+', 'Parked: ':'部署: ', 'Streak ':'连续 ', 'CENTER':'中路', 'Find the free slot before time runs out!':'在时间耗尽前把资源送到正确位置！' },
+    labels: { '急速泊车':'规则战争', 'Parked! +':'到位！+', 'Parked: ':'部署: ', 'Streak ':'连续 ', 'CENTER':'中路', 'Find the free slot before time runs out!':'在时间耗尽前把资源送到正确位置！' },
   },
   // ── color-match ──
   ep16: { // 月光辨认
