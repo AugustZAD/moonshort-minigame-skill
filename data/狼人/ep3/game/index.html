@@ -382,7 +382,7 @@ if(this.textures.exists(sKey)){
   var g2=this.add.image(0,0,sKey).setDisplaySize(52,52).setOrigin(0.5);g2.setTint(col);g2.setAlpha(0.3);ct.add(g2);
   var g1=this.add.image(0,0,sKey).setDisplaySize(48,48).setOrigin(0.5);g1.setTint(col);g1.setAlpha(0.45);ct.add(g1);
   var img=this.add.image(0,0,sKey).setDisplaySize(44,44).setOrigin(0.5);ct.add(img);
-  ct.setSize(56,56);ct.setInteractive({hitArea:new Phaser.Geom.Circle(0,0,28),hitAreaCallback:Phaser.Geom.Circle.Contains,draggable:!isD,useHandCursor:true});
+  ct.setSize(72,72);ct.setInteractive({hitArea:new Phaser.Geom.Circle(36,36,36),hitAreaCallback:Phaser.Geom.Circle.Contains,draggable:!isD,useHandCursor:true});
 }else{
   var sh=this.add.graphics();sh.fillStyle(0x000000,0.15);sh.fillRoundedRect(-22+2,-16+2,44,34,10);ct.add(sh);var bg=this.add.graphics();bg.fillStyle(col,1);bg.fillRoundedRect(-22,-16,44,34,10);bg.fillStyle(0xffffff,0.25);bg.fillRoundedRect(-18,-14,36,10,5);ct.add(bg);var em=this.add.text(0,0,def.emoji,{fontFamily:'Montserrat',fontSize:'18px'}).setOrigin(0.5);ct.add(em);ct.setSize(44,34);ct.setInteractive({draggable:!isD,useHandCursor:true});
 }
