@@ -317,6 +317,147 @@ const STORY_THEME = {
   }, 80);
 })();`,
   },
+
+  // ── ep11: parking-rush — 规则战争（议政席替换型 Layer 3） ──────────
+  // 剧情："在议事厅的压力中调度资源，用程序而非武力，每一步都必须精准"
+  // 原 parking-rush 画面：3 条停车道彩色矩形 + 车辆图形 + "P" 字 + 停车场底板
+  //   → 与"议事厅程序战"视觉完全脱节
+  // 替换核心视觉外壳（换皮不换芯）：
+  //   - 3 条停车道 → 3 个议政席位（木质底座 + 金属边框）
+  //   - 占用车辆 → 封印卷轴 (sprite-car.png，已有 Layer 2 资源)
+  //   - 空闲 "P" 标记 → 金光议政台 (sprite-slot.png，已有 Layer 2 资源)
+  //   - 每回合随 freeIndex 变化，钩 drawLanes 驱动
+  // 玩法保持 100%：hitZones、freeIndex、pickLane 全部不动
+  // 背景保持不动（第二层 bg-scene.jpg 已是议事厅画，风格匹配）
+  ep11: {
+    cssOverride: `
+  /* ═══ Layer 3 Theme: 规则战争 — 议政席 ═══ */
+  /* 视觉外壳替换由 Phaser image/graphics 在 canvas 内完成 */
+  /* CSS 仅做下方 HTML 按钮的配色微调，让它们也呼应议政主题 */
+  #lane-btns .btn-lane .base { background: linear-gradient(180deg, #3a2816 0%, #1a1008 100%) !important; }
+  #lane-btns .btn-lane { border-color: rgba(212, 162, 74, 0.4) !important; box-shadow: 0 4px 0 0 rgba(0,0,0,0.5), inset 0 0 4px 2px rgba(212, 162, 74, 0.15) !important; }
+  #lane-btns .btn-lane .label { color: #e8d8a8 !important; text-shadow: 0 1px 3px rgba(0,0,0,0.8) !important; letter-spacing: 1px !important; }
+  .combo-text { color: #d4a24a !important; text-shadow: 0 0 6px rgba(212, 162, 74, 0.5) !important; }`,
+    jsOverride: `
+(function(){
+  // Wait for Phaser game + GameScene ready
+  var attempts = 0;
+  var hookInterval = setInterval(function(){
+    attempts++;
+    var game = window.__game;
+    if (!game || !game.scene || attempts > 80) {
+      if (attempts > 80) clearInterval(hookInterval);
+      return;
+    }
+    var gs = game.scene.getScene('GameScene');
+    if (!gs || gs.__themeLanesHooked) return;
+    gs.__themeLanesHooked = true;
+    clearInterval(hookInterval);
+
+    // Geometry from parking-rush template (LANE_XS, LOT_TOP constants)
+    var W = 393;
+    var LANE_XS = [86, W/2, W-86];
+    var LOT_TOP = 170;
+
+    // Render themed lanes: wooden podium base + sprite overlay
+    function renderThemedLanes() {
+      // Need both Layer 2 sprites loaded
+      if (!gs.textures.exists('ep_sprite_car') || !gs.textures.exists('ep_sprite_slot')) return;
+
+      // Clear previous themed objects
+      if (gs._themeLaneObjs && gs._themeLaneObjs.length) {
+        gs._themeLaneObjs.forEach(function(o){ if (o && o.destroy) o.destroy(); });
+      }
+      gs._themeLaneObjs = [];
+
+      // Clear the original colorful lane graphics (they redraw themselves every drawLanes call)
+      if (gs.laneGfx) gs.laneGfx.clear();
+
+      for (var i = 0; i < 3; i++) {
+        var cx = LANE_XS[i];
+        var cy = LOT_TOP + 160;
+        var isFree = (i === gs.freeIndex);
+
+        // Wooden podium base (replaces the parking lane rectangle)
+        var base = gs.add.graphics().setDepth(5.5);
+        if (isFree) {
+          // Gold-lit free podium
+          base.fillStyle(0x3a2816, 0.92);
+          base.fillRoundedRect(cx - 48, LOT_TOP + 58, 96, 204, 10);
+          base.lineStyle(3, 0xd4a24a, 0.95);
+          base.strokeRoundedRect(cx - 48, LOT_TOP + 58, 96, 204, 10);
+          // Inner highlight bar
+          base.fillStyle(0xd4a24a, 0.15);
+          base.fillRoundedRect(cx - 44, LOT_TOP + 62, 88, 10, 4);
+        } else {
+          // Dark sealed (blocked) podium
+          base.fillStyle(0x1a1008, 0.92);
+          base.fillRoundedRect(cx - 48, LOT_TOP + 58, 96, 204, 10);
+          base.lineStyle(2, 0x5a2a1a, 0.6);
+          base.strokeRoundedRect(cx - 48, LOT_TOP + 58, 96, 204, 10);
+        }
+        gs._themeLaneObjs.push(base);
+
+        // Sprite overlay (reuse Layer 2 assets)
+        var key = isFree ? 'ep_sprite_slot' : 'ep_sprite_car';
+        if (isFree) {
+          // Gold glow under-layer (scaled up + tinted + low alpha)
+          var glow = gs.add.image(cx, cy, key)
+            .setDisplaySize(115, 115).setOrigin(0.5).setDepth(5.8)
+            .setTint(0xffd47a).setAlpha(0.45);
+          gs._themeLaneObjs.push(glow);
+          // Main podium sprite — full brightness
+          var img = gs.add.image(cx, cy, key)
+            .setDisplaySize(90, 90).setOrigin(0.5).setDepth(6);
+          gs._themeLaneObjs.push(img);
+          // "空席" label below
+          var lbl = gs.add.text(cx, LOT_TOP + 242, '空席', {
+            fontFamily: 'Montserrat, sans-serif', fontSize: '12px', fontStyle: '900',
+            color: '#ffd47a', stroke: '#1a1008', strokeThickness: 3
+          }).setOrigin(0.5).setDepth(6.5);
+          gs._themeLaneObjs.push(lbl);
+        } else {
+          // Sealed scroll — muted
+          var img = gs.add.image(cx, cy, key)
+            .setDisplaySize(80, 80).setOrigin(0.5).setDepth(6).setAlpha(0.85);
+          gs._themeLaneObjs.push(img);
+          // "封印" label below
+          var lbl = gs.add.text(cx, LOT_TOP + 242, '封印', {
+            fontFamily: 'Montserrat, sans-serif', fontSize: '11px', fontStyle: '700',
+            color: '#7a5a4a', stroke: '#0a0604', strokeThickness: 2
+          }).setOrigin(0.5).setDepth(6.5);
+          gs._themeLaneObjs.push(lbl);
+        }
+      }
+
+      // Hide the original "P" text label
+      if (gs.freeLabelObj) gs.freeLabelObj.setAlpha(0);
+    }
+
+    // Hook drawLanes: called on every setRound/round change
+    var origDrawLanes = gs.drawLanes;
+    if (typeof origDrawLanes === 'function') {
+      gs.drawLanes = function() {
+        origDrawLanes.call(this);
+        renderThemedLanes();
+      };
+    }
+
+    // Initial render if GameScene already has freeIndex
+    if (gs.freeIndex >= 0) renderThemedLanes();
+
+    // Also hook scene 'create' so fresh GameScene starts clean
+    if (gs.events && gs.events.on) {
+      gs.events.on('create', function(){
+        setTimeout(function(){
+          gs._themeLaneObjs = [];
+          renderThemedLanes();
+        }, 0);
+      });
+    }
+  }, 80);
+})();`,
+  },
 };
 
 // ── Narrative overlay CSS ───────────────────────────────────────────────────
