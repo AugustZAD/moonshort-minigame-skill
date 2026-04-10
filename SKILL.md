@@ -160,11 +160,42 @@ End-to-end workflow for producing a **story-driven customized mini-game** from e
 10. **游戏内精灵图替换（第二层）**：用 ZenMux/Gemini 生成 128×128 绿幕精灵 → sharp chroma key 移除 → 透明 PNG → 通过 `CTX.sprites` 注入 + monkey-patch GameScene 渲染代码（见 Step 2c）。**所有视觉素材必须用 AI 生成，禁止 CSS 手绘**
 11. **游戏环境替换（第三层，STORY_THEME）**：当模板默认视觉与剧情强烈冲突时，替换游戏核心视觉外壳。实现方式：
    - `STORY_THEME[ep].cssOverride` — 注入到 `</style>` 前（隐藏原 UI + 定义新视觉样式）
-   - `STORY_THEME[ep].jsOverride` — 注入到 `fitShell()` 后（创建 DOM + monkey-patch 状态函数）
+   - `STORY_THEME[ep].jsOverride` — 注入到 `fitShell()` 后（创建 DOM / Phaser 对象 + monkey-patch 渲染函数）
    - 注入时机：构建脚本 Step 15，在精灵图注入（Step 14）之后
-   - **素材要求**：用 AI 生成多状态图片（如狼眼 open/half/closed 三张），通过 opacity 交叉淡入实现动画，CSS `mask-image: radial-gradient()` 柔化边缘
-   - **核心原则**：换皮不换芯 — hook 原函数（如 `setTrafficLight()`）控制新视觉状态，不修改游戏逻辑代码
-   - 已验证 demo：ep2 红绿灯 → 狼眼（三张 1024×1024 AI 生成图，黑底血红虹膜金色竖瞳）
+   - **核心原则**：换皮不换芯 — 只 hook 渲染/视觉函数（`setTrafficLight()`/`drawLanes()`/`loadMaze()`），**绝不改动游戏逻辑**（pickLane、scoring、hit detection、物理、计时器全部原样）
+
+   **Layer 3 决策门槛**（满足 *全部* 才做）：
+   1. 模板视觉与剧情存在 *强烈* 冲突（一眼就觉得格格不入），不是细节瑕疵
+   2. 可以找到一个"核心视觉外壳"元素做针对性替换（红绿灯、迷宫墙、车道 …），而不是整屏覆盖
+   3. 替换不会遮挡可交互区域，不会影响任何点击/拖拽/碰撞
+   4. 有匹配风格的素材可用 —— 要么 Layer 2 已生成的 sprite（优先复用），要么能 AI 生成一致风格的新图
+   - 不满足以上任何一条就 **不做 Layer 3**。`大多数集不需要第三层`。
+
+   **实现模式** — 根据游戏渲染机制选一种：
+
+   **模式 A：DOM 层替换**（适用于用 HTML div/img 渲染的 UI 元素，如红绿灯）
+   - 在 `game-shell` 里 append 新的 DOM 节点，CSS 隐藏原节点
+   - Monkey-patch 原状态切换函数（`window.setTrafficLight`）同步新节点的 class/opacity
+   - 素材：AI 生成多状态图片 + opacity 交叉淡入 + `mask-image: radial-gradient()` 柔化
+   - 已验证 demo：**ep2** 红绿灯 → 狼眼（三张 1024×1024 open/half/closed）
+
+   **模式 B：Phaser 画布层替换**（适用于游戏核心视觉在 canvas 里，如迷宫墙、车道）
+   - `setInterval` 80ms 轮询等待 `window.__game` 和 `GameScene` 就绪（最多 80 次），用 `gs.__XXXHooked` 标志防重入
+   - 在 GameScene 原渲染方法（或每关 regen 的入口）之上包一层 hook
+   - 用 Phaser `add.image` / `add.graphics` 在 depth 比原绘制稍高（如原 depth 5 → 主题 5.5-6.5）处叠加，绝不移除或重写原对象
+   - **必须 hook 重绘入口**让主题视觉跟游戏状态刷新：
+     - `GameScene.loadMaze()` — maze 每次新关卡换地图（ep20）
+     - `GameScene.drawLanes()` — 车道每回合随 freeIndex 变化（ep11）
+     - 若没 hook 重绘入口，主题视觉会"卡在第一帧"
+   - 每次重绘前 destroy 掉上一批主题对象（`_themeObjs` 列表），避免泄漏
+   - 已验证 demo：**ep20** 迷宫墙（24×24 灰矩形 → 苔藓石块 Phaser image），**ep11** 停车道（3 条彩色车道 → 议政席 graphics + sprite 叠加）
+
+   **素材决策顺序**（按顺序问自己）：
+   1. **Layer 2 现有 sprite 能直接用吗？** 如果 sprite-*.png 里本来就有风格对的资源（ep11 的 sprite-car/sprite-slot 正好是卷轴+议政台），**直接复用，零 API 调用**
+   2. **如果必须新生成 AI 图**：先 `Read` 一遍 `bg-scene.jpg` 和所有 `sprite-*.png`，总结现有风格关键词（"painted digital illustration"/"anime-inspired"/"flat shading"/"cool palette"），prompt 里强制匹配。不要看都不看就生成 —— ep20 第一版就栽在这里，photorealistic 3D 石块和 painted 2D 精灵风格完全对不上
+
+   **背景禁动**：Layer 3 只换核心视觉外壳，**绝不换 Layer 2 已经定好的 bg-scene.jpg**。背景的视觉基调已经通过 Layer 2 对齐剧情（如 ep11 的议事厅、ep20 的月下森林），动它只会破坏整体一致性
+
    - **大多数集不需要第三层**，仅在视觉冲突严重时使用
 12. **ResultScene 增加剧情结语**：按 S/A/B/C 四档编写不同剧情描述文案。**结语用 narrative overlay 展示**（点"继续"后弹出全屏叠层，点击淡出），不要内联在结算 UI 里。**不要加下集预告**。**用 monkey-patch 注入**而非修改模板 create() 内部代码
 13. **按钮/色系可自由调整**：色系不必严格按四大属性分配，让色调完全服务于剧情氛围
@@ -1690,6 +1721,14 @@ Canvas/Phaser
 | 开局没有玩法介绍 | BootScene 缺少规则说明 | 每个游戏必须在 START 前显示玩法规则（boot-card/circle-content/dialogue） |
 | `PRIMARY_COLOR` 死代码 | V1 遗留常量，V3 不使用 | 删除，用 `window.__V3_THEME__` 替代 |
 | 开屏 boot-card 还显示模板默认游戏名（如 "急速泊车"） | 模板在 `<div id="boot-card">` 里硬编码了中文标题，`STORY_RESKIN.labels` 只捕获英文键会漏掉 | 为每个使用了模板的 ep 的 `labels` 加一条中文→中文映射（如 `'急速泊车':'规则战争'`）。**审核时用 `grep -oP '[\p{Han}]+' packs/.../index-v3.html \| sort -u` 把模板里所有硬编码中文枚举出来**，确保每条都在 `STORY_RESKIN[ep].labels` 里有对应映射。已知受影响模板：conveyor-sort/maze-escape/parking-rush/spotlight-seek/will-surge |
+| Layer 3 定制变成装饰图覆盖游戏 | 误以为"深度定制"就是找张大图铺在游戏上，把可交互元素挡住 | Layer 3 **不是装饰层**。是有针对性的 *核心视觉外壳* 替换（信号灯/墙/车道），不是背景图覆盖。不满足 4 条决策门槛就不做 |
+| Layer 3 主题视觉只有第一帧对，之后不随游戏状态刷新 | 只在 hook 里跑了一次初始化，没 hook 重绘入口函数 | 识别每个游戏的重绘入口：maze-escape 是 `loadMaze()`（每关换图）、parking-rush 是 `drawLanes()`（每回合换 freeIndex）、red-light-green-light 是 `setTrafficLight()`（每次切灯）。必须把主题重绘塞进这些函数的 hook 里 |
+| Layer 3 新素材风格与现有 sprite/背景完全不搭（3D photoreal 碰 2D painted） | 没看现有素材就直接让 AI 生成新图 | 生成前先 `Read` 一遍 `data/<series>/<ep>/game/bg-scene.jpg` + 所有 `sprite-*.png`，总结风格关键词（"painted digital illustration"/"anime-inspired"/"flat shading"/"cool palette"）写进 prompt。更好的选择是先看 Layer 2 sprite 能不能直接复用（ep11 的 sprite-car/sprite-slot 正好就是议政主题），省一次 API 调用还能保证风格一致 |
+| Layer 3 给 top-down 迷宫类游戏做纹理时每格看起来像一堆小卵石 | Tile-based top-down 游戏每格只有 24-30px，生成带大量小细节的纹理会糊成一团 | Top-down 游戏纹理要 **一格一主形象**（one-stone-per-tile / one-tree-per-tile），不是一堆小物件的 pattern。prompt 里写 "ONE stone only, not multiple cobbles, not a pattern, top-down orthographic view, NO 3D perspective" |
+| Layer 3 新素材颜色抢走游戏核心对象的戏 | 新素材用了和钥匙/目标物/HP 条一样的颜色 | 生成前先盘点游戏核心对象的颜色（ep20 钥匙是金黄色 → 迷宫墙就不能用黄花/暖色调），新素材 **必须避开这些颜色**。prompt 里显式写 "NO yellow, NO warm colors, cool palette only" |
+| Layer 3 墙/地板纹理在深色背景里看不清 | 生成的素材本身太暗，和深色背景融成一团 | 可读性是底线。深色背景用的覆盖素材要 "MEDIUM-BRIGHTNESS, light enough to clearly read against dark backgrounds, NOT dark, NOT black" |
+| Layer 3 改了背景导致和 Layer 2 的 bg-scene.jpg 冲突 | 误以为 Layer 3 要把整个氛围重做 | Layer 3 **只换核心视觉外壳**（信号灯/墙/车道），bg-scene.jpg 由 Layer 2 定，Layer 3 不动。背景的剧情基调已经在 Layer 2 对齐过了 |
+| Layer 3 hook 抢先一步，GameScene 还没就绪就报错 | 直接 `game.scene.getScene('GameScene')` 拿不到或者 scene 还在 init | 用 `setInterval(fn, 80)` 轮询，检查 `window.__game && game.scene && gs` 都就绪再 hook，最多尝试 80 次（~6s）后放弃。hook 成功后立刻 `clearInterval`，并用 `gs.__XXXHooked` 标志防重入 |
 
 ### V2/V3 文件约定
 
