@@ -643,63 +643,67 @@ const STORY_THEME = {
 })();`,
   },
 
-  // ── ep12_minor: red-light-green-light — 坐到最后（审讯者眼睛） ────
-  // 模板默认视觉：交通信号灯（3 个圆灯）→ 换成审讯者眼睛 3 状态
-  // 剧情："审讯室里坚持沉默，在审讯者的注视下不崩溃"
-  // 审讯者是人类（冷冰冰的刑警），完全不同于 ep2 的狼王狼眼。
+  // ── ep12_minor: red-light-green-light — 坐到最后（青铜古钟） ─────
+  // 模板默认视觉：交通信号灯（3 个圆灯）→ 换成青铜古钟 3 状态
+  // 剧情："在座位上承受所有压力 / 压力来袭时一动不动 / 压力松开时可以喘息"
+  // 核心设计：钟的声波 = 游戏中的压力波。敲响瞬间的声压 = 压力来袭。
   // 靶点：DOM setTrafficLight 全局函数
-  // 换壳策略：同 ep2 模式 A — 隐藏原 traffic-light DOM，塞入新 div.interrogator-eye
-  //          monkey-patch setTrafficLight 同步新节点 opacity 实现 3 状态切换。
-  // 状态映射：red→瞪眼（压迫）、yellow→半闭眼（分神）、green→闭眼（走神）
-  // 素材：theme-eye.png / theme-eye-half.png / theme-eye-closed.png
+  // 换壳策略：同 ep2 模式 A — 隐藏原 traffic-light DOM，塞入新 div.temple-bell
+  //          monkey-patch setTrafficLight 切换 3 张钟的状态图。
+  // 状态映射：
+  //   red (别动！)  → theme-bell.png       钟被敲响，声波从钟口扩散，必须屏息不动
+  //   yellow (警告) → theme-bell-tremor.png 钟锤弹离钟壁，余震颤抖
+  //   green (可以了)→ theme-bell-still.png  静止挂在梁上，完全松弛
   ep12_minor: {
     cssOverride: `
-  /* ═══ Layer 3 Theme: 审讯者注视 ═══ */
+  /* ═══ Layer 3 Theme: 坐到最后 — 青铜古钟 ═══ */
   .traffic-light { display: none !important; }
-  .interrogator-eye { position: absolute; top: 96px; left: 50%; transform: translateX(-50%); width: 200px; height: 200px; z-index: 10; display: flex; align-items: center; justify-content: center; }
-  .interrogator-eye img { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: contain; transition: opacity 0.35s ease, filter 0.35s ease; pointer-events: none; -webkit-mask-image: radial-gradient(ellipse 72% 58% at 50% 50%, #000 38%, transparent 72%); mask-image: radial-gradient(ellipse 72% 58% at 50% 50%, #000 38%, transparent 72%); }
-  .interrogator-eye .eye-open { z-index: 1; } .interrogator-eye .eye-half { z-index: 2; } .interrogator-eye .eye-closed { z-index: 3; }
-  .light-label { top: 310px !important; font-size: 26px !important; letter-spacing: 3px !important; text-shadow: 0 0 18px currentColor, 0 2px 10px rgba(0,0,0,0.7) !important; }
-  body, #game-shell { background: linear-gradient(180deg, #0a0c10 0%, #14181e 35%, #0a0c12 70%, #050608 100%) !important; }
-  #game-shell::after { content: ''; position: absolute; top: -60px; left: 50%; transform: translateX(-50%); width: 260px; height: 260px; background: radial-gradient(circle, rgba(180,200,220,0.07) 0%, transparent 65%); pointer-events: none; z-index: 0; }`,
+  .temple-bell { position: absolute; top: 80px; left: 50%; transform: translateX(-50%); width: 220px; height: 220px; z-index: 10; display: flex; align-items: center; justify-content: center; }
+  .temple-bell img { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: contain; transition: opacity 0.4s ease, filter 0.4s ease; pointer-events: none; -webkit-mask-image: radial-gradient(ellipse 75% 80% at 50% 50%, #000 45%, transparent 78%); mask-image: radial-gradient(ellipse 75% 80% at 50% 50%, #000 45%, transparent 78%); }
+  .temple-bell .bell-still { z-index: 1; } .temple-bell .bell-tremor { z-index: 2; } .temple-bell .bell-strike { z-index: 3; }
+  .light-label { top: 320px !important; font-size: 26px !important; letter-spacing: 3px !important; text-shadow: 0 0 18px currentColor, 0 2px 10px rgba(0,0,0,0.7) !important; }
+  body, #game-shell { background: linear-gradient(180deg, #0a0806 0%, #15100a 35%, #0c0804 70%, #060403 100%) !important; }
+  #game-shell::after { content: ''; position: absolute; top: -60px; left: 50%; transform: translateX(-50%); width: 280px; height: 280px; background: radial-gradient(circle, rgba(220,160,80,0.08) 0%, transparent 65%); pointer-events: none; z-index: 0; }`,
     jsOverride: `
 (function() {
   var shell = document.getElementById('game-shell');
-  var eye = document.createElement('div');
-  eye.className = 'interrogator-eye hidden'; eye.id = 'interrogator-eye';
-  eye.innerHTML = '<img class="eye-open" src="theme-eye.png" alt=""><img class="eye-half" src="theme-eye-half.png" alt=""><img class="eye-closed" src="theme-eye-closed.png" alt="">';
+  var bell = document.createElement('div');
+  bell.className = 'temple-bell hidden'; bell.id = 'temple-bell';
+  bell.innerHTML = '<img class="bell-still" src="theme-bell-still.png" alt=""><img class="bell-tremor" src="theme-bell-tremor.png" alt=""><img class="bell-strike" src="theme-bell.png" alt="">';
   var tl = document.getElementById('traffic-light');
-  if (tl && tl.parentNode) tl.parentNode.insertBefore(eye, tl.nextSibling);
+  if (tl && tl.parentNode) tl.parentNode.insertBefore(bell, tl.nextSibling);
   var origSetTL = window.setTrafficLight;
   window.setTrafficLight = function(color) {
     origSetTL(color);
-    var eyeEl = document.getElementById('interrogator-eye');
-    if (!eyeEl) return;
-    var eOpen = eyeEl.querySelector('.eye-open'), eHalf = eyeEl.querySelector('.eye-half'), eClosed = eyeEl.querySelector('.eye-closed');
-    if (!eOpen) return;
+    var bellEl = document.getElementById('temple-bell');
+    if (!bellEl) return;
+    var bStill = bellEl.querySelector('.bell-still'),
+        bTremor = bellEl.querySelector('.bell-tremor'),
+        bStrike = bellEl.querySelector('.bell-strike');
+    if (!bStill) return;
     if (color === 'red') {
-      // 瞪眼 — 审讯者紧盯，不能动
-      eOpen.style.opacity='1'; eHalf.style.opacity='0'; eClosed.style.opacity='0';
-      eOpen.style.filter='drop-shadow(0 0 24px rgba(180,200,255,0.5)) brightness(1.15) contrast(1.1)';
+      // 钟被敲响，声波击中座位，必须不动
+      bStill.style.opacity='0'; bTremor.style.opacity='0'; bStrike.style.opacity='1';
+      bStrike.style.filter='drop-shadow(0 0 28px rgba(255,140,60,0.65)) brightness(1.15) contrast(1.1)';
     } else if (color === 'yellow') {
-      // 半闭眼 — 片刻分神，警惕
-      eOpen.style.opacity='0'; eHalf.style.opacity='1'; eClosed.style.opacity='0';
-      eHalf.style.filter='drop-shadow(0 0 14px rgba(255,180,80,0.45)) brightness(0.95)';
+      // 钟微颤，余震预警
+      bStill.style.opacity='0'; bTremor.style.opacity='1'; bStrike.style.opacity='0';
+      bTremor.style.filter='drop-shadow(0 0 16px rgba(220,170,80,0.5)) brightness(1.0)';
     } else if (color === 'green') {
-      // 闭眼 — 走神，可以移动
-      eOpen.style.opacity='0'; eHalf.style.opacity='0'; eClosed.style.opacity='1';
-      eClosed.style.filter='drop-shadow(0 0 6px rgba(80,100,60,0.3)) brightness(0.65)';
+      // 钟静止，可以喘息移动
+      bStill.style.opacity='1'; bTremor.style.opacity='0'; bStrike.style.opacity='0';
+      bStill.style.filter='drop-shadow(0 0 8px rgba(120,100,70,0.3)) brightness(0.75)';
     } else {
-      eOpen.style.opacity='0'; eHalf.style.opacity='0'; eClosed.style.opacity='1';
-      eClosed.style.filter='brightness(0.3)';
+      bStill.style.opacity='1'; bTremor.style.opacity='0'; bStrike.style.opacity='0';
+      bStill.style.filter='brightness(0.4)';
     }
   };
   var origSetVisible = window.setVisible;
   window.setVisible = function(id, visible) {
     origSetVisible(id, visible);
     if (id === 'traffic-light') {
-      var e = document.getElementById('interrogator-eye');
-      if (e) { if (visible) e.classList.remove('hidden'); else e.classList.add('hidden'); }
+      var b = document.getElementById('temple-bell');
+      if (b) { if (visible) b.classList.remove('hidden'); else b.classList.add('hidden'); }
     }
   };
 })();`,

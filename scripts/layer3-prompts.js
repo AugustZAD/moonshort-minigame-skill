@@ -45,25 +45,24 @@ module.exports = {
   },
 
   // ── ep12_minor red-light-green-light · 坐到最后 ─────────────────
-  // 审讯者的眼睛 — HUMAN eye, NOT wolf (distinct from ep2 which uses
-  // wolf-alpha eyes). Scene: 审讯室里坚持沉默，在审讯者的注视下不崩溃。
-  // 3 states matching setTrafficLight('red'/'yellow'/'green'):
-  //   - red    → eye wide open, intense cold stare
-  //   - yellow → eye half-lidded, momentarily distracted
-  //   - green  → eye fully closed, interrogator glanced away
+  // 青铜古钟 — 剧情是"在座位上承受压力波，压力来袭时一动不动"。
+  // 3 状态 = 钟被击打的瞬间序列，声波 = 压力波的可视化：
+  //   - red (别动！)  → 钟被敲响，钟锤贴壁，声波从钟口向外扩散
+  //   - yellow (警告) → 钟锤刚从钟壁弹开，钟微微颤抖，余震
+  //   - green (可以了)→ 古钟完全静止，松弛挂在梁上，蒙着薄尘
   ep12_minor: {
     assets: [
       {
-        name: 'theme-eye',
-        prompt: 'Extreme close-up of a single human male interrogator eye wide open with intense piercing cold stare, cold harsh overhead fluorescent lighting casting sharp shadow, clinical blue-white color temperature, bloodshot veins visible in the white of the eye, pale grey-blue iris dilated, sharp eyebrow furrowed above, pale skin with visible stubble, photorealistic ultra-sharp detail, perfectly centered, solid pure #00FF00 chroma green background, 1024x1024',
+        name: 'theme-bell',
+        prompt: 'A massive ancient bronze temple bell hanging from a thick dark iron chain, at the exact moment of being struck — the heavy bronze clapper pressed hard against the inner wall, dramatic concentric sound waves rippling outward from the bell mouth as glowing golden-red shockwave rings, intense bass reverberation visible as heat-shimmer distortion around the bell body, weathered verdigris-green patina on ancient bronze surface, dramatic amber rim lighting from below, photorealistic cinematic shot, ominous and heavy atmosphere, perfectly centered composition, solid pure #00FF00 chroma green background filling all edges, 1024x1024',
       },
       {
-        name: 'theme-eye-half',
-        prompt: 'Extreme close-up of the same single human male interrogator eye half-lidded and looking slightly to the side, momentarily distracted, still cold harsh overhead fluorescent lighting, clinical blue-white color temperature, relaxed brow, pale grey-blue iris visible through the lowered eyelashes, pale skin with visible stubble, photorealistic detail, perfectly centered, solid pure #00FF00 chroma green background, 1024x1024',
+        name: 'theme-bell-tremor',
+        prompt: 'The same massive ancient bronze temple bell hanging from the same iron chain, moment just after the strike — clapper pulled back slightly from the inner wall, the bell barely trembling, faint lingering vibration shown as very subtle soft golden halo, warm amber rim lighting from below, weathered verdigris-green bronze surface, photorealistic cinematic shot, tense anticipation atmosphere, perfectly centered, solid pure #00FF00 chroma green background filling all edges, 1024x1024',
       },
       {
-        name: 'theme-eye-closed',
-        prompt: 'Extreme close-up of the same single human male interrogator eye completely closed, relaxed eyelid with long eyelashes resting softly, the interrogator glanced away or blinked, same cold harsh overhead fluorescent lighting, clinical blue-white color temperature, pale skin with visible stubble and slight crow-feet wrinkles, photorealistic detail, perfectly centered, solid pure #00FF00 chroma green background, 1024x1024',
+        name: 'theme-bell-still',
+        prompt: 'The same massive ancient bronze temple bell hanging motionless and silent from the same iron chain, completely at rest, clapper hanging straight down in the center touching nothing, a thin veil of dust particles drifting around the bell body, very dim cool moonlight from above creating soft shadows, weathered verdigris-green bronze with ancient inscriptions barely visible, photorealistic cinematic shot, calm contemplative stillness atmosphere, perfectly centered, solid pure #00FF00 chroma green background filling all edges, 1024x1024',
       },
     ],
   },
