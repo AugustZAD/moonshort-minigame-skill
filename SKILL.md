@@ -151,7 +151,7 @@ End-to-end workflow for producing a **story-driven customized mini-game** from e
 3. 设置 `CTX.portraits` 使用 Step 2b 生成的 tight headshot 头像
 4. 设置 `CTX.names` 替换默认 Player/Boss 为角色名
 5. 根据剧情氛围覆写 `bgmStyle`（如紧张场景强制 `tense`）
-6. **游戏名剧情化**：替换模板默认游戏名（如 `Conveyor Sort` → `碎片拼图`）。同时替换 HTML `<title>`、boot card `<h2>`、Phaser 文字、ResultScene 副标题中的所有出现
+6. **游戏名剧情化**：替换模板默认游戏名（如 `Conveyor Sort` → `碎片拼图`）。同时替换 HTML `<title>`、boot card `<h2>`、Phaser 文字、ResultScene 副标题中的所有出现。**⚠️ 模板还在 `boot-card` div 里硬编码了中文游戏名**（如 parking-rush 的 "急速泊车"、maze-escape 的 "迷宫探险"），必须在 `STORY_RESKIN[ep].labels` 里显式加一条中文→中文映射，否则开屏卡片会露馅。审核 Layer 1 时用 `grep -oP '[\p{Han}]+' packs/attribute-archetypes/games/<tpl>/index-v3.html | sort -u` 把模板里所有硬编码中文列出来逐条核对
 7. **游戏规则剧情化**：BootScene 的规则描述替换为剧情化中文（如"将走廊里听到的碎片分类，真相和谎言混在一起"）
 8. **考验宣告卡（Bridge Card）**：NarrativeScene 对白结束后、进入 BootScene 之前，自动插入一张全屏考验宣告卡：`—— {角色名}的{属性}考验 ——` + `{剧情化引导语}` + `点击开始考验`。这是剧情→游戏的核心衔接点
 9. **游戏机制隐喻重新包装（第一层）**：
@@ -1689,6 +1689,7 @@ Canvas/Phaser
 | 游戏特有按钮风格不一致 | 方向键/FIRE/REEL 等用自定义 CSS 没有 candy material | 所有按钮统一用相同的渐变/阴影/高光模式，只是颜色不同 |
 | 开局没有玩法介绍 | BootScene 缺少规则说明 | 每个游戏必须在 START 前显示玩法规则（boot-card/circle-content/dialogue） |
 | `PRIMARY_COLOR` 死代码 | V1 遗留常量，V3 不使用 | 删除，用 `window.__V3_THEME__` 替代 |
+| 开屏 boot-card 还显示模板默认游戏名（如 "急速泊车"） | 模板在 `<div id="boot-card">` 里硬编码了中文标题，`STORY_RESKIN.labels` 只捕获英文键会漏掉 | 为每个使用了模板的 ep 的 `labels` 加一条中文→中文映射（如 `'急速泊车':'规则战争'`）。**审核时用 `grep -oP '[\p{Han}]+' packs/.../index-v3.html \| sort -u` 把模板里所有硬编码中文枚举出来**，确保每条都在 `STORY_RESKIN[ep].labels` 里有对应映射。已知受影响模板：conveyor-sort/maze-escape/parking-rush/spotlight-seek/will-surge |
 
 ### V2/V3 文件约定
 

@@ -78,10 +78,12 @@ const STORY_RESKIN = {
   ep3:  { // 偷听Luna书房情报
     categories: { DATA:'证词', CODE:'线索', MAIL:'密信', MEDIA:'档案', VIRUS:'谎言' },
     hints: { 'Watch out for VIRUS packages!': '小心混入的谎言！' },
+    labels: { '传送分拣':'碎片拼图' },
   },
   ep13_minor: { // 靠自己走到边界线
     categories: { DATA:'补给', CODE:'路线', MAIL:'信号', MEDIA:'地图', VIRUS:'陷阱' },
     hints: { 'Watch out for VIRUS packages!': '小心路上的陷阱！' },
+    labels: { '传送分拣':'独自前行' },
   },
   // ── qte-boss-parry: attack/counter types ──
   ep6:  { // 直面Luna摊牌
@@ -112,17 +114,17 @@ const STORY_RESKIN = {
   },
   // ── maze-escape: ghost/key metaphor ──
   ep13: { // 踏过边界线
-    labels: { '👻':'🐺', 'ghost hunts you':'追兵来了', 'Find the Key!':'找到出路！', 'Got it! Run to Exit!':'拿到了！快跑！' },
+    labels: { '迷宫探险':'踏过边界', '👻':'🐺', 'ghost hunts you':'追兵来了', 'Find the Key!':'找到出路！', 'Got it! Run to Exit!':'拿到了！快跑！' },
   },
   ep20: { // 在新领地找到方向
-    labels: { '👻':'🌫️', 'ghost hunts you':'迷雾追来了', 'Find the Key!':'找到方向！', 'Got it! Run to Exit!':'看清了！往前跑！' },
+    labels: { '迷宫探险':'找到方向', '👻':'🌫️', 'ghost hunts you':'迷雾追来了', 'Find the Key!':'找到方向！', 'Got it! Run to Exit!':'看清了！往前跑！' },
   },
   // ── will-surge: wave metaphor ──
   ep5:  { // 撑不住
-    labels: { 'WAVE IN ':'崩溃波 ', 'WAVE APPROACHING':'崩溃逼近', 'CALM':'平静', 'HOLDING STRONG':'撑住了', 'HOLD THE LINE':'不能倒' },
+    labels: { '意志涌动':'撑住', 'WAVE IN ':'崩溃波 ', 'WAVE APPROACHING':'崩溃逼近', 'CALM':'平静', 'HOLDING STRONG':'撑住了', 'HOLD THE LINE':'不能倒' },
   },
   ep9:  { // 给我
-    labels: { 'WAVE IN ':'压力波 ', 'WAVE APPROACHING':'抉择逼近', 'CALM':'冷静', 'HOLDING STRONG':'握紧了', 'HOLD THE LINE':'不能颤抖' },
+    labels: { '意志涌动':'握紧声音', 'WAVE IN ':'压力波 ', 'WAVE APPROACHING':'抉择逼近', 'CALM':'冷静', 'HOLDING STRONG':'握紧了', 'HOLD THE LINE':'不能颤抖' },
   },
   // ── red-light-green-light ──
   ep2:  { // 在Alpha命令下撑住不跪
@@ -140,10 +142,10 @@ const STORY_RESKIN = {
   },
   // ── spotlight-seek ──
   ep4: { // 权力棋盘
-    labels: { 'Watch the spotlight...':'注意权力动向...', 'Found: ':'锁定: ' },
+    labels: { '聚光追踪':'权力棋盘', 'Watch the spotlight...':'注意权力动向...', 'Found: ':'锁定: ' },
   },
   ep17: { // 道别的勇气
-    labels: { 'Watch the spotlight...':'找到那个人...', 'Found: ':'找到: ' },
+    labels: { '聚光追踪':'道别的勇气', 'Watch the spotlight...':'找到那个人...', 'Found: ':'找到: ' },
   },
   // ── qte-hold-release ──
   ep1: { // 压住心跳
