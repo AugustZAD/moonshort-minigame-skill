@@ -200,13 +200,57 @@ End-to-end workflow for producing a **story-driven customized mini-game** from e
 
    **换壳范围的边界**（只动"核心视觉外壳"，不动别的 HTML UI）：Layer 3 的靶点 **只是** 游戏核心视觉那几个元素（红绿灯、迷宫墙、车道）。**不要** 顺手改 `#lane-btns .btn-lane` 按钮配色、`.combo-text` 连击文字颜色、HP 条、score label 这些已经由 Layer 2 kmeans 从 bg-scene 派生好的 HTML UI。它们已经和背景和谐了，动它们只会引入第二套配色和 kmeans 配色打架。如果 `cssOverride` 不需要任何样式（canvas 内已经全部搞定），直接写 `cssOverride: ''` 即可
 
-   **配色和谐守则**（Layer 3 新视觉必须让路给既有素材）：
-   1. **禁用饱和亮色**：不要用 `#d4a24a`（亮金）、`#ff0000`（大红）、`#ffd700`（highlighter yellow）这类高饱和亮色做边框/高亮。用同色相的 **muted/aged** 变体：亮金 → `#8a6438`（aged bronze），饱和红 → `#5a2a1a`（锈褐）
-   2. **从现有 sprite 采样**：打开 Layer 2 sprite (`sprite-*.png`) 和 `bg-scene.jpg`，肉眼确定主基调色系（暖棕/冷蓝/冷灰），Layer 3 新增的 graphics/text 色值 **全部落在这个色系内**，不引入新色相
-   3. **层级通过明度分离而非色相**：free（活跃）vs sealed（锁定）这类二态对比，用同色相的明度差（暗棕 `#241610` vs 更暗 `#160d08` + 边框从 `#8a6438` 降到 `#3a2418`），不要用"金 vs 红"这种色相对立
-   4. **tint 用暖琥珀不用荧光黄**：给 sprite 加 glow/tint 时，`0xc08a46`（warm amber）远胜 `0xffd47a`（看起来像 highlighter）
-   5. **label 用 parchment cream 不用 gold**：文字颜色用 `#d4b080`（羊皮纸奶油）而不是 `#ffd47a`（亮金），和 bg 中出现的任何 aged-wood/parchment 元素呼应
-   6. **sealed/blocked 态要退后**：不仅用暗色 bg，还要给 sprite 加 `.setAlpha(0.7).setTint(0xa08878)` 让它真正"淡出视觉前景"，不要和 free 态抢戏
+   **配色守则：从 `window.__V3_THEME__` 派生，绝不硬编码色值**（这是核心）
+
+   Layer 2 已经通过 kmeans 从 `bg-scene.jpg` 提取了完整调色板，存在全局 `window.__V3_THEME__`：
+
+   ```js
+   {
+     bg:           '#17191C',  // 深背景色（kmeans darks 组里最深的）
+     primary:      '#5AA0E6',  // 主色（kmeans mids 组 top score，饱和度已拉到 ≥0.74）
+     primaryLight: '#E0EDF3',  // 最浅色（kmeans lights 组里最亮的）
+     strokeDark:   '#4478ad',  // primary 暗化 25%（适合做 muted 边框 / sealed tint）
+     playerHp:     '#165A97',  // accent 色（与 primary 不同色相，保证 HP 条可区分）
+     opponentHp:   '#5AA0E6',  // = primary
+     gold:         '#F5C842',  // 固定金色（HP 条 pulse 等）
+   }
+   ```
+
+   Layer 2 的按钮、HP 条、连击文字全部由这些字段驱动。**Layer 3 必须读这同一个对象**，让新增的 graphics/text 色值从字段派生：
+
+   ```js
+   function hexInt(h) { return parseInt(String(h||'#888').replace('#',''), 16); }
+   var T = window.__V3_THEME__ || {};
+   var PRIMARY     = hexInt(T.primary);      // graphics.lineStyle / setTint
+   var STROKE_DARK = hexInt(T.strokeDark);   // sealed/muted 边框 + sealed sprite tint
+   var BG_DARK     = hexInt(T.bg);           // graphics.fillStyle 底色
+   var LIGHT_STR   = T.primaryLight;         // Phaser.add.text color (字符串)
+   var DARK_STR    = T.bg;                   // text stroke 底色
+   ```
+
+   **映射套路**（从 Layer 2 ep11 推出的模板）：
+
+   | Layer 3 元素 | 用的字段 | 为什么 |
+   |-------------|---------|--------|
+   | 活跃态底色 | `bg` | 深底让 sprite 跳出来 |
+   | 活跃态边框 | `primary` | 和按钮/HP 条同色相 |
+   | 活跃态高亮条 | `primary` @ 0.18 | 同色低透 |
+   | 活跃态 glow tint | `primary` @ 0.35 | 光晕跟主色 |
+   | 活跃态 label 字色 | `primaryLight` | 最亮，读得清 |
+   | 活跃态 label stroke | `bg` | 最深，对比最强 |
+   | sealed 态底色 | `bg` @ 0.92 | 退到背景里 |
+   | sealed 态边框 | `strokeDark` @ 0.55 | 同色相但暗 55% |
+   | sealed 态 sprite tint | `strokeDark` + `alpha 0.68` | 去饱和 + 半透明让它真正"淡出" |
+   | sealed 态 label 字色 | `strokeDark` | 同色相暗版 |
+
+   **为什么不能硬编码**（第一次 ep11 踩的坑）：
+   1. bg-scene 的视觉印象和 kmeans 结果常常不一致 —— 议政厅肉眼是暖棕，kmeans 提取出来是蓝色（因为木纹反光和阴影里有大量冷色像素）。硬编码暖棕 → 和蓝色按钮打架
+   2. 换一张新 bg-scene 时，kmeans 自动更新 → 硬编码的色值瞬间过时 → 又要手动调
+   3. Layer 2 的 HP 条/按钮/label 都跟 kmeans 走，Layer 3 不跟就会引入第二套配色，永远存在"哪个才对"的问题
+
+   **硬编码红线**：只有 `BG_DARK` 派生不出来的中性值（如完全的黑 `0x000` 阴影）可以硬写，任何带色相的值必须来自 `__V3_THEME__`
+
+   **sealed/blocked 态退后技巧**：不光用暗色，还要 `.setAlpha(0.68)` + `.setTint(STROKE_DARK)` 双管齐下，让它真正 "淡出视觉前景" 不和 free 态抢戏
 
    - **大多数集不需要第三层**，仅在视觉冲突严重时使用
 12. **ResultScene 增加剧情结语**：按 S/A/B/C 四档编写不同剧情描述文案。**结语用 narrative overlay 展示**（点"继续"后弹出全屏叠层，点击淡出），不要内联在结算 UI 里。**不要加下集预告**。**用 monkey-patch 注入**而非修改模板 create() 内部代码

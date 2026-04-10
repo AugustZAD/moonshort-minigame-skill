@@ -510,7 +510,21 @@ fitShell();
     var LANE_XS = [86, W/2, W-86];
     var LOT_TOP = 170;
 
-    // Render themed lanes: wooden podium base + sprite overlay
+    // Read kmeans-derived palette from window.__V3_THEME__ (set by Layer 2
+    // resolveTheme). Layer 3 colors are all derived from it so Layer 3 always
+    // stays in sync with the bg-scene's actual dominant palette. No hardcoded
+    // colors — if kmeans says "blue", lanes are blue; "warm brown", lanes are brown.
+    function hexInt(h) { return parseInt(String(h||'#888888').replace('#',''), 16); }
+    function hexStr(h) { return String(h||'#888888'); }
+    var T = window.__V3_THEME__ || {};
+    var PRIMARY      = hexInt(T.primary);       // 主色相（车道边框、glow tint）
+    var STROKE_DARK  = hexInt(T.strokeDark);    // primary 的 25% 暗化（sealed 边框 + sealed sprite tint）
+    var BG_DARK      = hexInt(T.bg);            // 深背景色（车道底 fill）
+    var LIGHT_STR    = hexStr(T.primaryLight);  // 最浅色（"空席" label 字色）
+    var DARK_STR     = hexStr(T.bg);            // 最深色（label stroke）
+    var STROKE_STR   = hexStr(T.strokeDark);    // "封印" label 字色
+
+    // Render themed lanes: podium base + sprite overlay, driven entirely by kmeans palette
     function renderThemedLanes() {
       // Need both Layer 2 sprites loaded
       if (!gs.textures.exists('ep_sprite_car') || !gs.textures.exists('ep_sprite_slot')) return;
@@ -524,29 +538,25 @@ fitShell();
       // Clear the original colorful lane graphics (they redraw themselves every drawLanes call)
       if (gs.laneGfx) gs.laneGfx.clear();
 
-      // Harmonized palette — matches the warm-brown council chamber bg-scene
-      // and the parchment/wood Layer 2 sprites. No highlighter-yellow gold.
       for (var i = 0; i < 3; i++) {
         var cx = LANE_XS[i];
         var cy = LOT_TOP + 160;
         var isFree = (i === gs.freeIndex);
 
-        // Wooden podium base (replaces the parking lane rectangle)
         var base = gs.add.graphics().setDepth(5.5);
         if (isFree) {
-          // Free podium — deeper warm brown + muted aged-bronze frame
-          base.fillStyle(0x241610, 0.88);
+          // Free podium — bg-dark base + primary-color frame + inner highlight
+          base.fillStyle(BG_DARK, 0.88);
           base.fillRoundedRect(cx - 48, LOT_TOP + 58, 96, 204, 10);
-          base.lineStyle(2, 0x8a6438, 0.85);
+          base.lineStyle(2, PRIMARY, 0.85);
           base.strokeRoundedRect(cx - 48, LOT_TOP + 58, 96, 204, 10);
-          // Inner highlight bar (aged bronze, very low alpha)
-          base.fillStyle(0x8a6438, 0.18);
+          base.fillStyle(PRIMARY, 0.18);
           base.fillRoundedRect(cx - 44, LOT_TOP + 62, 88, 8, 4);
         } else {
-          // Sealed podium — desaturated, darker, recedes
-          base.fillStyle(0x160d08, 0.9);
+          // Sealed podium — bg-dark base + stroke-dark frame (same hue family, just muted)
+          base.fillStyle(BG_DARK, 0.92);
           base.fillRoundedRect(cx - 48, LOT_TOP + 58, 96, 204, 10);
-          base.lineStyle(1.5, 0x3a2418, 0.65);
+          base.lineStyle(1.5, STROKE_DARK, 0.55);
           base.strokeRoundedRect(cx - 48, LOT_TOP + 58, 96, 204, 10);
         }
         gs._themeLaneObjs.push(base);
@@ -554,32 +564,31 @@ fitShell();
         // Sprite overlay (reuse Layer 2 assets)
         var key = isFree ? 'ep_sprite_slot' : 'ep_sprite_car';
         if (isFree) {
-          // Warm amber glow (not highlighter yellow) — lets the sprite's own
-          // warmth come through without fighting the bg
+          // Primary-color glow halo
           var glow = gs.add.image(cx, cy, key)
             .setDisplaySize(110, 110).setOrigin(0.5).setDepth(5.8)
-            .setTint(0xc08a46).setAlpha(0.38);
+            .setTint(PRIMARY).setAlpha(0.35);
           gs._themeLaneObjs.push(glow);
-          // Main podium sprite — untinted (sprite itself is already warm wood)
+          // Main sprite — untinted, full brightness
           var img = gs.add.image(cx, cy, key)
             .setDisplaySize(90, 90).setOrigin(0.5).setDepth(6);
           gs._themeLaneObjs.push(img);
-          // "空席" label — parchment cream, not bright gold
+          // "空席" label — primaryLight (brightest kmeans color) on dark stroke
           var lbl = gs.add.text(cx, LOT_TOP + 242, '空席', {
             fontFamily: 'Montserrat, sans-serif', fontSize: '12px', fontStyle: '900',
-            color: '#d4b080', stroke: '#1a1008', strokeThickness: 3
+            color: LIGHT_STR, stroke: DARK_STR, strokeThickness: 3
           }).setOrigin(0.5).setDepth(6.5);
           gs._themeLaneObjs.push(lbl);
         } else {
-          // Sealed scroll — more muted so it recedes
+          // Sealed scroll — desaturated via stroke-dark tint + low alpha to recede
           var img = gs.add.image(cx, cy, key)
-            .setDisplaySize(78, 78).setOrigin(0.5).setDepth(6).setAlpha(0.7)
-            .setTint(0xa08878);
+            .setDisplaySize(78, 78).setOrigin(0.5).setDepth(6).setAlpha(0.68)
+            .setTint(STROKE_DARK);
           gs._themeLaneObjs.push(img);
-          // "封印" label — faded ink
+          // "封印" label — strokeDark on near-black stroke
           var lbl = gs.add.text(cx, LOT_TOP + 242, '封印', {
             fontFamily: 'Montserrat, sans-serif', fontSize: '11px', fontStyle: '700',
-            color: '#6a4a36', stroke: '#0a0604', strokeThickness: 2
+            color: STROKE_STR, stroke: DARK_STR, strokeThickness: 2
           }).setOrigin(0.5).setDepth(6.5);
           gs._themeLaneObjs.push(lbl);
         }
