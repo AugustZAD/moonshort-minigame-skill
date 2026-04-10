@@ -229,7 +229,7 @@ module.exports = {
     assets: [
       {
         name: 'theme-wall',
-        prompt: 'A flat top-down square texture tile of a moss-covered stone surface, viewed straight from above (orthographic top view, NO 3D perspective, NO isometric angle), hand-painted digital illustration in the style of a cozy 2D top-down adventure game like Stardew Valley, anime-inspired soft brushwork, flat shading with gentle gradients, soft outlines, cool blue-green palette with deep slate stone and sage green moss, scattered small wildflowers and tiny leaves, painterly texture (NOT photorealistic, NOT 3D-rendered, NOT isometric), the entire square frame is filled edge-to-edge with the stone surface, perfectly square 1:1 composition, the four edges connect seamlessly when tiled with copies of itself, 512x512, no green background, full coverage stone tile',
+        prompt: 'A single solid rounded mossy stone block that fills the entire square frame edge to edge, ONE stone only (not multiple cobbles, not a pattern), top-down orthographic view (straight from above, NO 3D perspective, NO isometric angle), hand-painted digital illustration in the style of a cozy 2D top-down adventure game, anime-inspired soft brushwork, flat shading with gentle gradients, soft outlines, MEDIUM-BRIGHTNESS grey-blue stone color (light enough to clearly read against dark backgrounds, NOT dark, NOT black), sage green moss patches on top and corners, COOL PALETTE ONLY (blue-grey stone + sage green moss), NO yellow, NO warm colors, NO flowers, NO wildflowers, NO orange, minimal decoration, the stone silhouette should be clearly readable as one single block, square edges connect seamlessly when tiled, 512x512, no green screen background',
         noChromaKey: true,
       },
     ],
