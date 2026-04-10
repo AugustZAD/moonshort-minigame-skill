@@ -863,79 +863,29 @@ games/<game-id>/
 
 ### Common Pitfalls
 
-| 阶段 | 坑 | 解法 |
-|------|-----|------|
-| 素材 | 人物表情不匹配场景 | Prompt 明确写表情+姿势 |
-| 素材 | 白衣服被白底删除 | 永远用绿幕 |
-| 音频 | BGM 消失/中断 | AudioContext resume 异步; 全程一首循环不 stopBgm |
-| 机制 | 某阶段无决策/无惩罚 | 每阶段风险/回报 + 递增惩罚 |
-| 选取 | 因为涉及恋人就选 CHA | 看核心冲突：打架→ATK，忍耐→WIL |
-| 选取 | 凭感觉选模板不查 manifest | 必须读 selection-manifest.json 的 keywordsZh 匹配 |
-| 部署 | OSS 资源 URL 404 | 先 `oss-upload.js` 上传，再替换 HTML 中的 URL |
-| 部署 | 跨域问题 | OSS Bucket 必须设 public-read ACL |
-| 叙事 | 全身人物图在小圆框里裁切怪异 | 72px portrait 圆框**必须用 tight headshot 大头照**，不要全身/半身。用 Step 2b pipeline 统一生成 |
-| 素材 | 各角色头像构图/裁剪不统一 | 所有角色用**同一个 prompt 模板**只替换表情描述，再经 trim→居中 pipeline 统一化 |
-| 素材 | 图片路径含中文/空格导致 file:// 或 WebView 加载失败 | 压缩后重命名为 ASCII 短名（`avatar-sylvia.png`, `bg-cemetery.jpg`），放在 `game/` 同目录 |
-| 深度定制 | 改了按钮布局/仪表盘位置导致 UI 混乱 | **不改原模板 UI/UX 布局**，只通过 `CTX` 注入数据 + 选 theme 配色 |
-| 深度定制 | 背景图 opacity 设太高，UI 不可读 | V3 cover-layer 默认 `opacity: 0.20` 已是合适的淡显效果，不要超过 0.25 |
-| 叙事 | NarrativeScene 结束后 GameScene 的 isOver 导致 win 回调跳过 | 加 `_winning` 标记位，win 路径绕过 `finishGame` |
-| 叙事 | 白底人物 JPG 和深色背景冲突 | 白底只配浅/奶油背景; 或用绿幕流程抠图 |
-| 叙事 | ResultScene 强塞人物头像效果差 | 不合适就不放——"搞不好就别放" |
-| 叙事 | 透明 PNG 在 portrait 卡片中背景黑色 | 在 image 后面加 `fillRoundedRect(0xffffff)` 白色垫层 |
-| 叙事 | 对白太多，玩家点击疲劳 | NarrativeScene 对白不超过 4 句；精简到核心冲突，砍掉寒暄和过渡 |
-| 音频 | BGM 风格跟属性默认值走，与场景氛围冲突 | BGM 以场景氛围为准：家暴/紧张场景即使属性是 CHA 也用 `tense`，而非默认 `romantic` |
-| 素材 | 不确定是否需要走绿幕流程 | 判断规则：白底 JPG + 大卡片 + 浅色背景 → 直接用；需要绿幕的条件：ResultScene 小圆框、深色背景、或需特定姿势/表情 |
-| 深度定制 | 背景图太亮/太暗，UI 不可读 | 用 `overlay` + `overlayAlpha` 调整；暗场景推荐 overlay `#0D0A14` alpha 0.4-0.6 |
-| 深度定制 | 覆写色值后 candy 卡片仍是粉色 | 必须同时覆写 `CANDY.cardPink` 和 `cardPinkLt`，不只改 ATTR_THEMES |
-| 深度定制 | 白色 score/timer pill 在暗色背景上太突兀 | `CC.white` 保持不变即可——白色药丸在暗背景上反而提供良好对比 |
-| 深度定制 | drawSceneBg 未生效 | 检查 BootScene preload 是否加载了 `ep_bg_*` 资源；背景图路径是否正确 |
-| 深度定制 | 所有深度定制版都叫 `-dark` | 命名按实际风格：`-sweet`/`-warm`/`-noir`/`-neon`/`-tense`，不要一律 `-dark` |
-| 素材 | 复用其他 EP 的素材但表情不匹配 | 表情必须匹配当前剧情氛围；紧张表情放甜蜜场景会破坏沉浸感，必须重新生成 |
-| 深度定制 | 游戏机制文案还是英文/模板默认 | 计数器 emoji、进度条标签、状态文案、combo 描述全部替换为剧情化隐喻（如钓鱼→心跳同步） |
-| 深度定制 | ResultScene 只有冰冷的评分数字 | 增加 `resultTexts` 按 S/A/B/C 四档展示不同剧情结语，让结算有情感共鸣 |
-| 深度定制 | 结算画面只有星星和按钮，评级/分数/统计全部缺失 | `resetAllDOM()` 给子元素（`grade-letter`/`grade-score`/`attr-mod`/`stat-combo`/`stat-hits`）加了 `hidden`，但 `ResultScene.create()` 只恢复父容器。**必须在 `setVisible('result-info',true)` 后加 `['grade-letter','grade-score','attr-mod','stat-combo','stat-hits'].forEach(id=>setVisible(id,true))`**。此 bug 仅在有 `resultTexts` 叙事结语时触发（见 Step 7a） |
-| 深度定制 | 色系死板跟属性走，甜蜜场景用了暗色 | 色系服务于剧情氛围，不必按四大属性分配；参考 `STYLE-POLISH-SKILL.md` 自由调整 |
-| 深度定制 | ResultScene 结语文字和按钮重叠 | 结语用 **narrativeOutro** 在结算前展示（GameScene→NarrativeScene→ResultScene），不要放在 ResultScene 的"继续"按钮后 |
-| 深度定制 | ResultScene 背景图消失 | ResultScene 的全屏矩形要设 `alpha: 0.85`（半透明），不是 `1`（不透明），否则盖住 cover-layer |
-| 深度定制 | 结尾加了下集预告剧透 | **不要加下集预告**。结语只聚焦本集情感收束，不剧透下集内容 |
-| 深度定制 | 不用 kmeans 动态取色，手选 preset 配色不搭 | 优先用 `CTX.coverImage` 触发 kmeans 动态取色，让配色自动匹配背景图氛围；preset theme 只作 fallback |
-| 深度定制 | 所有模板都不加游戏内素材，全是色块 | **所有 12 个模板都做精灵替换**（见三层定制体系）。高价值模板（maze-escape/lane-dash/spotlight-seek/qte-boss-parry）精灵效果最明显，优先做；低价值模板也要做装饰性精灵 |
-| 深度定制 | 剧情对白后直接跳到游戏规则，完全断裂 | **必须加考验宣告卡（Bridge Card）**：NarrativeScene 对白结束后自动插入，是剧情→游戏的核心衔接点 |
-| 深度定制 | 游戏名/规则用模板默认名（如"传送分拣"），跟剧情无关 | 每集游戏名和规则都必须剧情化（如"碎片拼图 — 将走廊里听到的碎片分类"） |
-| 深度定制 | kmeans 配色每次刷新不同 | kmeans 初始化必须用确定性均匀采样，禁止 `Math.random()` |
-| 深度定制 | kmeans 提取的弱色直接 fallback 到 preset | 弱色用增强（拉高饱和度/夹住亮度）而非 fallback，永远使用从背景图提取的色 |
-| 深度定制 | 游戏内精灵太大/太小导致碰撞判定异常 | **游戏精灵**用 `setDisplaySize()` 匹配原色块尺寸，不改碰撞体 hitArea（注意：**背景图禁止用 setDisplaySize**，必须用 `setScale(Math.max(...))` cover 模式） |
-| 深度定制 | 游戏内精灵没走绿幕流程，白底残留 | 所有游戏内素材统一走 Step 2 绿幕→抠图 pipeline |
-| STORY_THEME | 用 CSS shapes/SVG 手绘游戏视觉替换元素 | **禁止手工作图**。所有视觉素材用 AI 图像生成（ZenMux/Gemini），确保真实质感。即使是简单形状也要用 AI 生成 |
-| STORY_THEME | 环境替换图片边缘生硬，与背景不融合 | 用 CSS `mask-image: radial-gradient(ellipse 70% 60% at 50% 50%, #000 35%, transparent 72%)` 柔化边缘过渡 |
-| STORY_THEME | 多状态切换没有动画衔接 | 用多张 AI 图片堆叠 + `opacity` 交叉淡入（`transition: opacity 0.35s ease`），不要用 clip-path/scaleY 等 CSS 变换模拟 |
-| STORY_THEME | 环境替换改了游戏逻辑 | STORY_THEME 只 hook 视觉函数（如 `setTrafficLight`），不修改 GameScene 的 update/计分/碰撞等逻辑代码 |
-| STORY_THEME | 死机制（如体力系统永远耗不空） | 审查模板内置机制是否有实际游戏影响，无意义的机制用有决策价值的机制替换（如体力→冲刺加速） |
-| 选取 | 批量定制 21 集全用同一个模板 | **必须**按 Step 1a-1d 为每集独立选模板，相邻集不得重复，目标覆盖 ≥10/12 模板 |
-| 深度定制 | 直接用 character/ 全身图当头像，72px 圆框只能看到胸口 | 头像**必须每集用 ZenMux 生成 tight headshot**，走完绿幕→抠图→200×200 pipeline，不可跳过 |
-| 深度定制 | 背景图 PNG 直接改扩展名为 .jpg | 必须用 `sharp.resize(800).jpeg({quality:55})` **真正转码**为 JPEG；否则 canvas drawImage 失败导致 kmeans 取色无效 |
-| 批量素材 | 把全身参考图直接复制为 avatar-xxx.png | 每个头像**必须走完整 pipeline**：ZenMux headshot → 绿幕抠图 → trim → 200×200 居中（见 Step 2b） |
-| 批量素材 | 所有 ep 复用同一张头像，不管表情是否匹配 | 情绪相近可复用；情绪不同（紧张 vs 温柔）必须重新生成 headshot |
-| 批量素材 | bg-main.png 原图直接放进 game/ 目录 | 原图留在 ep 根目录；game/ 只放 `sharp.resize(800).jpeg({quality:55})` 处理后的 bg-scene.jpg |
-| 批量素材 | 素材处理全靠手动，批量时忘了跑 | 写 `scripts/process-ep-assets.js` 脚本统一处理，批量生成流程中自动调用 |
-| 批量素材 | 生成后不校验素材规格 | 必须执行 Step 2d 校验脚本，所有 avatar 200×200 + alpha + <100KB 才算通过 |
-| 批量生成 | 脚本只替换 CTX 数据，不注入三大组件代码 | 必须以**验证通过的标杆 ep** 作为母版；脚本只替换 CTX 块和文本，不可破坏已有的 NarrativeScene/CSS/overlay 代码（见 Step 4b） |
-| 批量生成 | 先批量生成，再手动修标杆 ep，不回头更新其他 ep | 强制顺序：先完成+验证标杆 ep → 再批量生成 → 再 Step 7b 校验全部 ep |
-| 批量生成 | 批量生成后不校验，直接标记完成 | 必须执行 Step 7b 校验脚本，所有 ep 通过后才能继续 |
-| 批量生成 | 全集用同一个模板（如 21 集全用 qte-hold-release） | 必须覆盖 ≥10/12 模板，单模板 ≤3 次，相邻集不重复（见 Step 4b 模板多样性规则） |
-| 批量生成 | cannon-aim 等模板被过度使用（5+ 次） | 单模板上限 3 次；若超出则重新分配，优先补充未使用的模板 |
-| 深度定制 | V3 模板没有 NarrativeScene，跳过不加 | V3 模板**必须注入三大组件**：NarrativeScene 类 + initShellDOM 升级 + ResultScene 结语 overlay（见深度定制化额外步骤 ⚠️ 节） |
-| 深度定制 | initShellDOM 只显示首字母（"S"/"⚡"），没加载头像图片 | 必须替换 initShellDOM 为升级版，通过 `CTX.portraits` 设置 `backgroundImage`（见组件 B） |
-| 深度定制 | ResultScene 点"继续"后没有剧情结语，直接结束 | 必须注入 narrative overlay 读取 `CTX.resultTexts[rating]`（见组件 C） |
-| 深度定制 | 按钮/文案留着英文默认值（START/CONTINUE/Challenge） | 全部替换为中文：开始考验/继续/再来一次/考验；通过 `CTX.copy` 覆写模板 COPY 对象 |
-| 深度定制 | kmeans 取色在本地 file:// 打开时不生效 | `file://` 下 canvas 跨域限制导致 drawImage 失败；**必须通过 localhost 访问验证**取色效果 |
-| 深度定制 | 暗色背景图 kmeans 取色失败回退到 preset | resolveTheme 门卫条件原为 `L>0.40 S>0.60` 对暗色图太严格；已放宽至 `L>0.18 S>0.30` |
-| 深度定制 | 我方/对方血条颜色太接近分不清 | paletteToTheme 已改：playerHp→accent, opponentHp→**secondary**（不同色相），strokeDark→darken(accent)。REQUIRED_CHECKS 加了 `p.secondary` 验证 |
-| 深度定制 | 背景图在竖屏中被拉伸变形 | 禁止 `bg.setDisplaySize(W, H)`（强制拉伸到 393×852）；改用 cover 模式：`var s = Math.max(W/tex.width, H/tex.height); bg.setScale(s);`。REQUIRED_CHECKS 加了 `bg.setScale` 验证 |
-| 深度定制 | 头像文件名不匹配（batch-assets 用连字符，CTX 用简写名） | batch-generate 脚本 Step 0 已加 portrait 文件名模糊匹配 + fallback 复制逻辑 |
-| 深度定制 | 游戏内统计标签（Score/Combo/Hits/Miss）被当成本地化遗漏 | **统计标签保留英文**，不需要翻译。只有按钮和标题需要中文化 |
-| 深度定制 | 结语在结算画面之后展示（点"继续"才弹出） | `resultTexts` 必须在结算UI**之前**展示：ResultScene create() 开头弹 overlay，点击后才渲染结算UI |
-| 深度定制 | 设计了两层结语（narrativeOutro + resultTexts） | **只用一层 `resultTexts`**（按 S/A/B/C 区分），不要加 narrativeOutro，两层连续点击体验差 |
+| # | 阶段 | 坑 | 解法 |
+|---|------|-----|------|
+| 1 | 素材-绿幕 | 白底图穿帮（白衣被删、白边残留、深色背景冲突） | **永远用绿幕流程**。仅当白底 JPG + 大卡片 + 浅色背景时可直接用；深色背景/小圆框/游戏内精灵全部走绿幕→抠图 pipeline |
+| 2 | 素材-头像 | 全身图塞圆框只看到胸口；各角色构图不统一；复用旧头像表情不匹配 | 每集用 ZenMux 生成 **tight headshot**（同一 prompt 模板只换表情），走绿幕→抠图→trim→200×200 居中。情绪相近可复用，否则必须重新生成 |
+| 3 | 素材-背景 | PNG 假转 JPG 导致 kmeans 失败；原图直接放 game/；竖屏拉伸变形；opacity 过高 UI 不可读 | 原图留 ep 根目录；game/ 只放 `sharp.resize(800).jpeg({quality:55})` 真正转码的文件。显示用 cover 模式 `setScale(Math.max(...))`，禁止 `setDisplaySize`。overlay alpha ≤0.25 |
+| 4 | 素材-通用 | 路径含中文/空格加载失败；文件名不匹配；素材处理全靠手动 | ASCII 短名放 `game/` 同目录。batch-generate Step 0 有模糊匹配。写脚本统一处理 + Step 2d 校验（avatar 200×200 + alpha + <100KB） |
+| 5 | 素材-表情 | 人物表情不匹配场景（紧张表情放甜蜜场景） | Prompt 明确写表情+姿势，必须匹配当前剧情氛围，不匹配必须重新生成 |
+| 6 | 素材-精灵 | 精灵尺寸不对碰撞异常；全是色块没加精灵 | 精灵用 `setDisplaySize()` 匹配原色块尺寸，不改碰撞体。**所有 12 个模板都做精灵替换**，高价值模板优先 |
+| 7 | 音频 | BGM 消失/中断；BGM 风格跟属性走与场景氛围冲突 | AudioContext resume 异步，全程一首循环不 stopBgm。BGM 以场景氛围为准（如紧张场景即使 CHA 属性也用 `tense`） |
+| 8 | 选取 | 凭感觉选属性/模板；批量全用同一模板 | 看核心冲突选属性（打架→ATK，忍耐→WIL）。必须读 selection-manifest.json 匹配。覆盖 ≥10/12 模板，单模板 ≤3 次，相邻集不重复 |
+| 9 | 部署 | OSS 资源 404；跨域问题 | 先 `oss-upload.js` 上传再替换 URL。Bucket 设 public-read ACL |
+| 10 | 机制 | 某阶段无决策/无惩罚；死机制（如体力永远耗不空） | 每阶段风险/回报 + 递增惩罚。审查模板机制是否有实际影响，无意义的用有决策价值的替换（如体力→冲刺加速） |
+| 11 | kmeans | 配色不稳定/弱色 fallback/file:// 不生效/暗色图取色失败 | 优先 `CTX.coverImage` 触发 kmeans。确定性均匀采样禁止 `Math.random()`。弱色用增强不 fallback。门卫已放宽至 `L>0.18 S>0.30`。**必须 localhost 验证** |
+| 12 | 叙事-对白 | 对白太多点击疲劳；结尾加下集预告剧透 | NarrativeScene 对白 ≤4 句，精简到核心冲突。结语只聚焦本集，**不剧透下集** |
+| 13 | 叙事-结语 | 结算只有数字/评级缺失/结语按钮重叠/两层结语体验差 | **只用一层 `resultTexts`**（S/A/B/C 四档），在结算 UI **之前**展示。`resetAllDOM()` 后必须恢复子元素可见性（`grade-letter` 等）。不要加 narrativeOutro |
+| 14 | 叙事-人物图 | 强塞头像效果差；透明 PNG 背景黑色 | 不合适就不放。透明 PNG 后面加 `fillRoundedRect(0xffffff)` 白色垫层 |
+| 15 | 叙事-bug | NarrativeScene 结束后 isOver 导致 win 回调跳过 | 加 `_winning` 标记位，win 路径绕过 `finishGame` |
+| 16 | 定制-色彩 | candy 改色不生效；血条颜色太接近；色系死板跟属性走 | 同时覆写 `CANDY.cardPink` 和 `cardPinkLt`。playerHp→accent, opponentHp→secondary。色系服务于剧情氛围，不必按属性分配 |
+| 17 | 定制-UI | 改布局导致混乱；drawSceneBg 未生效；命名都叫 -dark；ResultScene 背景消失 | **不改原模板 UI/UX 布局**，只通过 CTX 注入。检查 BootScene 资源加载。命名按风格（-sweet/-noir/-tense）。ResultScene 全屏矩形 alpha: 0.85 |
+| 18 | 定制-文案 | 机制文案/游戏名/按钮留英文默认值 | 游戏名和规则剧情化（如"碎片拼图"）。按钮全部中文化。**统计标签（Score/Combo）保留英文** |
+| 19 | V3组件 | V3 模板缺 NarrativeScene/头像/结语/考验宣告卡 | **必须注入三大组件**：NarrativeScene + initShellDOM 升级（`CTX.portraits`）+ ResultScene 结语 overlay。必须加考验宣告卡衔接剧情→游戏 |
+| 20 | 批量生成 | 脚本不注入组件；先批量再修标杆；生成后不校验 | 以验证通过的标杆 ep 作母版，脚本只替换 CTX 块和文本。强制顺序：标杆→批量→Step 7b 校验全部 ep 通过 |
+| 21 | STORY_THEME | CSS 手绘；图片边缘生硬；无切换动画；改了游戏逻辑 | **禁止手工作图**，全用 AI 生成。边缘用 `mask-image: radial-gradient(...)` 柔化。多状态用多图 + opacity 交叉淡入。只 hook 视觉函数，不改 update/计分/碰撞逻辑 |
 
 ## Episode Skin Pattern (叙事包装)
 

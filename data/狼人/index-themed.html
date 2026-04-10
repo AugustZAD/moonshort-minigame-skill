@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>狼人 — 22集互动小游戏</title>
+<title>狼人 — Layer 3 环境主题版</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 :root{--bg:#0a0a12;--card:#14141f;--card-hover:#1c1c2e;--border:#2a2a3e;--text:#e8e8f0;--text-dim:#8888a0;--accent:#ec4f99;--accent-glow:rgba(236,79,153,.25)}
@@ -11,6 +11,10 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
 .header{text-align:center;padding:48px 20px 32px;background:linear-gradient(180deg,rgba(236,79,153,.08) 0%,transparent 100%)}
 .header h1{font-size:2rem;font-weight:800;letter-spacing:.05em;background:linear-gradient(135deg,#ec4f99,#f9a8d4);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
 .header p{color:var(--text-dim);margin-top:8px;font-size:.9rem}
+.header .tag{display:inline-block;margin-top:12px;padding:4px 14px;border-radius:20px;font-size:.75rem;font-weight:600;background:rgba(236,79,153,.15);color:#f9a8d4;letter-spacing:.05em}
+.nav-link{text-align:center;padding:0 20px 16px}
+.nav-link a{color:var(--text-dim);font-size:.8rem;text-decoration:none;border-bottom:1px dashed var(--border);padding-bottom:2px;transition:color .2s}
+.nav-link a:hover{color:var(--accent)}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;padding:0 20px 60px;max-width:1200px;margin:0 auto}
 .card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:20px;cursor:pointer;transition:all .25s ease;text-decoration:none;color:inherit;display:flex;gap:16px;align-items:center}
 .card:hover{background:var(--card-hover);border-color:var(--accent);box-shadow:0 0 20px var(--accent-glow);transform:translateY(-2px)}
@@ -19,10 +23,10 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
 .card-title{font-size:1.05rem;font-weight:700;margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .card-sub{font-size:.8rem;color:var(--text-dim);display:flex;gap:8px;flex-wrap:wrap}
 .card-sub span{background:rgba(255,255,255,.06);padding:2px 8px;border-radius:6px}
+.card-sub .atm{color:#f9a8d4;background:rgba(236,79,153,.1)}
 .arc{text-align:center;padding:28px 20px 12px;max-width:1200px;margin:0 auto}
 .arc h2{font-size:1rem;font-weight:700;color:var(--text-dim);letter-spacing:.1em;text-transform:uppercase;border-bottom:1px solid var(--border);padding-bottom:8px;margin-bottom:4px}
 
-/* theme colors */
 .t-dark{background:linear-gradient(135deg,#8B5CF6,#6D28D9)}
 .t-mystery{background:linear-gradient(135deg,#3B82F6,#2563EB)}
 .t-nature{background:linear-gradient(135deg,#10B981,#059669)}
@@ -44,43 +48,44 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
 
 <div class="header">
   <h1>WOLVEN</h1>
-  <p>22 集剧情互动小游戏 &middot; 点击即玩</p>
+  <p>22 集剧情互动小游戏 &middot; Layer 3 环境主题版</p>
+  <span class="tag">STORY_THEME variant</span>
 </div>
-<div style="text-align:center;padding:0 20px 16px"><a href="index-themed.html" style="color:var(--text-dim);font-size:.8rem;text-decoration:none;border-bottom:1px dashed var(--border);padding-bottom:2px">Layer 3 环境主题版 &rarr;</a></div>
+<div class="nav-link"><a href="index.html">&larr; 返回原版</a></div>
 
 <div id="app"></div>
 
-<div class="footer">Moonshort Mini-Game Framework &middot; Phaser 3</div>
+<div class="footer">Moonshort Mini-Game Framework &middot; Phaser 3 &middot; Layer 3 STORY_THEME</div>
 
 <script>
 const EPISODES = [
-  // [dir, label, title, gameType, theme]
+  // [dir, label, title, gameType, theme, atmosphere]
   // ── Act I: 暗流涌动 ──
-  ['ep1',  'EP 1',  'Kenny &mdash; 压住心跳',         'QTE 蓄力释放', 'dark'],
-  ['ep2',  'EP 2',  '工具 &mdash; 不跪的理由',         '红绿灯',      'dark'],
-  ['ep3',  'EP 3',  '替代品 &mdash; 碎片拼图',         '传送带分拣',   'dark'],
-  ['ep4',  'EP 4',  '打量 &mdash; 权力棋盘',           '探照灯搜寻',   'dark'],
-  ['ep5',  'EP 5',  '撑不住 &mdash; 撑住',             '意志涌动',     'dark'],
+  ['ep1',  'EP 1',  'Kenny &mdash; 压住心跳',         'QTE 蓄力释放', 'dark',    'pulse'],
+  ['ep2',  'EP 2',  '工具 &mdash; 不跪的理由',         '红绿灯',      'dark',    'custom'],
+  ['ep3',  'EP 3',  '替代品 &mdash; 碎片拼图',         '传送带分拣',   'dark',    'calm'],
+  ['ep4',  'EP 4',  '打量 &mdash; 权力棋盘',           '探照灯搜寻',   'dark',    'calm'],
+  ['ep5',  'EP 5',  '撑不住 &mdash; 撑住',             '意志涌动',     'dark',    'pulse'],
   // ── Act II: 对决与崩塌 ──
-  ['ep6',  'EP 6',  '棋子 &mdash; 最后摊牌',           'QTE Boss格挡', 'dark'],
-  ['ep7',  'EP 7',  '嫉妒 &mdash; 锻造武器',           '大炮瞄准',     'dark'],
-  ['ep8',  'EP 8',  '没有否认 &mdash; 拉扯真相',       '钓鱼',         'dark'],
-  ['ep9',  'EP 9',  '给我 &mdash; 握紧声音',           '意志涌动',     'dark'],
-  ['ep10', 'EP 10', '熄灭 &mdash; 最后一口气',         'QTE 蓄力释放', 'dark'],
+  ['ep6',  'EP 6',  '棋子 &mdash; 最后摊牌',           'QTE Boss格挡', 'dark',    'pulse'],
+  ['ep7',  'EP 7',  '嫉妒 &mdash; 锻造武器',           '大炮瞄准',     'dark',    'warm'],
+  ['ep8',  'EP 8',  '没有否认 &mdash; 拉扯真相',       '钓鱼',         'dark',    'calm'],
+  ['ep9',  'EP 9',  '给我 &mdash; 握紧声音',           '意志涌动',     'dark',    'pulse'],
+  ['ep10', 'EP 10', '熄灭 &mdash; 最后一口气',         'QTE 蓄力释放', 'dark',    'pulse'],
   // ── Act III: 逃离 ──
-  ['ep11', 'EP 11', '撤不回 &mdash; 规则战争',         '停车冲刺',     'mystery'],
-  ['ep12', 'EP 12', '等你了 &mdash; 翻窗逃离',         '车道冲刺',     'dark'],
-  ['ep12_minor','EP 12B','坐着别动 &mdash; 坐到最后',   '红绿灯',      'dark'],
-  ['ep13', 'EP 13', '走进去 &mdash; 踏过边界',         '迷宫逃脱',     'nature'],
-  ['ep13_minor','EP 13B','我自己走 &mdash; 独自前行',   '传送带分拣',   'nature'],
-  ['ep14', 'EP 14', '快没了 &mdash; 黑暗奔逃',         '车道冲刺',     'nature'],
+  ['ep11', 'EP 11', '撤不回 &mdash; 规则战争',         '停车冲刺',     'mystery', 'calm'],
+  ['ep12', 'EP 12', '等你了 &mdash; 翻窗逃离',         '车道冲刺',     'dark',    'speed'],
+  ['ep12_minor','EP 12B','坐着别动 &mdash; 坐到最后',   '红绿灯',      'dark',    'pulse'],
+  ['ep13', 'EP 13', '走进去 &mdash; 踏过边界',         '迷宫逃脱',     'nature',  'speed'],
+  ['ep13_minor','EP 13B','我自己走 &mdash; 独自前行',   '传送带分拣',   'nature',  'calm'],
+  ['ep14', 'EP 14', '快没了 &mdash; 黑暗奔逃',         '车道冲刺',     'nature',  'speed'],
   // ── Act IV: 疗愈与重逢 ──
-  ['ep15', 'EP 15', '活下去 &mdash; 重新呼吸',         '钓鱼',         'nature'],
-  ['ep16', 'EP 16', '回来了 &mdash; 月光辨认',         '颜色匹配',     'nature'],
-  ['ep17', 'EP 17', '准备好了 &mdash; 道别的勇气',     '探照灯搜寻',   'nature'],
-  ['ep18', 'EP 18', '等着你 &mdash; 迈出第一步',       '大炮瞄准',     'sweet'],
-  ['ep19', 'EP 19', '月下 &mdash; 满月之约',           'QTE Boss格挡', 'ocean'],
-  ['ep20', 'EP 20', '此地 &mdash; 找到方向',           '迷宫逃脱',     'energy'],
+  ['ep15', 'EP 15', '活下去 &mdash; 重新呼吸',         '钓鱼',         'nature',  'warm'],
+  ['ep16', 'EP 16', '回来了 &mdash; 月光辨认',         '颜色匹配',     'nature',  'moon'],
+  ['ep17', 'EP 17', '准备好了 &mdash; 道别的勇气',     '探照灯搜寻',   'nature',  'warm'],
+  ['ep18', 'EP 18', '等着你 &mdash; 迈出第一步',       '大炮瞄准',     'sweet',   'warm'],
+  ['ep19', 'EP 19', '月下 &mdash; 满月之约',           'QTE Boss格挡', 'ocean',   'moon'],
+  ['ep20', 'EP 20', '此地 &mdash; 找到方向',           '迷宫逃脱',     'energy',  'moon'],
 ];
 
 const ARCS = [
@@ -96,13 +101,13 @@ let html = '';
 for (const arc of ARCS) {
   html += `<div class="arc"><h2>${arc.name}</h2></div><div class="grid">`;
   for (let i = arc.from; i < arc.to; i++) {
-    const [dir, label, title, gameType, theme] = EPISODES[i];
+    const [dir, label, title, gameType, theme, atm] = EPISODES[i];
     html += `
-      <a class="card" href="${dir}/game/index.html" target="_blank">
+      <a class="card" href="${dir}/game/variant-themed.html" target="_blank">
         <div class="ep-badge t-${theme}">${label}</div>
         <div class="card-body">
           <div class="card-title">${title}</div>
-          <div class="card-sub"><span>${gameType}</span></div>
+          <div class="card-sub"><span>${gameType}</span><span class="atm">${atm}</span></div>
         </div>
       </a>`;
   }

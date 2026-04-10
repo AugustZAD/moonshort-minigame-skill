@@ -18,6 +18,7 @@ const TEMPLATES_DIR = path.join(__dirname, '..', 'packs', 'attribute-archetypes'
 const CTX_BACKUP = path.join(BASE, '_ctx_backup.json');
 
 const allCtx = JSON.parse(fs.readFileSync(CTX_BACKUP, 'utf-8'));
+const isVariant = process.argv.includes('--variant');
 
 const TEMPLATE_MAP = {
   ep1: 'qte-hold-release',
@@ -161,141 +162,225 @@ const STORY_RESKIN = {
   },
 };
 
+// ── Layer 3 theme builder ─────────────────────────────────────────────────────
+// Generates atmospheric cssOverride + vignette jsOverride for each episode.
+// bg: [top, mid, bot] gradient colors. glow: {color, top, size} ambient light.
+// extraCss: template-specific UI overrides. atm: atmosphere type.
+function makeTheme(name, bg, glow, extraCss, atm) {
+  let css = `\n  /* ═══ Layer 3 Theme: ${name} ═══ */`;
+  css += `\n  body, #game-shell { background: linear-gradient(180deg, ${bg[0]} 0%, ${bg[1]} 40%, ${bg[2]} 100%) !important; }`;
+  if (glow) {
+    css += `\n  #game-shell::after { content:''; position:absolute; top:${glow.top||'-40px'}; left:50%; transform:translateX(-50%); width:${glow.size||'220px'}; height:${glow.size||'220px'}; background:radial-gradient(circle, ${glow.color} 0%, transparent 65%); pointer-events:none; z-index:0; }`;
+  }
+  if (extraCss) css += '\n' + extraCss;
+  const vigStyles = {
+    pulse: 'position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:1;background:radial-gradient(ellipse at 50% 40%,transparent 40%,rgba(0,0,0,.35) 100%);animation:thPulse 4s ease-in-out infinite',
+    moon:  'position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:1;background:radial-gradient(ellipse at 50% 12%,rgba(140,170,220,.06) 0%,transparent 40%),radial-gradient(ellipse at 50% 50%,transparent 50%,rgba(0,0,0,.3) 100%)',
+    warm:  'position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:1;background:radial-gradient(ellipse at 50% 30%,rgba(200,160,100,.05) 0%,transparent 35%),radial-gradient(ellipse at 50% 50%,transparent 50%,rgba(0,0,0,.28) 100%)',
+    speed: 'position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:1;background:radial-gradient(ellipse at 50% 30%,transparent 30%,rgba(0,0,0,.4) 100%)',
+    calm:  'position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:1;background:radial-gradient(ellipse at 50% 40%,transparent 50%,rgba(0,0,0,.3) 100%)',
+  };
+  const style = vigStyles[atm] || vigStyles.calm;
+  let js;
+  if (atm === 'pulse') {
+    js = `(function(){var s=document.getElementById('game-shell'),v=document.createElement('div');v.id='theme-vig';var st=document.createElement('style');st.textContent='@keyframes thPulse{0%,100%{opacity:.25}50%{opacity:.45}}';document.head.appendChild(st);v.style.cssText='${style}';s.appendChild(v)})();`;
+  } else {
+    js = `(function(){var s=document.getElementById('game-shell'),v=document.createElement('div');v.id='theme-vig';v.style.cssText='${style}';s.appendChild(v)})();`;
+  }
+  return { cssOverride: css, jsOverride: js };
+}
+
 // ── Per-episode environment theme (Layer 3: game shell → story world) ────────
 // cssOverride is injected before </style>; jsOverride is appended after sprite patches
 const STORY_THEME = {
-  ep2: { // 不跪的理由 — red-light-green-light → Alpha 威压下的站稳考验
+  // ── ep1: qte-hold-release — 暗红脉搏 ──────────────────────────────
+  ep1: makeTheme('暗红脉搏 — 压住心跳',
+    ['#0a0408', '#1a0a10', '#0d0408'],
+    { color: 'rgba(180,40,60,0.06)', top: '-40px', size: '220px' },
+    `  .gauge-area { filter: drop-shadow(0 0 20px rgba(204,51,68,0.25)) !important; }
+  .gauge-center { box-shadow: inset 0 0 30px rgba(204,51,68,0.08) !important; }`, 'pulse'),
+
+  // ── ep2: red-light-green-light — 狼眼替换（完整自定义） ────────────
+  ep2: {
     cssOverride: `
   /* ═══ Layer 3 Theme: Alpha 注视（狼眼） ═══ */
-
-  /* 隐藏原交通灯，用狼眼替代 */
   .traffic-light { display: none !important; }
-
-  /* ── 狼眼容器 ── */
-  .wolf-eye {
-    position: absolute; top: 96px; left: 50%; transform: translateX(-50%);
-    width: 200px; height: 200px; z-index: 10;
-    display: flex; align-items: center; justify-content: center;
-  }
-
-  /* ── 眼球图层（三张叠加） ── */
-  .wolf-eye img {
-    position: absolute; top: 0; left: 0;
-    width: 100%; height: 100%;
-    object-fit: contain;
-    transition: opacity 0.35s ease, filter 0.35s ease;
-    pointer-events: none;
-    -webkit-mask-image: radial-gradient(ellipse 70% 60% at 50% 50%, #000 35%, transparent 72%);
-    mask-image: radial-gradient(ellipse 70% 60% at 50% 50%, #000 35%, transparent 72%);
-  }
-  .wolf-eye .eye-open   { z-index: 1; }
-  .wolf-eye .eye-half   { z-index: 2; }
-  .wolf-eye .eye-closed { z-index: 3; }
-
-  /* ── 信号标签 ── */
-  .light-label {
-    top: 310px !important;
-    font-size: 28px !important;
-    letter-spacing: 4px !important;
-    text-shadow: 0 0 20px currentColor, 0 2px 10px rgba(0,0,0,0.7) !important;
-  }
-
-  /* ── 背景：深夜集会场 ── */
-  body, #game-shell {
-    background: linear-gradient(180deg, #06000a 0%, #150812 35%, #0a0610 70%, #050308 100%) !important;
-  }
-  /* 月光光晕 */
-  #game-shell::after {
-    content: ''; position: absolute; top: -60px; left: 50%; transform: translateX(-50%);
-    width: 260px; height: 260px;
-    background: radial-gradient(circle, rgba(140,170,220,0.06) 0%, transparent 65%);
-    pointer-events: none; z-index: 0;
-  }
-  /* 速度条 */
-  .stamina-fill {
-    background: linear-gradient(90deg, #7a3adf, #df5a8a) !important;
-    box-shadow: 0 0 10px rgba(122, 58, 223, 0.4) !important;
-  }
-  .speed-text {
-    color: #df5a8a !important;
-    text-shadow: 0 0 8px rgba(223, 90, 138, 0.5) !important;
-  }
-  /* 跑道 */
-  .track-bg {
-    background: rgba(100, 80, 60, 0.25) !important;
-    border: 1px solid rgba(100, 80, 60, 0.15);
-  }
-  .track-fill {
-    background: linear-gradient(90deg, #7a3adf, #b05adf) !important;
-  }
-  /* 底部雾气 */
-  .btn-area::before {
-    content: ''; position: absolute; bottom: 100%; left: -12px; right: -12px; height: 80px;
-    background: linear-gradient(180deg, transparent 0%, rgba(5,3,8,0.6) 100%);
-    pointer-events: none;
-  }`,
+  .wolf-eye { position: absolute; top: 96px; left: 50%; transform: translateX(-50%); width: 200px; height: 200px; z-index: 10; display: flex; align-items: center; justify-content: center; }
+  .wolf-eye img { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: contain; transition: opacity 0.35s ease, filter 0.35s ease; pointer-events: none; -webkit-mask-image: radial-gradient(ellipse 70% 60% at 50% 50%, #000 35%, transparent 72%); mask-image: radial-gradient(ellipse 70% 60% at 50% 50%, #000 35%, transparent 72%); }
+  .wolf-eye .eye-open { z-index: 1; } .wolf-eye .eye-half { z-index: 2; } .wolf-eye .eye-closed { z-index: 3; }
+  .light-label { top: 310px !important; font-size: 28px !important; letter-spacing: 4px !important; text-shadow: 0 0 20px currentColor, 0 2px 10px rgba(0,0,0,0.7) !important; }
+  body, #game-shell { background: linear-gradient(180deg, #06000a 0%, #150812 35%, #0a0610 70%, #050308 100%) !important; }
+  #game-shell::after { content: ''; position: absolute; top: -60px; left: 50%; transform: translateX(-50%); width: 260px; height: 260px; background: radial-gradient(circle, rgba(140,170,220,0.06) 0%, transparent 65%); pointer-events: none; z-index: 0; }
+  .stamina-fill { background: linear-gradient(90deg, #7a3adf, #df5a8a) !important; box-shadow: 0 0 10px rgba(122, 58, 223, 0.4) !important; }
+  .speed-text { color: #df5a8a !important; text-shadow: 0 0 8px rgba(223, 90, 138, 0.5) !important; }
+  .track-bg { background: rgba(100, 80, 60, 0.25) !important; border: 1px solid rgba(100, 80, 60, 0.15); }
+  .track-fill { background: linear-gradient(90deg, #7a3adf, #b05adf) !important; }
+  .btn-area::before { content: ''; position: absolute; bottom: 100%; left: -12px; right: -12px; height: 80px; background: linear-gradient(180deg, transparent 0%, rgba(5,3,8,0.6) 100%); pointer-events: none; }`,
     jsOverride: `
 (function() {
-  // ── 创建狼眼 DOM ──
   var shell = document.getElementById('game-shell');
   var eye = document.createElement('div');
-  eye.className = 'wolf-eye hidden';
-  eye.id = 'wolf-eye';
+  eye.className = 'wolf-eye hidden'; eye.id = 'wolf-eye';
   eye.setAttribute('data-state', 'green');
   eye.innerHTML = '<img class="eye-open" src="theme-eye.png" alt=""><img class="eye-half" src="theme-eye-half.png" alt=""><img class="eye-closed" src="theme-eye-closed.png" alt="">';
-  // 插入到 traffic-light 之后
   var tl = document.getElementById('traffic-light');
   if (tl && tl.parentNode) tl.parentNode.insertBefore(eye, tl.nextSibling);
-
-  // ── Hook setTrafficLight 同步狼眼状态 ──
   var origSetTL = window.setTrafficLight;
   window.setTrafficLight = function(color) {
     origSetTL(color);
     var eyeEl = document.getElementById('wolf-eye');
     if (!eyeEl) return;
     eyeEl.setAttribute('data-state', color || 'off');
-    var eOpen = eyeEl.querySelector('.eye-open');
-    var eHalf = eyeEl.querySelector('.eye-half');
-    var eClosed = eyeEl.querySelector('.eye-closed');
+    var eOpen = eyeEl.querySelector('.eye-open'), eHalf = eyeEl.querySelector('.eye-half'), eClosed = eyeEl.querySelector('.eye-closed');
     if (!eOpen) return;
-    if (color === 'red') {
-      eOpen.style.opacity = '1';
-      eHalf.style.opacity = '0';
-      eClosed.style.opacity = '0';
-      eOpen.style.filter = 'drop-shadow(0 0 30px rgba(255,20,20,0.8)) brightness(1.15)';
-    } else if (color === 'yellow') {
-      eOpen.style.opacity = '0';
-      eHalf.style.opacity = '1';
-      eClosed.style.opacity = '0';
-      eHalf.style.filter = 'drop-shadow(0 0 15px rgba(255,160,30,0.5)) brightness(0.9)';
-    } else if (color === 'green') {
-      eOpen.style.opacity = '0';
-      eHalf.style.opacity = '0';
-      eClosed.style.opacity = '1';
-      eClosed.style.filter = 'drop-shadow(0 0 4px rgba(60,10,10,0.2)) brightness(0.6)';
-    } else {
-      eOpen.style.opacity = '0';
-      eHalf.style.opacity = '0';
-      eClosed.style.opacity = '1';
-      eClosed.style.filter = 'brightness(0.3)';
-    }
+    if (color === 'red') { eOpen.style.opacity='1'; eHalf.style.opacity='0'; eClosed.style.opacity='0'; eOpen.style.filter='drop-shadow(0 0 30px rgba(255,20,20,0.8)) brightness(1.15)'; }
+    else if (color === 'yellow') { eOpen.style.opacity='0'; eHalf.style.opacity='1'; eClosed.style.opacity='0'; eHalf.style.filter='drop-shadow(0 0 15px rgba(255,160,30,0.5)) brightness(0.9)'; }
+    else if (color === 'green') { eOpen.style.opacity='0'; eHalf.style.opacity='0'; eClosed.style.opacity='1'; eClosed.style.filter='drop-shadow(0 0 4px rgba(60,10,10,0.2)) brightness(0.6)'; }
+    else { eOpen.style.opacity='0'; eHalf.style.opacity='0'; eClosed.style.opacity='1'; eClosed.style.filter='brightness(0.3)'; }
   };
-
-  // ── 让狼眼跟 traffic-light 同步显隐 ──
-  // traffic-light 被 setVisible 控制，我们同步 wolf-eye
   var origSetVisible = window.setVisible;
   window.setVisible = function(id, visible) {
     origSetVisible(id, visible);
-    if (id === 'traffic-light') {
-      var eyeEl = document.getElementById('wolf-eye');
-      if (eyeEl) {
-        if (visible) eyeEl.classList.remove('hidden');
-        else eyeEl.classList.add('hidden');
-      }
-    }
+    if (id === 'traffic-light') { var e = document.getElementById('wolf-eye'); if (e) { if (visible) e.classList.remove('hidden'); else e.classList.add('hidden'); } }
   };
 })();`,
   },
+
+  // ── ep3: conveyor-sort — 暗室证据 ──────────────────────────────────
+  ep3: makeTheme('暗室证据 — 碎片拼图',
+    ['#0d0a06', '#1a1408', '#0f0c06'],
+    { color: 'rgba(196,163,90,0.05)', top: '-30px', size: '200px' },
+    `  .hud-bar { border-bottom-color: rgba(196,163,90,0.2) !important; }
+  .hint-text { text-shadow: 0 0 10px rgba(196,163,90,0.3) !important; }`, 'calm'),
+
+  // ── ep4: spotlight-seek — 权力暗室 ─────────────────────────────────
+  ep4: makeTheme('权力暗室 — 权力棋盘',
+    ['#06080d', '#0a1020', '#060810'],
+    { color: 'rgba(212,168,64,0.06)', top: '-50px', size: '240px' },
+    `  .hud-bar { border-bottom-color: rgba(212,168,64,0.2) !important; }
+  .hint-text { text-shadow: 0 0 12px rgba(212,168,64,0.35) !important; }`, 'calm'),
+
+  // ── ep5: will-surge — 崩溃边缘 ────────────────────────────────────
+  ep5: makeTheme('崩溃边缘 — 撑住',
+    ['#08040d', '#180a20', '#0a0610'],
+    { color: 'rgba(144,64,204,0.06)', top: '-40px', size: '220px' },
+    `  .tug-fill-will { box-shadow: 0 0 8px rgba(144,64,204,0.35) !important; }
+  .surge-bar-fill { box-shadow: 0 0 6px rgba(144,64,204,0.4) !important; }`, 'pulse'),
+
+  // ── ep6: qte-boss-parry — 对峙风暴 ────────────────────────────────
+  ep6: makeTheme('对峙风暴 — 直面摊牌',
+    ['#0a0406', '#200a10', '#0d0408'],
+    { color: 'rgba(232,64,64,0.06)', top: '-40px', size: '230px' },
+    `  .circle-frame { box-shadow: 0 0 20px rgba(232,64,64,0.2) !important; }
+  .timing-bar-fill { box-shadow: 0 0 6px rgba(232,64,64,0.35) !important; }`, 'pulse'),
+
+  // ── ep7: cannon-aim — 锻造炉火 ────────────────────────────────────
+  ep7: makeTheme('锻造炉火 — 嫉妒锻造',
+    ['#0d0804', '#201008', '#100a04'],
+    { color: 'rgba(232,112,48,0.06)', top: '-40px', size: '220px' },
+    `  .info-strip { border-bottom-color: rgba(232,112,48,0.2) !important; }
+  .angle-display { text-shadow: 0 0 10px rgba(232,112,48,0.35) !important; }`, 'warm'),
+
+  // ── ep8: stardew-fishing — 审讯拉扯 ───────────────────────────────
+  ep8: makeTheme('审讯拉扯 — 拉扯真相',
+    ['#06080a', '#0a1018', '#060a0d'],
+    { color: 'rgba(68,136,204,0.05)', top: '-40px', size: '220px' },
+    null, 'calm'),
+
+  // ── ep9: will-surge — 冷酷索取 ────────────────────────────────────
+  ep9: makeTheme('冷酷索取 — 给我',
+    ['#040608', '#081020', '#040810'],
+    { color: 'rgba(48,96,170,0.06)', top: '-40px', size: '220px' },
+    `  .tug-fill-will { box-shadow: 0 0 8px rgba(48,96,170,0.35) !important; }
+  .surge-bar-fill { box-shadow: 0 0 6px rgba(48,96,170,0.4) !important; }`, 'pulse'),
+
+  // ── ep10: qte-hold-release — 窒息冰蓝 ─────────────────────────────
+  ep10: makeTheme('窒息冰蓝 — 最后一口气',
+    ['#04060a', '#081520', '#040810'],
+    { color: 'rgba(48,136,204,0.06)', top: '-40px', size: '220px' },
+    `  .gauge-area { filter: drop-shadow(0 0 20px rgba(48,136,204,0.25)) !important; }
+  .gauge-center { box-shadow: inset 0 0 30px rgba(48,136,204,0.08) !important; }`, 'pulse'),
+
+  // ── ep11: parking-rush — 议事厅 ───────────────────────────────────
+  ep11: makeTheme('议事厅 — 规则战争',
+    ['#080806', '#141410', '#0a0a06'],
+    { color: 'rgba(138,122,80,0.05)', top: '-30px', size: '200px' },
+    null, 'calm'),
+
+  // ── ep12: lane-dash — 黑暗走廊 ────────────────────────────────────
+  ep12: makeTheme('黑暗走廊 — 翻窗逃离',
+    ['#060406', '#100810', '#080408'],
+    { color: 'rgba(170,68,136,0.05)', top: '-40px', size: '220px' },
+    `  .status-bar { border-bottom-color: rgba(170,68,136,0.2) !important; }`, 'speed'),
+
+  // ── ep12_minor: red-light-green-light — 审讯压迫 ──────────────────
+  ep12_minor: makeTheme('审讯压迫 — 坐到最后',
+    ['#080604', '#18100a', '#0d0a06'],
+    { color: 'rgba(204,136,48,0.05)', top: '-30px', size: '200px' },
+    `  .stamina-fill { background: linear-gradient(90deg, #cc8830, #ddaa50) !important; box-shadow: 0 0 10px rgba(204,136,48,0.4) !important; }
+  .speed-text { color: #ddaa50 !important; text-shadow: 0 0 8px rgba(204,136,48,0.5) !important; }
+  .track-fill { background: linear-gradient(90deg, #cc8830, #ddaa50) !important; }
+  .track-bg { background: rgba(100,80,50,0.2) !important; }`, 'pulse'),
+
+  // ── ep13: maze-escape — 暗夜边境 ──────────────────────────────────
+  ep13: makeTheme('暗夜边境 — 踏过边界',
+    ['#04060a', '#0a1018', '#060a10'],
+    { color: 'rgba(68,170,102,0.05)', top: '-40px', size: '220px' },
+    `  .maze-info { border-bottom-color: rgba(68,170,102,0.2) !important; }
+  .btn-dpad .base { border-color: rgba(68,170,102,0.2) !important; }`, 'speed'),
+
+  // ── ep13_minor: conveyor-sort — 孤独灰蓝 ──────────────────────────
+  ep13_minor: makeTheme('孤独灰蓝 — 独自前行',
+    ['#060808', '#0e1418', '#080a0a'],
+    { color: 'rgba(102,136,170,0.05)', top: '-30px', size: '200px' },
+    `  .hud-bar { border-bottom-color: rgba(102,136,170,0.2) !important; }
+  .hint-text { text-shadow: 0 0 10px rgba(102,136,170,0.3) !important; }`, 'calm'),
+
+  // ── ep14: lane-dash — 月下森林 ────────────────────────────────────
+  ep14: makeTheme('月下森林 — 黑暗奔逃',
+    ['#040806', '#081810', '#040a06'],
+    { color: 'rgba(64,170,96,0.06)', top: '-50px', size: '240px' },
+    `  .status-bar { border-bottom-color: rgba(64,170,96,0.2) !important; }`, 'speed'),
+
+  // ── ep15: stardew-fishing — 雨后新绿 ──────────────────────────────
+  ep15: makeTheme('雨后新绿 — 重新呼吸',
+    ['#060a08', '#0e1a14', '#080d0a'],
+    { color: 'rgba(68,187,136,0.05)', top: '-40px', size: '220px' },
+    null, 'warm'),
+
+  // ── ep16: color-match — 月夜靛蓝 ──────────────────────────────────
+  ep16: makeTheme('月夜靛蓝 — 月光辨认',
+    ['#060810', '#101830', '#080a18'],
+    { color: 'rgba(102,136,221,0.06)', top: '-50px', size: '240px' },
+    `  .mode-hint { text-shadow: 0 0 10px rgba(102,136,221,0.35) !important; }`, 'moon'),
+
+  // ── ep17: spotlight-seek — 夕阳暖橙 ───────────────────────────────
+  ep17: makeTheme('夕阳暖橙 — 道别的勇气',
+    ['#0d0806', '#201410', '#140e08'],
+    { color: 'rgba(221,136,68,0.06)', top: '-40px', size: '220px' },
+    `  .hud-bar { border-bottom-color: rgba(221,136,68,0.2) !important; }
+  .hint-text { text-shadow: 0 0 10px rgba(221,136,68,0.3) !important; }`, 'warm'),
+
+  // ── ep18: cannon-aim — 咖啡暖棕 ───────────────────────────────────
+  ep18: makeTheme('咖啡暖棕 — 咖啡馆重逢',
+    ['#0a0806', '#1a1410', '#100d08'],
+    { color: 'rgba(176,136,80,0.05)', top: '-30px', size: '200px' },
+    `  .info-strip { border-bottom-color: rgba(176,136,80,0.2) !important; }
+  .angle-display { text-shadow: 0 0 10px rgba(176,136,80,0.3) !important; }`, 'warm'),
+
+  // ── ep19: qte-boss-parry — 月下银蓝 ───────────────────────────────
+  ep19: makeTheme('月下银蓝 — 满月之约',
+    ['#06080d', '#0e1828', '#080a14'],
+    { color: 'rgba(136,170,204,0.07)', top: '-60px', size: '260px' },
+    `  .circle-frame { box-shadow: 0 0 20px rgba(136,170,204,0.15) !important; }
+  .timing-bar-fill { box-shadow: 0 0 6px rgba(136,170,204,0.3) !important; }`, 'moon'),
+
+  // ── ep20: maze-escape — 晨雾新生 ──────────────────────────────────
+  ep20: makeTheme('晨雾新生 — 新领地方向',
+    ['#060808', '#101a18', '#080d0c'],
+    { color: 'rgba(85,170,136,0.06)', top: '-40px', size: '220px' },
+    `  .maze-info { border-bottom-color: rgba(85,170,136,0.2) !important; }
+  .btn-dpad .base { border-color: rgba(85,170,136,0.2) !important; }`, 'moon'),
 };
 
 // ── Narrative overlay CSS ───────────────────────────────────────────────────
@@ -1581,7 +1666,8 @@ ${preloadLines}
   }
 
   // ── Write output ──────────────────────────────────────────────────────────
-  const outputPath = path.join(BASE, ep, 'game', 'index.html');
+  const outFile = isVariant ? 'variant-themed.html' : 'index.html';
+  const outputPath = path.join(BASE, ep, 'game', outFile);
   fs.writeFileSync(outputPath, html, 'utf-8');
-  console.log(`✅ ${ep}: ${templateId} (${(html.length / 1024).toFixed(1)}KB)`);
+  console.log(`✅ ${ep}: ${templateId} → ${outFile} (${(html.length / 1024).toFixed(1)}KB)`);
 }
