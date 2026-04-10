@@ -212,6 +212,10 @@
   .narrative-overlay .narrator { font-weight:800;font-size:14px;color:var(--primary-light,#C4B5FD);letter-spacing:2px;text-transform:uppercase;margin-bottom:16px; }
   .narrative-overlay .line { font-weight:700;font-size:16px;color:#fff;text-align:center;line-height:1.6;max-width:320px; }
   .narrative-overlay .tap-hint { position:absolute;bottom:60px;font-weight:700;font-size:12px;color:rgba(255,255,255,0.4);letter-spacing:2px; }
+
+  /* ═══ STORY_THEME injection ═══ */
+  /* ═══ Layer 3 Theme: 踏过边界 — 荆棘丛林 ═══ */
+  /* 墙体替换由 Phaser image 在 canvas 内完成，CSS 仅无操作 */
 </style>
 <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
 </head>
@@ -1296,6 +1300,82 @@ function fitShell() {
 }
 window.addEventListener('resize', fitShell);
 fitShell();
+// ═══ STORY_THEME JS ═══
+
+(function(){
+  var attempts = 0;
+  var hookInterval = setInterval(function(){
+    attempts++;
+    var game = window.__game;
+    if (!game || !game.scene || attempts > 80) {
+      if (attempts > 80) clearInterval(hookInterval);
+      return;
+    }
+    var gs = game.scene.getScene('GameScene');
+    var bs = game.scene.getScene('BootScene');
+    if (!gs || gs.__themeWallHooked) return;
+    gs.__themeWallHooked = true;
+    clearInterval(hookInterval);
+
+    if (bs && !bs.__themeWallPreloaded) {
+      bs.__themeWallPreloaded = true;
+      if (bs.load) {
+        bs.load.image('ep_theme_wall', 'theme-wall.png');
+        bs.load.once('complete', function(){});
+        bs.load.start();
+      }
+    }
+    if (gs.load && !gs.textures.exists('ep_theme_wall')) {
+      gs.load.image('ep_theme_wall', 'theme-wall.png');
+      gs.load.once('complete', function(){
+        if (gs.__themeWallNeedRender) renderWalls();
+      });
+      gs.load.start();
+    }
+
+    function renderWalls() {
+      if (!gs.map || !gs.textures.exists('ep_theme_wall')) {
+        gs.__themeWallNeedRender = true;
+        return;
+      }
+      gs.__themeWallNeedRender = false;
+      if (gs._themeWalls && gs._themeWalls.length) {
+        gs._themeWalls.forEach(function(w){ if (w && w.destroy) w.destroy(); });
+      }
+      gs._themeWalls = [];
+      for (var y = 0; y < gs.map.length; y++) {
+        for (var x = 0; x < gs.map[y].length; x++) {
+          if (gs.map[y][x] === '#') {
+            var px = gs.boardX + x * gs.cell + gs.cell / 2;
+            var py = gs.boardY + y * gs.cell + gs.cell / 2;
+            var img = gs.add.image(px, py, 'ep_theme_wall')
+              .setDisplaySize(gs.cell - 1, gs.cell - 1)
+              .setOrigin(0.5)
+              .setDepth(5.5);
+            gs._themeWalls.push(img);
+          }
+        }
+      }
+    }
+
+    if (gs.map) renderWalls();
+
+    var origLoadMaze = gs.loadMaze;
+    if (typeof origLoadMaze === 'function') {
+      gs.loadMaze = function(idx) {
+        var r = origLoadMaze.call(this, idx);
+        renderWalls();
+        return r;
+      };
+    }
+
+    if (gs.events && gs.events.on) {
+      gs.events.on('create', function(){
+        setTimeout(renderWalls, 0);
+      });
+    }
+  }, 80);
+})();
 
 (function() {
   var gs = GameScene.prototype || GameScene;

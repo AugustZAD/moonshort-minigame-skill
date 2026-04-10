@@ -1297,6 +1297,55 @@ function fitShell() {
 }
 window.addEventListener('resize', fitShell);
 fitShell();
+// ═══ STORY_THEME JS ═══
+
+(function(){
+  var attempts = 0;
+  var hookInterval = setInterval(function(){
+    attempts++;
+    var game = window.__game;
+    if (!game || !game.scene || attempts > 80) {
+      if (attempts > 80) clearInterval(hookInterval);
+      return;
+    }
+    var gs = game.scene.getScene('GameScene');
+    var bs = game.scene.getScene('BootScene');
+    if (!gs || gs.__themeGaugeHooked) return;
+    gs.__themeGaugeHooked = true;
+    clearInterval(hookInterval);
+
+    // Preload via both scene loaders
+    if (bs && bs.load && !bs.textures.exists('ep_theme_gauge')) {
+      bs.load.image('ep_theme_gauge', 'theme-gauge.png');
+      bs.load.start();
+    }
+    if (gs.load && !gs.textures.exists('ep_theme_gauge')) {
+      gs.load.image('ep_theme_gauge', 'theme-gauge.png');
+      gs.load.once('complete', function(){ renderFaceplate(); });
+      gs.load.start();
+    }
+
+    function renderFaceplate() {
+      if (!gs.textures.exists('ep_theme_gauge')) return;
+      // Destroy stale reference if any (scene restart makes old image inactive)
+      if (gs._themeGaugeImg) {
+        if (gs._themeGaugeImg.active && gs._themeGaugeImg.destroy) gs._themeGaugeImg.destroy();
+        gs._themeGaugeImg = null;
+      }
+      var cx = (typeof gs.gCx === 'number') ? gs.gCx : 196.5;
+      var cy = (typeof gs.gCy === 'number') ? gs.gCy : 440;
+      gs._themeGaugeImg = gs.add.image(cx, cy, 'ep_theme_gauge')
+        .setDisplaySize(300, 300)
+        .setOrigin(0.5)
+        .setDepth(2.3);
+    }
+
+    if (gs.gCx != null) renderFaceplate();
+    if (gs.events && gs.events.on) {
+      gs.events.on('create', function(){ setTimeout(renderFaceplate, 0); });
+    }
+  }, 80);
+})();
 
 (function() {
   var gs = GameScene.prototype || GameScene;

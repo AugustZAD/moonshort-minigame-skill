@@ -467,6 +467,331 @@ const STORY_THEME = {
   }, 80);
 })();`,
   },
+
+  // ── ep1: qte-hold-release — 压住心跳（心电监护仪） ─────────────────
+  // 模板默认视觉：抽象圆形环形能量表 → 换成复古医用心电监护仪 faceplate
+  // 剧情："酒馆对话中压住怦动的心跳，不能露出情绪"
+  // 靶点：canvas 圆形 gauge 中心 (W/2, 440) 半径 120
+  // 换壳策略：depth 2.3 — 原 dark 圆底 depth 2 之上、Layer 2 sprite-charge
+  //          depth 2.5 之下、trackGfx depth 3 之下。bezel 环外圈可见，
+  //          中心被 Layer 2 sprite 占据，两者各司其职。
+  //          每次 'create' 事件都 destroy+re-add（scene restart 保险）。
+  //          不改游戏逻辑。
+  // 素材：theme-gauge.png (1024x1024 circular heart monitor bezel)
+  ep1: {
+    cssOverride: '',
+    jsOverride: `
+(function(){
+  var attempts = 0;
+  var hookInterval = setInterval(function(){
+    attempts++;
+    var game = window.__game;
+    if (!game || !game.scene || attempts > 80) {
+      if (attempts > 80) clearInterval(hookInterval);
+      return;
+    }
+    var gs = game.scene.getScene('GameScene');
+    var bs = game.scene.getScene('BootScene');
+    if (!gs || gs.__themeGaugeHooked) return;
+    gs.__themeGaugeHooked = true;
+    clearInterval(hookInterval);
+
+    // Preload via both scene loaders
+    if (bs && bs.load && !bs.textures.exists('ep_theme_gauge')) {
+      bs.load.image('ep_theme_gauge', 'theme-gauge.png');
+      bs.load.start();
+    }
+    if (gs.load && !gs.textures.exists('ep_theme_gauge')) {
+      gs.load.image('ep_theme_gauge', 'theme-gauge.png');
+      gs.load.once('complete', function(){ renderFaceplate(); });
+      gs.load.start();
+    }
+
+    function renderFaceplate() {
+      if (!gs.textures.exists('ep_theme_gauge')) return;
+      // Destroy stale reference if any (scene restart makes old image inactive)
+      if (gs._themeGaugeImg) {
+        if (gs._themeGaugeImg.active && gs._themeGaugeImg.destroy) gs._themeGaugeImg.destroy();
+        gs._themeGaugeImg = null;
+      }
+      var cx = (typeof gs.gCx === 'number') ? gs.gCx : 196.5;
+      var cy = (typeof gs.gCy === 'number') ? gs.gCy : 440;
+      gs._themeGaugeImg = gs.add.image(cx, cy, 'ep_theme_gauge')
+        .setDisplaySize(300, 300)
+        .setOrigin(0.5)
+        .setDepth(2.3);
+    }
+
+    if (gs.gCx != null) renderFaceplate();
+    if (gs.events && gs.events.on) {
+      gs.events.on('create', function(){ setTimeout(renderFaceplate, 0); });
+    }
+  }, 80);
+})();`,
+  },
+
+  // ── ep4: spotlight-seek — 权力棋盘（黑棋王 + 金光） ────────────────
+  // 模板默认视觉：3x3 格子 + 高亮 target cell → 换成俯视大理石棋盘
+  // 剧情："在 Luna 的权力游戏中找到真正的棋子位置"
+  // 靶点：field 区域中心 (W/2, FIELD_TOP + FIELD_H/2)，3x3 grid 范围 ~300x300
+  // 换壳策略：加一张棋盘图在 depth 1.5（field bg depth 1 之上，cells depth 4 之下）
+  //          单元格高亮、点击、动画全部原样。
+  // 素材：theme-board.png (1024x1024 top-down marble chess board)
+  ep4: {
+    cssOverride: '',
+    jsOverride: `
+(function(){
+  var attempts = 0;
+  var hookInterval = setInterval(function(){
+    attempts++;
+    var game = window.__game;
+    if (!game || !game.scene || attempts > 80) {
+      if (attempts > 80) clearInterval(hookInterval);
+      return;
+    }
+    var gs = game.scene.getScene('GameScene');
+    var bs = game.scene.getScene('BootScene');
+    if (!gs || gs.__themeBoardHooked) return;
+    gs.__themeBoardHooked = true;
+    clearInterval(hookInterval);
+
+    if (bs && bs.load && !bs.textures.exists('ep_theme_board')) {
+      bs.load.image('ep_theme_board', 'theme-board.png');
+      bs.load.start();
+    }
+    if (gs.load && !gs.textures.exists('ep_theme_board')) {
+      gs.load.image('ep_theme_board', 'theme-board.png');
+      gs.load.once('complete', function(){ renderBoard(); });
+      gs.load.start();
+    }
+
+    function renderBoard() {
+      if (!gs.textures.exists('ep_theme_board')) return;
+      if (gs._themeBoardImg) {
+        if (gs._themeBoardImg.active && gs._themeBoardImg.destroy) gs._themeBoardImg.destroy();
+        gs._themeBoardImg = null;
+      }
+      // 3x3 grid geometry from template: sx=98, sy=FIELD_TOP+140, gap=98
+      // Field center W/2 = 196.5; grid vertical center ≈ sy + gap = 408
+      // Grid spans ~330x330. Board image slightly larger for bleed.
+      gs._themeBoardImg = gs.add.image(196.5, 408, 'ep_theme_board')
+        .setDisplaySize(340, 340)
+        .setOrigin(0.5)
+        .setDepth(1.5)
+        .setAlpha(0.55);
+    }
+
+    if (gs.cells && gs.cells.length) renderBoard();
+    if (gs.events && gs.events.on) {
+      gs.events.on('create', function(){ setTimeout(renderBoard, 0); });
+    }
+  }, 80);
+})();`,
+  },
+
+  // ── ep10: qte-hold-release — 最后一口气（氧气表） ─────────────────
+  // 同 ep1 模板但剧情完全不同 — 窒息前的最后一口气，冰冷黄铜氧气压力表。
+  // 靶点和策略与 ep1 一致（depth 2.3 让 bezel 框住 Layer 2 sprite）
+  // 素材完全独立（ep10 自己的 theme-gauge.png，氧气表而非心电图）
+  ep10: {
+    cssOverride: '',
+    jsOverride: `
+(function(){
+  var attempts = 0;
+  var hookInterval = setInterval(function(){
+    attempts++;
+    var game = window.__game;
+    if (!game || !game.scene || attempts > 80) {
+      if (attempts > 80) clearInterval(hookInterval);
+      return;
+    }
+    var gs = game.scene.getScene('GameScene');
+    var bs = game.scene.getScene('BootScene');
+    if (!gs || gs.__themeGaugeHooked) return;
+    gs.__themeGaugeHooked = true;
+    clearInterval(hookInterval);
+
+    if (bs && bs.load && !bs.textures.exists('ep_theme_gauge')) {
+      bs.load.image('ep_theme_gauge', 'theme-gauge.png');
+      bs.load.start();
+    }
+    if (gs.load && !gs.textures.exists('ep_theme_gauge')) {
+      gs.load.image('ep_theme_gauge', 'theme-gauge.png');
+      gs.load.once('complete', function(){ renderFaceplate(); });
+      gs.load.start();
+    }
+
+    function renderFaceplate() {
+      if (!gs.textures.exists('ep_theme_gauge')) return;
+      if (gs._themeGaugeImg) {
+        if (gs._themeGaugeImg.active && gs._themeGaugeImg.destroy) gs._themeGaugeImg.destroy();
+        gs._themeGaugeImg = null;
+      }
+      var cx = (typeof gs.gCx === 'number') ? gs.gCx : 196.5;
+      var cy = (typeof gs.gCy === 'number') ? gs.gCy : 440;
+      gs._themeGaugeImg = gs.add.image(cx, cy, 'ep_theme_gauge')
+        .setDisplaySize(300, 300)
+        .setOrigin(0.5)
+        .setDepth(2.3);
+    }
+
+    if (gs.gCx != null) renderFaceplate();
+    if (gs.events && gs.events.on) {
+      gs.events.on('create', function(){ setTimeout(renderFaceplate, 0); });
+    }
+  }, 80);
+})();`,
+  },
+
+  // ── ep12_minor: red-light-green-light — 坐到最后（审讯者眼睛） ────
+  // 模板默认视觉：交通信号灯（3 个圆灯）→ 换成审讯者眼睛 3 状态
+  // 剧情："审讯室里坚持沉默，在审讯者的注视下不崩溃"
+  // 审讯者是人类（冷冰冰的刑警），完全不同于 ep2 的狼王狼眼。
+  // 靶点：DOM setTrafficLight 全局函数
+  // 换壳策略：同 ep2 模式 A — 隐藏原 traffic-light DOM，塞入新 div.interrogator-eye
+  //          monkey-patch setTrafficLight 同步新节点 opacity 实现 3 状态切换。
+  // 状态映射：red→瞪眼（压迫）、yellow→半闭眼（分神）、green→闭眼（走神）
+  // 素材：theme-eye.png / theme-eye-half.png / theme-eye-closed.png
+  ep12_minor: {
+    cssOverride: `
+  /* ═══ Layer 3 Theme: 审讯者注视 ═══ */
+  .traffic-light { display: none !important; }
+  .interrogator-eye { position: absolute; top: 96px; left: 50%; transform: translateX(-50%); width: 200px; height: 200px; z-index: 10; display: flex; align-items: center; justify-content: center; }
+  .interrogator-eye img { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: contain; transition: opacity 0.35s ease, filter 0.35s ease; pointer-events: none; -webkit-mask-image: radial-gradient(ellipse 72% 58% at 50% 50%, #000 38%, transparent 72%); mask-image: radial-gradient(ellipse 72% 58% at 50% 50%, #000 38%, transparent 72%); }
+  .interrogator-eye .eye-open { z-index: 1; } .interrogator-eye .eye-half { z-index: 2; } .interrogator-eye .eye-closed { z-index: 3; }
+  .light-label { top: 310px !important; font-size: 26px !important; letter-spacing: 3px !important; text-shadow: 0 0 18px currentColor, 0 2px 10px rgba(0,0,0,0.7) !important; }
+  body, #game-shell { background: linear-gradient(180deg, #0a0c10 0%, #14181e 35%, #0a0c12 70%, #050608 100%) !important; }
+  #game-shell::after { content: ''; position: absolute; top: -60px; left: 50%; transform: translateX(-50%); width: 260px; height: 260px; background: radial-gradient(circle, rgba(180,200,220,0.07) 0%, transparent 65%); pointer-events: none; z-index: 0; }`,
+    jsOverride: `
+(function() {
+  var shell = document.getElementById('game-shell');
+  var eye = document.createElement('div');
+  eye.className = 'interrogator-eye hidden'; eye.id = 'interrogator-eye';
+  eye.innerHTML = '<img class="eye-open" src="theme-eye.png" alt=""><img class="eye-half" src="theme-eye-half.png" alt=""><img class="eye-closed" src="theme-eye-closed.png" alt="">';
+  var tl = document.getElementById('traffic-light');
+  if (tl && tl.parentNode) tl.parentNode.insertBefore(eye, tl.nextSibling);
+  var origSetTL = window.setTrafficLight;
+  window.setTrafficLight = function(color) {
+    origSetTL(color);
+    var eyeEl = document.getElementById('interrogator-eye');
+    if (!eyeEl) return;
+    var eOpen = eyeEl.querySelector('.eye-open'), eHalf = eyeEl.querySelector('.eye-half'), eClosed = eyeEl.querySelector('.eye-closed');
+    if (!eOpen) return;
+    if (color === 'red') {
+      // 瞪眼 — 审讯者紧盯，不能动
+      eOpen.style.opacity='1'; eHalf.style.opacity='0'; eClosed.style.opacity='0';
+      eOpen.style.filter='drop-shadow(0 0 24px rgba(180,200,255,0.5)) brightness(1.15) contrast(1.1)';
+    } else if (color === 'yellow') {
+      // 半闭眼 — 片刻分神，警惕
+      eOpen.style.opacity='0'; eHalf.style.opacity='1'; eClosed.style.opacity='0';
+      eHalf.style.filter='drop-shadow(0 0 14px rgba(255,180,80,0.45)) brightness(0.95)';
+    } else if (color === 'green') {
+      // 闭眼 — 走神，可以移动
+      eOpen.style.opacity='0'; eHalf.style.opacity='0'; eClosed.style.opacity='1';
+      eClosed.style.filter='drop-shadow(0 0 6px rgba(80,100,60,0.3)) brightness(0.65)';
+    } else {
+      eOpen.style.opacity='0'; eHalf.style.opacity='0'; eClosed.style.opacity='1';
+      eClosed.style.filter='brightness(0.3)';
+    }
+  };
+  var origSetVisible = window.setVisible;
+  window.setVisible = function(id, visible) {
+    origSetVisible(id, visible);
+    if (id === 'traffic-light') {
+      var e = document.getElementById('interrogator-eye');
+      if (e) { if (visible) e.classList.remove('hidden'); else e.classList.add('hidden'); }
+    }
+  };
+})();`,
+  },
+
+  // ── ep13: maze-escape — 踏过边界（荆棘丛林墙） ────────────────────
+  // 模板默认视觉：24x24 灰圆角矩形迷宫墙 → 换成荆棘丛林石块
+  // 剧情："背着行囊穿越人狼边界的荆棘丛林，紧张、刺痛、被追击的危险感"
+  // 视觉基调不同于 ep20 "找到方向" 的平和月下森林 —— 是密集黑色荆棘。
+  // 靶点：GameScene.loadMaze() 每次新关重画
+  // 换壳策略：同 ep20 模式 B — 在原 graphics depth 5 之上放 Phaser image (depth 5.5)
+  // 素材：theme-wall.png (512x512 top-down thorny thicket tile, no chroma key)
+  ep13: {
+    cssOverride: `
+  /* ═══ Layer 3 Theme: 踏过边界 — 荆棘丛林 ═══ */
+  /* 墙体替换由 Phaser image 在 canvas 内完成，CSS 仅无操作 */`,
+    jsOverride: `
+(function(){
+  var attempts = 0;
+  var hookInterval = setInterval(function(){
+    attempts++;
+    var game = window.__game;
+    if (!game || !game.scene || attempts > 80) {
+      if (attempts > 80) clearInterval(hookInterval);
+      return;
+    }
+    var gs = game.scene.getScene('GameScene');
+    var bs = game.scene.getScene('BootScene');
+    if (!gs || gs.__themeWallHooked) return;
+    gs.__themeWallHooked = true;
+    clearInterval(hookInterval);
+
+    if (bs && !bs.__themeWallPreloaded) {
+      bs.__themeWallPreloaded = true;
+      if (bs.load) {
+        bs.load.image('ep_theme_wall', 'theme-wall.png');
+        bs.load.once('complete', function(){});
+        bs.load.start();
+      }
+    }
+    if (gs.load && !gs.textures.exists('ep_theme_wall')) {
+      gs.load.image('ep_theme_wall', 'theme-wall.png');
+      gs.load.once('complete', function(){
+        if (gs.__themeWallNeedRender) renderWalls();
+      });
+      gs.load.start();
+    }
+
+    function renderWalls() {
+      if (!gs.map || !gs.textures.exists('ep_theme_wall')) {
+        gs.__themeWallNeedRender = true;
+        return;
+      }
+      gs.__themeWallNeedRender = false;
+      if (gs._themeWalls && gs._themeWalls.length) {
+        gs._themeWalls.forEach(function(w){ if (w && w.destroy) w.destroy(); });
+      }
+      gs._themeWalls = [];
+      for (var y = 0; y < gs.map.length; y++) {
+        for (var x = 0; x < gs.map[y].length; x++) {
+          if (gs.map[y][x] === '#') {
+            var px = gs.boardX + x * gs.cell + gs.cell / 2;
+            var py = gs.boardY + y * gs.cell + gs.cell / 2;
+            var img = gs.add.image(px, py, 'ep_theme_wall')
+              .setDisplaySize(gs.cell - 1, gs.cell - 1)
+              .setOrigin(0.5)
+              .setDepth(5.5);
+            gs._themeWalls.push(img);
+          }
+        }
+      }
+    }
+
+    if (gs.map) renderWalls();
+
+    var origLoadMaze = gs.loadMaze;
+    if (typeof origLoadMaze === 'function') {
+      gs.loadMaze = function(idx) {
+        var r = origLoadMaze.call(this, idx);
+        renderWalls();
+        return r;
+      };
+    }
+
+    if (gs.events && gs.events.on) {
+      gs.events.on('create', function(){
+        setTimeout(renderWalls, 0);
+      });
+    }
+  }, 80);
+})();`,
+  },
 };
 
 // ── Narrative overlay CSS ───────────────────────────────────────────────────

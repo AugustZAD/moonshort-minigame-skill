@@ -1079,6 +1079,55 @@ function fitShell() {
 }
 window.addEventListener('resize', fitShell);
 fitShell();
+// ═══ STORY_THEME JS ═══
+
+(function(){
+  var attempts = 0;
+  var hookInterval = setInterval(function(){
+    attempts++;
+    var game = window.__game;
+    if (!game || !game.scene || attempts > 80) {
+      if (attempts > 80) clearInterval(hookInterval);
+      return;
+    }
+    var gs = game.scene.getScene('GameScene');
+    var bs = game.scene.getScene('BootScene');
+    if (!gs || gs.__themeBoardHooked) return;
+    gs.__themeBoardHooked = true;
+    clearInterval(hookInterval);
+
+    if (bs && bs.load && !bs.textures.exists('ep_theme_board')) {
+      bs.load.image('ep_theme_board', 'theme-board.png');
+      bs.load.start();
+    }
+    if (gs.load && !gs.textures.exists('ep_theme_board')) {
+      gs.load.image('ep_theme_board', 'theme-board.png');
+      gs.load.once('complete', function(){ renderBoard(); });
+      gs.load.start();
+    }
+
+    function renderBoard() {
+      if (!gs.textures.exists('ep_theme_board')) return;
+      if (gs._themeBoardImg) {
+        if (gs._themeBoardImg.active && gs._themeBoardImg.destroy) gs._themeBoardImg.destroy();
+        gs._themeBoardImg = null;
+      }
+      // 3x3 grid geometry from template: sx=98, sy=FIELD_TOP+140, gap=98
+      // Field center W/2 = 196.5; grid vertical center ≈ sy + gap = 408
+      // Grid spans ~330x330. Board image slightly larger for bleed.
+      gs._themeBoardImg = gs.add.image(196.5, 408, 'ep_theme_board')
+        .setDisplaySize(340, 340)
+        .setOrigin(0.5)
+        .setDepth(1.5)
+        .setAlpha(0.55);
+    }
+
+    if (gs.cells && gs.cells.length) renderBoard();
+    if (gs.events && gs.events.on) {
+      gs.events.on('create', function(){ setTimeout(renderBoard, 0); });
+    }
+  }, 80);
+})();
 
 (function() {
   var gs = GameScene.prototype || GameScene;

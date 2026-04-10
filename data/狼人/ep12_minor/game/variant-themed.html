@@ -246,6 +246,16 @@
   .narrative-overlay .narrator { font-weight:800;font-size:14px;color:var(--primary-light,#C4B5FD);letter-spacing:2px;text-transform:uppercase;margin-bottom:16px; }
   .narrative-overlay .line { font-weight:700;font-size:16px;color:#fff;text-align:center;line-height:1.6;max-width:320px; }
   .narrative-overlay .tap-hint { position:absolute;bottom:60px;font-weight:700;font-size:12px;color:rgba(255,255,255,0.4);letter-spacing:2px; }
+
+  /* ═══ STORY_THEME injection ═══ */
+  /* ═══ Layer 3 Theme: 审讯者注视 ═══ */
+  .traffic-light { display: none !important; }
+  .interrogator-eye { position: absolute; top: 96px; left: 50%; transform: translateX(-50%); width: 200px; height: 200px; z-index: 10; display: flex; align-items: center; justify-content: center; }
+  .interrogator-eye img { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: contain; transition: opacity 0.35s ease, filter 0.35s ease; pointer-events: none; -webkit-mask-image: radial-gradient(ellipse 72% 58% at 50% 50%, #000 38%, transparent 72%); mask-image: radial-gradient(ellipse 72% 58% at 50% 50%, #000 38%, transparent 72%); }
+  .interrogator-eye .eye-open { z-index: 1; } .interrogator-eye .eye-half { z-index: 2; } .interrogator-eye .eye-closed { z-index: 3; }
+  .light-label { top: 310px !important; font-size: 26px !important; letter-spacing: 3px !important; text-shadow: 0 0 18px currentColor, 0 2px 10px rgba(0,0,0,0.7) !important; }
+  body, #game-shell { background: linear-gradient(180deg, #0a0c10 0%, #14181e 35%, #0a0c12 70%, #050608 100%) !important; }
+  #game-shell::after { content: ''; position: absolute; top: -60px; left: 50%; transform: translateX(-50%); width: 260px; height: 260px; background: radial-gradient(circle, rgba(180,200,220,0.07) 0%, transparent 65%); pointer-events: none; z-index: 0; }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
 </head>
@@ -665,6 +675,48 @@ var config = { type: Phaser.CANVAS, parent: 'phaser-container', width: W, height
 
 function fitShell() { var shell = $('game-shell'), sw = window.innerWidth, sh = window.innerHeight, sx = sw / W, sy = sh / H, sc = Math.min(sx, sy, 1); shell.style.transform = 'scale(' + sc + ')'; shell.style.transformOrigin = 'top center'; if (sy < sx) shell.style.marginTop = '0px'; else shell.style.marginTop = Math.max(0, (sh - H * sc) / 2) + 'px'; }
 window.addEventListener('resize', fitShell); fitShell();
+// ═══ STORY_THEME JS ═══
+
+(function() {
+  var shell = document.getElementById('game-shell');
+  var eye = document.createElement('div');
+  eye.className = 'interrogator-eye hidden'; eye.id = 'interrogator-eye';
+  eye.innerHTML = '<img class="eye-open" src="theme-eye.png" alt=""><img class="eye-half" src="theme-eye-half.png" alt=""><img class="eye-closed" src="theme-eye-closed.png" alt="">';
+  var tl = document.getElementById('traffic-light');
+  if (tl && tl.parentNode) tl.parentNode.insertBefore(eye, tl.nextSibling);
+  var origSetTL = window.setTrafficLight;
+  window.setTrafficLight = function(color) {
+    origSetTL(color);
+    var eyeEl = document.getElementById('interrogator-eye');
+    if (!eyeEl) return;
+    var eOpen = eyeEl.querySelector('.eye-open'), eHalf = eyeEl.querySelector('.eye-half'), eClosed = eyeEl.querySelector('.eye-closed');
+    if (!eOpen) return;
+    if (color === 'red') {
+      // 瞪眼 — 审讯者紧盯，不能动
+      eOpen.style.opacity='1'; eHalf.style.opacity='0'; eClosed.style.opacity='0';
+      eOpen.style.filter='drop-shadow(0 0 24px rgba(180,200,255,0.5)) brightness(1.15) contrast(1.1)';
+    } else if (color === 'yellow') {
+      // 半闭眼 — 片刻分神，警惕
+      eOpen.style.opacity='0'; eHalf.style.opacity='1'; eClosed.style.opacity='0';
+      eHalf.style.filter='drop-shadow(0 0 14px rgba(255,180,80,0.45)) brightness(0.95)';
+    } else if (color === 'green') {
+      // 闭眼 — 走神，可以移动
+      eOpen.style.opacity='0'; eHalf.style.opacity='0'; eClosed.style.opacity='1';
+      eClosed.style.filter='drop-shadow(0 0 6px rgba(80,100,60,0.3)) brightness(0.65)';
+    } else {
+      eOpen.style.opacity='0'; eHalf.style.opacity='0'; eClosed.style.opacity='1';
+      eClosed.style.filter='brightness(0.3)';
+    }
+  };
+  var origSetVisible = window.setVisible;
+  window.setVisible = function(id, visible) {
+    origSetVisible(id, visible);
+    if (id === 'traffic-light') {
+      var e = document.getElementById('interrogator-eye');
+      if (e) { if (visible) e.classList.remove('hidden'); else e.classList.add('hidden'); }
+    }
+  };
+})();
 
 (function() {
   var gs = GameScene.prototype || GameScene;
