@@ -1797,6 +1797,10 @@ Canvas/Phaser
 | Layer 3 cssOverride 顺手改了 `body` / `#game-shell` 背景，盖住 Layer 2 的 bg-scene.jpg | 以为 "整体氛围也要覆盖" 加了 `body, #game-shell { background: linear-gradient(...) !important }` | **永远不动 `body` / `#game-shell` / `#cover-layer` 的 background**。bg-scene.jpg 由 Layer 2 定好，Layer 3 只把自己的外壳画在它上面 |
 | Layer 3 `applyVignette()` 边中点仍有亮度，画面看到十字/正方形轮廓 | 用 `halfDiag = sqrt(W²+H²)/2` 归一化距离时，边中点只到 `0.71*halfDiag`，还在 rolloff 带内 | 用**内切圆半径** `halfMin = min(W,H)/2` 归一化。`outer=1.0` 正好是边中点 → 立即纯黑；角落距离 1.414×halfMin 远超 outer 也纯黑。四边 + 四角全 `(0,0,0)`，没有十字伪影 |
 | 边缘问题 debug 时用 eval 看 computed opacity 一直是 0 | `.eye-layer` 有 `transition: opacity 0.35s`，你在 data-state 设完立刻 eval 查看，动画刚开始还在 ~0 | 不是 bug。要么禁 transition `eye.style.setProperty('transition','none','important')`，要么 `setTimeout(..., 400)` 再查。运行时实际用户看到的是 0→1 的平滑过渡 |
+| Layer 3 chroma-key 路径的 PNG 在游戏里有方形黑影/黑环包围圆形主体 | Gemini 对暗色调主题（夜晚、冷光、地穴）经常无视 prompt 把氛围画到边缘，chroma key 只认绿色不动黑/暗色，结果非主体区是不透明黑方块 | **双层防线**：① prompt 写 `CRITICAL BACKGROUND REQUIREMENT: solid flat uniform pure #00FF00 (R=0 G=255 B=0), NO gradient, NO vignette, NO scene paint, fill every pixel to edges and corners` —— 提高成功率但**不可靠**。② 永远保留 alpha mask 后处理作为兜底（脚本里直接 sharp 改 alpha，不依赖 chroma key） |
+| 用同一组 mask `inner/outer` 套不同 ep 的圆形素材，结果有的被切顶有的留黑边 | 不同 ep 的圆形主体半径完全不同（ep1 表盘 ~0.93×halfMin，ep10 表盘 ~0.73×halfMin），同一个 0.83-0.90 mask 对大表盘切顶、对小表盘漏黑 | mask 半径**必须 per-asset 量身定**。流程：① 对原始 PNG 跑径向亮度/不透明度 profile（按 `d=hypot(x-cx,y-cy)/halfMin` 分桶 0.05 步长，统计每桶 `n` 和 `avg brightness`），② 找到亮度从主体跌到 ~0 的桶，那个 `d` 就是 `outer`，③ 往内推 0.05~0.07 作为 `inner` 形成软淡入带。**绝不**拍脑袋猜参数 |
+| Read 工具显示 PNG 看起来"还是有黑影"，以为 mask 没生效 | Read 工具把透明 PNG 合成在**纯黑背景**上显示，透明区和不透明黑区在视觉上**完全无法区分** | 验证 alpha 必须用 sharp.js 数值诊断：`opaque outside r` 像素计数 + 角落 `data[i+3]` 采样。视觉只能配合实际游戏渲染（preview_screenshot 或截图）才能判断，单看 PNG 文件没用 |
+| chromaKey + circular alpha mask 都跑过的 PNG 又被加 mask，主体被切两次越切越小 | mask 也不是幂等的——多次 multiply alpha 会累积衰减，每次都把过渡带再压一次 | mask 和 chromaKey 一样：**只能对刚生成的 raw 跑一次**。如果参数错了要重做，必须 `--force` 重新调 Gemini API 拿新的 raw，**不能**在已 mask 过的 PNG 上叠第二遍 |
 
 ### V2/V3 文件约定
 
