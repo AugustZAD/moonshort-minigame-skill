@@ -821,7 +821,7 @@ window.addEventListener('resize', fitShell); fitShell();
        'stars-row','result-info','gauge-area','boot-card','hud-row',
        'sort-legend','btn-area'].forEach(function(id) {
         var el = document.getElementById(id);
-        if (el) el.style.display = 'none';
+        if (el) el.classList.add('hidden');
       });
       var shell = document.getElementById('game-shell');
       var ov = document.createElement('div');
@@ -841,7 +841,7 @@ window.addEventListener('resize', fitShell); fitShell();
            'stars-row','result-info','gauge-area','boot-card','hud-row',
            'sort-legend','btn-area'].forEach(function(id) {
             var el = document.getElementById(id);
-            if (el) el.style.display = '';
+            if (el) el.classList.remove('hidden');
           });
           origCreate.call(self);
         }, 400);

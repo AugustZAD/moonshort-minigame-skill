@@ -721,7 +721,7 @@ class NarrativeScene extends Phaser.Scene {
 
     // Hide all game UI
     ['dialogue','score-display','timer-text','combo-text','stars-row','result-info','gauge-area','result-story'].forEach(function(id) {
-      var el = document.getElementById(id); if (el) el.style.display = 'none';
+      var el = document.getElementById(id); if (el) el.classList.add('hidden');
     });
     var btnArea = document.getElementById('btn-area'); if (btnArea) btnArea.innerHTML = '';
 

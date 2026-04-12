@@ -925,12 +925,12 @@ const RESULT_OVERLAY_PATCH = `
     var self = this;
     var rating = getRating(this.finalScore || 0);
     if (CTX.resultTexts && CTX.resultTexts[rating]) {
-      // Hide all UI first
+      // Hide all UI first (use classList to preserve inline styles on btn-area etc.)
       ['dialogue','score-display','timer-text','combo-text','hint-text',
        'stars-row','result-info','gauge-area','boot-card','hud-row',
        'sort-legend','btn-area'].forEach(function(id) {
         var el = document.getElementById(id);
-        if (el) el.style.display = 'none';
+        if (el) el.classList.add('hidden');
       });
       var shell = document.getElementById('game-shell');
       var ov = document.createElement('div');
@@ -945,12 +945,12 @@ const RESULT_OVERLAY_PATCH = `
         ov.style.transition = 'opacity 0.4s';
         setTimeout(function() {
           ov.remove();
-          // Restore display defaults
+          // Restore display defaults (use classList to preserve inline styles)
           ['dialogue','score-display','timer-text','combo-text','hint-text',
            'stars-row','result-info','gauge-area','boot-card','hud-row',
            'sort-legend','btn-area'].forEach(function(id) {
             var el = document.getElementById(id);
-            if (el) el.style.display = '';
+            if (el) el.classList.remove('hidden');
           });
           origCreate.call(self);
         }, 400);
