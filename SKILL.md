@@ -529,7 +529,7 @@ End-to-end workflow for producing a **story-driven customized mini-game** from e
    |------|---------|-----------|------|
    | **stardew-fishing** | 鱼 emoji 🐟 → 剧情隐喻物件 | `sprite-catch.png`（如真相碎片/内狼/信件） | 30×30 |
    | **will-surge** | 程序化发光核心 → 狼族徽记/月亮符号 | `sprite-core.png` | 70×70 |
-   | **conveyor-sort** | 包裹 emoji → 故事相关分类物件 + 精灵轮廓光晕 | `sprite-cat1/2/3.png` + `sprite-decoy.png`（分类图标） | 44×44（掉落物）/ 32×32（底栏） |
+   | **conveyor-sort** | 包裹 emoji → 故事相关分类物件 + 精灵轮廓光晕 | `sprite-cat1/2/3/4.png` + `sprite-decoy.png`（分类图标；cat4 是 difficulty≥4 解锁的第 4 类目，**不可遗漏**） | 44×44（掉落物）/ 32×32（底栏） |
 
    **🟢 低价值（保持程序化渲染）— 加图片反而降低可读性**:
 
@@ -1049,7 +1049,7 @@ data/<story>/ep{N}/game/
   avatar-james.png
   sprite-charge.png    # 游戏内精灵（128x128 透明 PNG, 10-20KB）
   sprite-release.png   # 由 scripts/generate-wolven-sprites.js 生成
-  sprite-cat1.png      # conveyor-sort 分类图标等（模板不同精灵不同）
+  sprite-cat1.png      # conveyor-sort 分类图标（cat1-4 + decoy，cat4 是 difficulty≥4 解锁的第 4 类目）
 ```
 
 ### EP 常量结构（旧版 V1/V2 模板）
@@ -1777,6 +1777,7 @@ Canvas/Phaser
 | 开局没有玩法介绍 | BootScene 缺少规则说明 | 每个游戏必须在 START 前显示玩法规则（boot-card/circle-content/dialogue） |
 | `PRIMARY_COLOR` 死代码 | V1 遗留常量，V3 不使用 | 删除，用 `window.__V3_THEME__` 替代 |
 | 开屏 boot-card 还显示模板默认游戏名（如 "急速泊车"） | 模板在 `<div id="boot-card">` 里硬编码了中文标题，`STORY_RESKIN.labels` 只捕获英文键会漏掉 | 为每个使用了模板的 ep 的 `labels` 加一条中文→中文映射（如 `'急速泊车':'规则战争'`）。**审核时用 `grep -oP '[\p{Han}]+' packs/.../index-v3.html \| sort -u` 把模板里所有硬编码中文枚举出来**，确保每条都在 `STORY_RESKIN[ep].labels` 里有对应映射。已知受影响模板：conveyor-sort/maze-escape/parking-rush/spotlight-seek/will-surge |
+| 深度定制只处理了游戏初始状态的对象，遗漏了**游戏进程中动态解锁的对象** | conveyor-sort 初始只有 3 个分类 bin（cat1/2/3），但 difficulty≥4 时解锁第 4 类 cat4。精灵图定义（`generate-wolven-sprites.js`）和 preload 注入都只写了 cat1/2/3 + decoy，cat4 掉落物在解锁后回退到 emoji 渲染，与其它三类精灵图风格不一致 | 定制前**必须通读模板的难度递进逻辑**（搜 `difficulty` / `activeBinCount` / `phase` / `wave` / `unlock`），列出所有阶段会出现的对象全集，再逐一确认每个对象都有对应素材。不能只看游戏开局画面就以为对象就这些 |
 | Layer 3 定制变成装饰图覆盖游戏 | 误以为"深度定制"就是找张大图铺在游戏上，把可交互元素挡住 | Layer 3 **不是装饰层**。是有针对性的 *核心视觉外壳* 替换（信号灯/墙/车道），不是背景图覆盖。不满足 4 条决策门槛就不做 |
 | Layer 3 主题视觉只有第一帧对，之后不随游戏状态刷新 | 只在 hook 里跑了一次初始化，没 hook 重绘入口函数 | 识别每个游戏的重绘入口：maze-escape 是 `loadMaze()`（每关换图）、parking-rush 是 `drawLanes()`（每回合换 freeIndex）、red-light-green-light 是 `setTrafficLight()`（每次切灯）。必须把主题重绘塞进这些函数的 hook 里 |
 | Layer 3 新素材风格与现有 sprite/背景完全不搭（3D photoreal 碰 2D painted） | 没看现有素材就直接让 AI 生成新图 | 生成前先 `Read` 一遍 `data/<series>/<ep>/game/bg-scene.jpg` + 所有 `sprite-*.png`，总结风格关键词（"painted digital illustration"/"anime-inspired"/"flat shading"/"cool palette"）写进 prompt。更好的选择是先看 Layer 2 sprite 能不能直接复用（ep11 的 sprite-car/sprite-slot 正好就是议政主题），省一次 API 调用还能保证风格一致 |
