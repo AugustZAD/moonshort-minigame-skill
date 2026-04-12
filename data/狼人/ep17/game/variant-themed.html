@@ -110,6 +110,7 @@
     text-shadow: 0 0 4px var(--primary-30);
   }
 
+  .btn-area { position: absolute; bottom: 20px; left: 12px; right: 12px; display: flex; flex-direction: column; gap: 14px; z-index: 10; }
   /* ── Buttons - candy material (V3) ── */
   .btn-candy {
     position: relative; height: 64px; border-radius: 24px;
@@ -1169,7 +1170,7 @@ fitShell();
        'stars-row','result-info','gauge-area','boot-card','hud-row',
        'sort-legend','btn-area'].forEach(function(id) {
         var el = document.getElementById(id);
-        if (el) el.style.display = 'none';
+        if (el) el.classList.add('hidden');
       });
       var shell = document.getElementById('game-shell');
       var ov = document.createElement('div');
@@ -1189,7 +1190,7 @@ fitShell();
            'stars-row','result-info','gauge-area','boot-card','hud-row',
            'sort-legend','btn-area'].forEach(function(id) {
             var el = document.getElementById(id);
-            if (el) el.style.display = '';
+            if (el) el.classList.remove('hidden');
           });
           origCreate.call(self);
         }, 400);

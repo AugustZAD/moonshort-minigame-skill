@@ -220,7 +220,7 @@
     transition: color var(--duration-fast);
   }
   .circle-inner .cue-label {
-    font-weight: 700; font-size: 16px; color: #fff;
+    font-weight: 700; font-size: 16px; color: #4A4A5A;
     margin-top: 4px;
   }
   .circle-inner .grade-letter {
@@ -263,15 +263,15 @@
   .hint-text {
     position: absolute; top: 528px; left: 0; width: 100%;
     text-align: center; font-weight: 700; font-size: 13px;
-    color: #AAAAAA; z-index: 12;
+    color: #666; z-index: 12;
   }
 
   /* ── Combo display (above score) ── */
   .combo-text {
-    position: absolute; top: 582px; left: 0; width: 100%;
+    position: absolute; top: 556px; left: 0; width: 100%;
     text-align: center; font-weight: 900; font-size: 18px;
     color: var(--primary); z-index: 11;
-    text-shadow: 0 0 4px rgba(255,255,255,0.5);
+    text-shadow: 0 1px 3px rgba(0,0,0,0.25);
     transition: transform 0.12s ease;
   }
 
@@ -1264,7 +1264,7 @@ class GameScene extends Phaser.Scene {
     $('timer-text').classList.remove('warn');
     $('timing-bar-fill').style.width = '0%';
     $('hint-text').textContent = '选择正确的应对！';
-    $('hint-text').style.color = '#AAAAAA';
+    $('hint-text').style.color = '#666';
     $('combo-text').textContent = '';
 
     updateHpBar('left', 1);
@@ -1336,11 +1336,11 @@ class GameScene extends Phaser.Scene {
     }
     if (labelEl) {
       labelEl.textContent = 'Waiting for boss...';
-      labelEl.style.color = '#fff';
+      labelEl.style.color = '#4A4A5A';
     }
     $('timing-bar-fill').style.width = '0%';
     $('hint-text').textContent = 'Get ready!';
-    $('hint-text').style.color = '#AAAAAA';
+    $('hint-text').style.color = '#666';
   }
 
   handleCounter(counter) {
@@ -1736,7 +1736,7 @@ fitShell();
        'stars-row','result-info','gauge-area','boot-card','hud-row',
        'sort-legend','btn-area'].forEach(function(id) {
         var el = document.getElementById(id);
-        if (el) el.style.display = 'none';
+        if (el) el.classList.add('hidden');
       });
       var shell = document.getElementById('game-shell');
       var ov = document.createElement('div');
@@ -1756,7 +1756,7 @@ fitShell();
            'stars-row','result-info','gauge-area','boot-card','hud-row',
            'sort-legend','btn-area'].forEach(function(id) {
             var el = document.getElementById(id);
-            if (el) el.style.display = '';
+            if (el) el.classList.remove('hidden');
           });
           origCreate.call(self);
         }, 400);

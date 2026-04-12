@@ -97,6 +97,11 @@
     background: linear-gradient(180deg, #F5C842 0%, #B8860B 100%);
   }
 
+  .btn-area {
+    position: absolute; bottom: 20px; left: 12px; right: 12px;
+    display: flex; flex-direction: column; gap: 14px; z-index: 10;
+  }
+
   .lane-btns { position: absolute; bottom: 20px; left: 0; width: 100%; z-index: 10; display: flex; justify-content: center; gap: 10px; }
   .btn-lane { width: 110px; height: 56px; border-radius: 18px; border: 2px solid rgba(255,255,255,0.25); box-shadow: 0 4px 0 0 var(--black-25), inset 0 0 4px 4px var(--white-50); overflow: hidden; cursor: pointer; position: relative; -webkit-tap-highlight-color: transparent; user-select: none; }
   .btn-lane .base { position: absolute; inset: 0; background: linear-gradient(180deg, var(--primary) 0%, color-mix(in srgb, var(--primary), #000 40%) 100%); border-radius: 16px; }
