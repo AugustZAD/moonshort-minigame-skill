@@ -1,6 +1,7 @@
 {
   "dependencies": {
-    "@imgly/background-removal-node": "^1.4.5"
+    "@imgly/background-removal-node": "^1.4.5",
+    "https-proxy-agent": "^9.0.0"
   },
   "devDependencies": {
     "ali-oss": "^6.23.0",
