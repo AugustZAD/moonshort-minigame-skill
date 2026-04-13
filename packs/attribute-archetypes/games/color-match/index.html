@@ -694,7 +694,7 @@ class GameScene extends Phaser.Scene {
   }
 
   isStroopRound() {
-    return this.difficulty >= 3 && Math.random() < 0.4 + this.difficulty * 0.03;
+    return Math.random() < 0.65 + this.difficulty * 0.03;
   }
 
   nextRound() {
@@ -709,7 +709,7 @@ class GameScene extends Phaser.Scene {
 
     const useStroop = this.isStroopRound();
     // mode: 'name-to-swatch' = show word, pick swatch. 'swatch-to-name' = show swatch, pick name.
-    const mode = Math.random() > 0.5 ? 'name-to-swatch' : 'swatch-to-name';
+    const mode = Math.random() > 0.2 ? 'name-to-swatch' : 'swatch-to-name';
 
     // For Stroop: pick a different color to render the text in
     let stroopHex = null;
@@ -775,14 +775,14 @@ class GameScene extends Phaser.Scene {
     this.roundTimeLeft = this.roundTimeMax;
     this.answerBar.update(1);
 
-    // Rebuild answer buttons
-    this.btnGroup.removeAll(true);
+    // Rebuild answer buttons — destroy old containers properly
+    for (const c of this.answerContainers) { if (c && c.destroy) c.destroy(); }
     this.answerContainers = [];
 
-    const btnW = 136;
-    const btnH = 52;
+    const btnW = optCount <= 4 ? 136 : 120;
+    const btnH = optCount <= 4 ? 52 : 48;
     const gap = 12;
-    const cols = optCount <= 4 ? 2 : 3;
+    const cols = 2;
     const rows = Math.ceil(optCount / cols);
     const startY = 420;
 

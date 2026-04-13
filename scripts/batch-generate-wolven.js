@@ -134,11 +134,27 @@ const STORY_RESKIN = {
     labels: { '跑':'喘息', '停！':'别动！', '走！':'可以了' },
   },
   // ── lane-dash ──
-  ep12: { // 翻窗逃离
-    labels: { 'Dodged ':'躲过 ' },
+  ep12: { // 翻窗逃离 — 黑暗走廊中高烧逃亡
+    labels: {
+      '躲避 ':'躲过 ',
+      '被撞 ':'撞墙 ',
+      '撞击！-12':'撞墙！-12',
+      '连击 x':'闪避 x',
+      '无人可挡！':'烧不倒我！',
+      '连击 ':'闪避 ',
+      '能量球':'退烧药',
+    },
   },
-  ep14: { // 黑暗奔逃
-    labels: { 'Dodged ':'闪过 ' },
+  ep14: { // 黑暗奔逃 — 树林间奔逃至Iris领地
+    labels: {
+      '躲避 ':'闪过 ',
+      '被撞 ':'被抓 ',
+      '撞击！-12':'被抓！-12',
+      '连击 x':'逃脱 x',
+      '无人可挡！':'他们追不上！',
+      '连击 ':'逃脱 ',
+      '能量球':'月光碎片',
+    },
   },
   // ── spotlight-seek ──
   ep4: { // 权力棋盘
@@ -1399,10 +1415,16 @@ function generateGame(ep, templateId) {
       ['🐟 Caught: ', '🐟 捕获: '],
     ],
     'lane-dash': [
-      ['Tap LEFT or RIGHT to switch lanes.<br>Dodge falling obstacles to survive.<br>Speed increases as you progress!', storyGame ? storyGame.rules : '点击左右切换车道。<br>躲避障碍继续前进。<br>速度越来越快！'],
+      ['Tap LEFT or RIGHT to dodge obstacles.<br>Collect ⭐ orbs for bonus points!<br>Build combos — the screen comes alive!', storyGame ? storyGame.rules : '点击左右躲避障碍。<br>收集⭐能量球加分！<br>连续躲避触发连击特效！'],
       ['3-LANE SPRINT', storyGame ? storyGame.title : '极速冲刺'],
-      ['Swipe to dodge obstacles!', sub || '在黑暗中奔跑'],
+      ['Dodge and collect!', sub || '在黑暗中奔跑'],
       ['Dodged ', '躲避 '],
+      [' / Hit ', ' / 被撞 '],
+      ['Hit! -12', '撞击！-12'],
+      ['Combo x', '连击 x'],
+      ['UNSTOPPABLE!', '无人可挡！'],
+      ['Combo ', '连击 '],
+      ['Orbs', '能量球'],
     ],
     'parking-rush': [
       ['Tap the correct lane to park each car.<br>Get streaks for bonus points!<br>Wrong lane costs time!', storyGame ? storyGame.rules : '点击正确车道停车。<br>连续正确获得加成！<br>选错扣时间！'],
@@ -1919,7 +1941,7 @@ ${preloadLines}
 })();`;
     }
 
-    // ── lane-dash: player + obstacle sprites ──
+    // ── lane-dash: player + obstacle + orb sprites (V4 enhanced) ──
     if (templateId === 'lane-dash') {
       spritePatch += `
 (function() {
@@ -1930,8 +1952,7 @@ ${preloadLines}
     // Create player sprite overlay
     if (this.textures.exists('ep_sprite_player') && this.player) {
       this._sprPlayer = this.add.image(this.player.x, 700, 'ep_sprite_player')
-        .setDisplaySize(42, 56).setOrigin(0.5).setDepth(11)
-        .setTint(0xffffff);
+        .setDisplaySize(42, 56).setOrigin(0.5).setDepth(11);
     }
   };
   var origUpdate = gs.update;
@@ -1941,13 +1962,16 @@ ${preloadLines}
     if (this._sprPlayer && this.player) {
       this._sprPlayer.setPosition(this.player.x, 700);
     }
-    // Add obstacle sprites
-    if (this.hazards && this.textures.exists('ep_sprite_obstacle')) {
+    // Obstacle sprites (normal + fast types; wide uses default gfx)
+    var hasObsSpr = this.textures.exists('ep_sprite_obstacle');
+    if (this.hazards && hasObsSpr) {
       for (var i = 0; i < this.hazards.length; i++) {
         var h = this.hazards[i];
-        if (!h._spr && h.y > 0) {
+        if (!h._spr && h.y > 0 && h.type !== 'wide') {
           h._spr = this.add.image(h.x, h.y, 'ep_sprite_obstacle')
-            .setDisplaySize(40, 64).setOrigin(0.5).setDepth(9).setAlpha(0.8);
+            .setDisplaySize(40, 64).setOrigin(0.5).setDepth(9);
+          if (h.type === 'fast') h._spr.setTint(0xFF6666).setAlpha(0.9);
+          else h._spr.setAlpha(0.85);
         }
         if (h._spr) {
           h._spr.setPosition(h.x, h.y);
@@ -1955,6 +1979,31 @@ ${preloadLines}
         }
       }
     }
+    // Orb sprites (replace gold circle with story collectible)
+    var hasOrbSpr = this.textures.exists('ep_sprite_collect');
+    if (this.orbs && hasOrbSpr) {
+      for (var j = this.orbs.length - 1; j >= 0; j--) {
+        var orb = this.orbs[j];
+        // Clean up sprite if orb was collected or offscreen
+        if (orb.collected || orb.y > 800) {
+          if (orb._spr) { orb._spr.destroy(); orb._spr = null; }
+          continue;
+        }
+        if (!orb._spr) {
+          orb._spr = this.add.image(orb.x, orb.y, 'ep_sprite_collect')
+            .setDisplaySize(28, 28).setOrigin(0.5).setDepth(8);
+        }
+        orb._spr.setPosition(orb.x, orb.y);
+        var sc = 1.0 + Math.sin(orb.phase || 0) * 0.12;
+        orb._spr.setScale(sc);
+      }
+    }
+  };
+  // Clean up orb sprites when collected or offscreen
+  var origFinish = gs.finishGame;
+  gs.finishGame = function(reason) {
+    if (this.orbs) { for (var k = 0; k < this.orbs.length; k++) { if (this.orbs[k]._spr) this.orbs[k]._spr.destroy(); } }
+    origFinish.call(this, reason);
   };
 })();`;
     }

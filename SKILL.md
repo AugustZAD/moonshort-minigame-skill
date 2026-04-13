@@ -144,6 +144,7 @@ End-to-end workflow for producing a **story-driven customized mini-game** from e
   - 第二层：精灵图替换 — 用 ZenMux/Gemini 生成 128×128 绿幕精灵 → chroma key → 透明 PNG，替换程序化色块/图标
   - 第三层：游戏环境替换（STORY_THEME）— 替换游戏核心视觉"外壳"（信号灯→狼眼、背景、特效），**不改游戏逻辑**，通过 `cssOverride` + `jsOverride` 注入
 - **素材生成原则**：所有视觉素材优先用 AI 图像生成（ZenMux/Gemini），禁止手工 CSS 绘图或程序化作图。即使是简单图形（如交通灯→狼眼），也应生成真实质感的 AI 图片而非用 CSS shapes/SVG 拼凑
+- **模板原版 vs 深度定制版架构可能不同**：同一个游戏的 `packs/.../index.html`（模板原版，纯 Phaser 渲染）和 `variant-themed.html`（深度定制版，DOM+Phaser 混合）可能用完全不同的渲染方式。**修 bug 时必须两版都检查，修法可能不同**。典型例子：color-match 模板用 `makeButton()` 创建 Phaser Container 需逐个 `.destroy()`，而深度定制版用 CSS Grid 只需 `grid.innerHTML = ''`。同步修复时不能盲目复制代码，要理解两边的对象生命周期
 
 **深度定制化额外步骤**:
 1. 注入 `window.__EPISODE_CTX__`（见下方 CTX 注入结构）
@@ -155,8 +156,15 @@ End-to-end workflow for producing a **story-driven customized mini-game** from e
 7. **游戏规则剧情化**：BootScene 的规则描述替换为剧情化中文（如"将走廊里听到的碎片分类，真相和谎言混在一起"）
 8. **考验宣告卡（Bridge Card）**：NarrativeScene 对白结束后、进入 BootScene 之前，自动插入一张全屏考验宣告卡：`—— {角色名}的{属性}考验 ——` + `{剧情化引导语}` + `点击开始考验`。这是剧情→游戏的核心衔接点
 9. **游戏机制隐喻重新包装（第一层）**：
-   - 所有模板的标签/文案替换为剧情化中文（分类名、攻击类型、状态提示、计数器等）
+   - 所有模板的标签/文案替换为剧情化中文（分类名、攻击类型、状态提示、计数器、**结算统计标签**等）
+   - **文案替换时注意 `toUpperCase()`/`toLowerCase()`**：中文化后这些调用无意义且可能引起问题，必须全局搜索并移除
+   - **颜色/选项类游戏的词库替换原则**：用 **纯颜色单字词（红/蓝/绿）+ 剧情物品具象名词（月亮/草地/火）** 组合。物品词必须满足：≤2 字、单义、与一个颜色有直觉映射。禁止形容词（"黑暗"）、抽象词（"希望"）和多义词。参考实现：EP16 variant-themed.html 的 COLORS 数组
    - 参考实现：`scripts/batch-generate-wolven.js` 中的 `STORY_RESKIN.labels` 映射表
+   - **⚠️ 两阶段替换流水线**（必须理解，否则定制化会漏翻或替换失效）：
+     1. **全局基础翻译**（`BOOT_DESC_REPLACEMENTS[templateId]`）：把模板里的英文翻译为通用中文（如 `'Parked: '→'停放: '`、`'Too slow!'→'太慢了！'`、`'Combo: '→'连击: '`）。覆盖范围：BootScene 规则说明、GameScene toast/状态文字、**ResultScene 统计标签**（`stat-combo`/`stat-hits` 的 textContent）。**新增模板时必须把所有玩家可见英文都加进这个表**
+     2. **per-episode 剧情化覆写**（`STORY_RESKIN[ep].labels`）：把通用中文进一步替换为该集的剧情隐喻（如 `'停放: '→'部署: '`）
+     - **关键：labels 发生在 BOOT_DESC_REPLACEMENTS 之后**，所以 labels 的 key 必须匹配**已替换后的中文**，不是原始英文。写 `'Parked: ':'部署: '` 会失效（因为 "Parked: " 已经变成 "停放: " 了），必须写 `'停放: ':'部署: '`
+     - **JS 字符串字面量也会被替换**——注意避免误伤变量名。如 `'Combo: '` 会匹配到 `maxCombo:` 里的子串。解决方案：用带引号的模式 `["'Combo: '", "'连击: '"]` 只匹配字符串字面量
 10. **游戏内精灵图替换（第二层）**：用 ZenMux/Gemini 生成 128×128 绿幕精灵 → sharp chroma key 移除 → 透明 PNG → 通过 `CTX.sprites` 注入 + monkey-patch GameScene 渲染代码（见 Step 2c）。**所有视觉素材必须用 AI 生成，禁止 CSS 手绘**
 11. **游戏环境替换（第三层，STORY_THEME）**：当模板默认视觉与剧情强烈冲突时，替换游戏核心视觉外壳。实现方式：
    - `STORY_THEME[ep].cssOverride` — 注入到 `</style>` 前（隐藏原 UI + 定义新视觉样式）
@@ -345,7 +353,7 @@ End-to-end workflow for producing a **story-driven customized mini-game** from e
 - ResultScene 全屏矩形 alpha 设为 `0.85`（半透明），让背景图透出来
 - **完整体验流程**: 游戏结束 → 结束语(narrativeOutro) → 评级结语(resultTexts) → 结算UI(评级/星/分数) → 继续
 
-**关键文案替换清单**（按钮和标题需要中文化，游戏内统计标签保留英文）:
+**关键文案替换清单**（所有玩家可见文本必须中文化 + 剧情化）:
 
 | 位置 | 英文默认 | 替换 |
 |------|---------|---------|
@@ -354,8 +362,9 @@ End-to-end workflow for producing a **story-driven customized mini-game** from e
 | BootScene 副标题 | Challenge | 考验 |
 | BootScene 说明文案 | Tap to push back... | 剧情化中文描述 |
 | GameScene COPY 对象 | 全英文 | 通过 `CTX.copy` 覆写为剧情化中文 |
+| GameScene 提示 toast | Too slow! / Perfect / Streak 等 | 通过 `BOOT_DESC_REPLACEMENTS` 翻译 |
 | ResultScene 按钮 | CONTINUE / REPLAY | 继续 / 再来一次 |
-| ResultScene stats | Combo: / Hits: / Miss: 等 | **保留英文**（不需要翻译）|
+| ResultScene stats | Combo: / Parked: / Hits: / Miss: 等 | 通过 `BOOT_DESC_REPLACEMENTS` 翻译为中文（连击/命中/失误等），深度定制再由 `labels` 进一步剧情化 |
 | NarrativeScene 提示 | TAP TO CONTINUE | 点击继续 |
 | ResultScene 结语提示 | — | 点击结束 |
 
@@ -535,7 +544,7 @@ End-to-end workflow for producing a **story-driven customized mini-game** from e
 
    | 模板 | 不加素材的理由 |
    |------|---------------|
-   | **color-match** | 玩法核心是颜色辨识，图片干扰判断 |
+   | **color-match** | 玩法核心是颜色辨识，图片干扰判断。**定制重点在 Stroop 频率调优 + 中文色词替换**（见 color-match 定制要点），不在素材 |
    | **red-light-green-light** | 核心是节奏感知，视觉越简洁越好 |
    | **qte-hold-release** | 已有 portrait + gauge 提供叙事感，蓄力条是交互焦点 |
    | **parking-rush** | 空间谜题，抽象方块更清晰 |
@@ -734,6 +743,11 @@ Freesound API 搜索 → 下载预览 → FreesoundAudio 类集成
 
 **⚠️ 批量生成的核心陷阱：脚本只替换数据，不替换代码。** 必须用 monkey-patch 模式注入所有组件代码，而不是 regex 替换模板内部代码。
 
+**⚠️ 批量替换的编码陷阱**：
+- Node.js `string.replace()` 中的 Unicode 转义 `\\u26A0` ≠ HTML 中的实际字符 `\u26A0`（⚠）。匹配 HTML 文件中的 Unicode 字符时，**用实际字符写 pattern 而非转义序列**
+- 中文字符串替换要用确切的 UTF-8 字符，不要用 `\uXXXX` 转义（容易写错、难以 review）
+- Windows 环境下 `python3` 可能不可用，优先用 `node -e "..."` 做批量文本处理
+
 **强制工作顺序**（不可调换）：
 
 1. **先完成 1 个标杆 ep 的完整深度定制**（含所有组件注入 + 浏览器验证通过）
@@ -824,7 +838,7 @@ for (const [needle, label] of REQUIRED_CHECKS) {
 | 2 | 得分文本 | `grade-score` | "得分 XXX" 可见 |
 | 3 | 星级评定 | `stars-row` | 1-4 颗星可见，填充数与评级一致 |
 | 4 | 属性加成 | `attr-mod` | "角色名的属性 +N" 可见 |
-| 5 | 统计数据 | `stat-combo` + `stat-hits` | 连击数 + 命中/失误数据可见 |
+| 5 | 统计数据 | `stat-combo` + `stat-hits` | 连击数 + 命中/失误数据可见，**且已翻译为中文**（不能出现 Combo/Parked/Hits/Miss 等英文），深度定制时还须与剧情隐喻一致（如 parking-rush 的 "停放" 在 ep11 应为 "部署"） |
 | 6 | 操作按钮 | `btn-area` | "继续" + "再来一次" 按钮可见可点击 |
 
 **程序化验证**（用 `preview_eval` 在结算画面执行）：
@@ -958,6 +972,8 @@ games/<game-id>/
 | 4 | 素材-通用 | 路径含中文/空格加载失败；文件名不匹配；素材处理全靠手动 | ASCII 短名放 `game/` 同目录。batch-generate Step 0 有模糊匹配。写脚本统一处理 + Step 2d 校验（avatar 200×200 + alpha + <100KB） |
 | 5 | 素材-表情 | 人物表情不匹配场景（紧张表情放甜蜜场景） | Prompt 明确写表情+姿势，必须匹配当前剧情氛围，不匹配必须重新生成 |
 | 6 | 素材-精灵 | 精灵尺寸不对碰撞异常；全是色块没加精灵 | 精灵用 `setDisplaySize()` 匹配原色块尺寸，不改碰撞体。**所有 12 个模板都做精灵替换**，高价值模板优先 |
+| 6b | Phaser 对象泄漏 | `makeButton()` 创建容器挂在 scene root 上，`group.removeAll(true)` 是空操作 → 旧按钮永远不销毁 | 必须逐个调用 `.destroy()` 清理：`for (const c of containers) { if (c && c.destroy) c.destroy(); }`。规律：**Phaser `add.xxx()` 的返回值永远挂在 scene 上，不是 group 的 child**，除非显式 `group.add(child)` |
+| 6c | 选项网格溢出 | 5 选项 × 3 列 × 136px = 408px > 393px 屏宽 → 按钮被裁切 | 答案网格**始终用 2 列**。公式：`cols * btnW + (cols-1) * gap ≤ W - 2*margin`。5 选项布局：2 列 × 120px + 1×12px = 252px，安全。DOM 版同理：`grid-template-columns: repeat(2, 150px)` |
 | 7 | 音频 | BGM 消失/中断；BGM 风格跟属性走与场景氛围冲突 | AudioContext resume 异步，全程一首循环不 stopBgm。BGM 以场景氛围为准（如紧张场景即使 CHA 属性也用 `tense`） |
 | 8 | 选取 | 凭感觉选属性/模板；批量全用同一模板 | 看核心冲突选属性（打架→ATK，忍耐→WIL）。必须读 selection-manifest.json 匹配。覆盖 ≥10/12 模板，单模板 ≤3 次，相邻集不重复 |
 | 9 | 部署 | OSS 资源 404；跨域问题 | 先 `oss-upload.js` 上传再替换 URL。Bucket 设 public-read ACL |
@@ -970,6 +986,8 @@ games/<game-id>/
 | 16 | 定制-色彩 | candy 改色不生效；血条颜色太接近；色系死板跟属性走 | 同时覆写 `CANDY.cardPink` 和 `cardPinkLt`。playerHp→accent, opponentHp→secondary。色系服务于剧情氛围，不必按属性分配 |
 | 17 | 定制-UI | 改布局导致混乱；drawSceneBg 未生效；命名都叫 -dark；ResultScene 背景消失 | **不改原模板 UI/UX 布局**，只通过 CTX 注入。检查 BootScene 资源加载。命名按风格（-sweet/-noir/-tense）。ResultScene 全屏矩形 alpha: 0.85 |
 | 18 | 定制-文案 | 机制文案/游戏名/按钮留英文默认值 | 游戏名和规则剧情化（如"碎片拼图"）。按钮全部中文化。**统计标签（Score/Combo）保留英文** |
+| 18b | 中文化-API | `.toUpperCase()` / `.toLowerCase()` 对中文无效却不报错，导致中文显示异常或被悄悄跳过 | 中文化时必须全局搜索 `toUpperCase\|toLowerCase` 并删除或跳过。中文文本**不需要大小写转换**。同理 `text-transform: uppercase` CSS 对中文无效但不报错，留着不碍事但会迷惑维护者 |
+| 18c | 中文化-词选 | 剧情相关词太抽象/有歧义（"黑暗"既是颜色也是形容词），玩家辨认困难 | 选词原则：**①纯颜色词优先**（红/蓝/绿/黄），**②物品词只选具象的常见单义名词**（月亮/草地/火），**③禁用形容词性词汇**（黑暗/明亮/温暖），**④2字以内**避免按钮排不下。参考 EP16 实现：10 个纯色词 + 6 个剧情物品词 = 16 色 |
 | 19 | V3组件 | V3 模板缺 NarrativeScene/头像/结语/考验宣告卡 | **必须注入三大组件**：NarrativeScene + initShellDOM 升级（`CTX.portraits`）+ ResultScene 结语 overlay。必须加考验宣告卡衔接剧情→游戏 |
 | 20 | 批量生成 | 脚本不注入组件；先批量再修标杆；生成后不校验 | 以验证通过的标杆 ep 作母版，脚本只替换 CTX 块和文本。强制顺序：标杆→批量→Step 7b 校验全部 ep 通过 |
 | 21 | STORY_THEME | CSS 手绘；图片边缘生硬；无切换动画；改了游戏逻辑 | **禁止手工作图**，全用 AI 生成。边缘用 `mask-image: radial-gradient(...)` 柔化。多状态用多图 + opacity 交叉淡入。只 hook 视觉函数，不改 update/计分/碰撞逻辑 |
@@ -1245,14 +1263,18 @@ await page.screenshot({ path: 'screenshot.png' });
   - status and combo band: below the play card, never overlapping it
   - primary CTA: low thumb zone with comfortable bottom margin
 - Dense choice layouts should prefer 2×2 cards or a dedicated answer area over stacked buttons.
+- **选项网格始终 2 列**（无论 4 选项还是 5 选项）：`cols * btnW + (cols-1) * gap` 必须 ≤ 393px - 40px。3 列在 5 选项时超宽（3×136=408>393），已验证导致按钮被裁切。Phaser 版用 `const cols = 2;`，DOM 版用 `grid-template-columns: repeat(2, Npx)`
 - If status or hint text wraps into gameplay space, shorten the copy first, then move the band lower if needed.
 - Keep gameplay copy mobile-short. Long instructions are a recurring source of overlap.
+- **中文文本比英文更宽**：同一按钮宽度下中文能放的字数更少。选项按钮文本控制在 **2 字以内**（如 "红"、"月亮"），超过 2 字考虑缩小字号或加宽按钮
 
 ### Implementation stability
 - Do not assume every game uses `ResultScene`; existing games may use `RatingScene`.
 - Do not assume CTA buttons are immediately interactive; some scenes fade or delay them in.
 - Use a deterministic modifier lookup and verify it against the rating enum every time.
 - Preserve the bridge order exactly.
+- **Phaser `add.xxx()` 返回值归 scene 所有，不归 group 所有**：`scene.add.container()` / `scene.add.text()` / `scene.add.rectangle()` 的返回值都挂在 scene 的 display list 上。即使你把它当参数传给 `group.add()`，也只是建立一个逻辑引用；`group.removeAll(true)` 未必等于"销毁所有子对象"。**清理 Phaser 动态创建的 UI 时，必须自己持有引用数组并逐个 `.destroy()`**
+- **模板原版 (pure Phaser) 和深度定制版 (DOM+Phaser hybrid) 的对象生命周期不同**：模板按钮用 `makeButton()` 在 Phaser canvas 里创建 → 要手动 destroy；深度定制版按钮用 DOM `<div>` → `innerHTML = ''` 清空即可。修复同一个 bug 时两版的 fix 往往不同，不能盲目复制
 
 ### Verification stability
 - Run a syntax compile pass on every generated HTML script block.
@@ -1424,12 +1446,38 @@ Step 7  验证：扫描残留旧 hex
 | 射击瞄准 | 全屏射击区 + 瞄准线 + 目标 | cannon-aim |
 | 车道闪避 | 三车道全屏 + 生命心 | lane-dash |
 | 红绿灯 | DOM 信号灯 + 跑道进度条 | red-light-green-light |
-| 颜色匹配 | 大色卡展示 + 答案网格 | color-match |
+| 颜色匹配 | 大色卡展示 + 答案网格（详见下方 color-match 定制要点） | color-match |
 | 传送分拣 | 三列传送带 + 分类箱 | conveyor-sort |
 | 钓鱼 | 垂直钓鱼仪表 + 鱼区 + 浮漂 | stardew-fishing |
 | 迷宫 | 迷宫网格全屏 + D-Pad | maze-escape |
 | 聚光搜索 | 暗场全屏 + 聚光灯 | spotlight-seek |
 | 停车 | 俯视停车场 + 车位高亮 | parking-rush |
+
+#### color-match 深度定制要点
+
+color-match 模板有**两种渲染架构**，定制时必须分别处理：
+
+| 版本 | 架构 | 按钮创建 | 按钮清理 | 布局控制 |
+|------|------|---------|---------|---------|
+| **模板原版** (`packs/.../index.html`) | 纯 Phaser | `makeButton()` → Container 挂 scene root | 遍历 `answerContainers[]` 逐个 `.destroy()` | Phaser 坐标计算 `cols * btnW` |
+| **深度定制版** (`variant-themed.html`) | DOM+Phaser 混合 | CSS Grid `<div class="answer-grid">` | `grid.innerHTML = ''` 清空 DOM | CSS `grid-template-columns` |
+
+**已验证的 bug 及修复**：
+- 模板原版 `btnGroup.removeAll(true)` 无效（group 是空容器，button 不是 child）→ 改为遍历 `answerContainers` 逐个 destroy
+- DOM 版 `grid.innerHTML = ''` 正确工作，无泄漏问题
+- 5 选项 3 列溢出（408px > 393px）→ 两版都改为始终 2 列
+
+**Stroop 干扰调优**（已验证的最佳参数）：
+- **Stroop 主导频率**：`Math.random() < 0.65 + difficulty * 0.03`（起步 65%，每 2 关 +3%）。原版 `0.4 + d*0.03` 太低，Stroop 感知不强
+- **模式比例 80/20**：`Math.random() > 0.2 ? 'name-to-swatch' : 'swatch-to-name'`。name-to-swatch 是 Stroop 生效的唯一模式，占比必须高
+- **Stroop 起始回合**：从 difficulty ≥ 0 就开始（第 1 回合即有 65% 概率），不要等到 difficulty ≥ 3
+
+**中文化颜色词选择原则**（Layer 1 深度定制）：
+- 基础词库 = **10 个纯色单字词**（红/橙/黄/绿/蓝/紫/粉/棕/青/灰）+ **6 个剧情物品词**（≤2 字、具象、无歧义）
+- 物品词必须能和一个确定颜色建立直觉映射（月亮→淡黄、草地→亮绿、血→深红、夜空→深蓝、火→橙、银→银灰）
+- **禁用**：形容词（"黑暗"/"明亮"）、抽象概念（"希望"/"恐惧"）、多义词（"金"既是颜色也是金属）
+- 每个词的 hex 必须与直觉匹配（"草地"→`#4ADE80` 亮绿 ✓，"草地"→`#064E3B` 暗绿 ✗ 不直觉）
+- 中文不需要 `toUpperCase()`，全局搜索并删除该调用
 
 **分析新游戏时的思考流程**:
 1. 核心玩法是什么？（点击位置、按住、拖拽、方向键？）
@@ -1777,6 +1825,7 @@ Canvas/Phaser
 | 开局没有玩法介绍 | BootScene 缺少规则说明 | 每个游戏必须在 START 前显示玩法规则（boot-card/circle-content/dialogue） |
 | `PRIMARY_COLOR` 死代码 | V1 遗留常量，V3 不使用 | 删除，用 `window.__V3_THEME__` 替代 |
 | 开屏 boot-card 还显示模板默认游戏名（如 "急速泊车"） | 模板在 `<div id="boot-card">` 里硬编码了中文标题，`STORY_RESKIN.labels` 只捕获英文键会漏掉 | 为每个使用了模板的 ep 的 `labels` 加一条中文→中文映射（如 `'急速泊车':'规则战争'`）。**审核时用 `grep -oP '[\p{Han}]+' packs/.../index-v3.html \| sort -u` 把模板里所有硬编码中文枚举出来**，确保每条都在 `STORY_RESKIN[ep].labels` 里有对应映射。已知受影响模板：conveyor-sort/maze-escape/parking-rush/spotlight-seek/will-surge |
+| 结算屏还残留英文/通用中文（如 "Combo:"、"停放:"、"Miss:"） | 两个原因：① `BOOT_DESC_REPLACEMENTS` 没覆盖 ResultScene 统计标签；② `labels` 的 key 写的是英文原文，但 `BOOT_DESC_REPLACEMENTS` 已经在前一步把英文替换成了通用中文，所以 labels 找不到匹配 | **所有玩家可见文本都必须翻译**，包括 ResultScene 的 `stat-combo` / `stat-hits` textContent。① 新增模板时，把 `'Combo: '`、`'/ Miss: '`、`'Hits: '`、`'Too slow!'` 等 JS 字符串字面量加进 `BOOT_DESC_REPLACEMENTS`（注意用带引号的模式 `["'Combo: '", "'连击: '"]` 避免匹配变量名 `maxCombo`）。② per-episode `labels` 的 key 必须写**替换后的中文**（`'停放: ':'部署: '`），不是英文原文（~~`'Parked: ':'部署: '`~~），因为 labels 跑在 `BOOT_DESC_REPLACEMENTS` 之后 |
 | 深度定制只处理了游戏初始状态的对象，遗漏了**游戏进程中动态解锁的对象** | conveyor-sort 初始只有 3 个分类 bin（cat1/2/3），但 difficulty≥4 时解锁第 4 类 cat4。精灵图定义（`generate-wolven-sprites.js`）和 preload 注入都只写了 cat1/2/3 + decoy，cat4 掉落物在解锁后回退到 emoji 渲染，与其它三类精灵图风格不一致 | 定制前**必须通读模板的难度递进逻辑**（搜 `difficulty` / `activeBinCount` / `phase` / `wave` / `unlock`），列出所有阶段会出现的对象全集，再逐一确认每个对象都有对应素材。不能只看游戏开局画面就以为对象就这些 |
 | Layer 3 定制变成装饰图覆盖游戏 | 误以为"深度定制"就是找张大图铺在游戏上，把可交互元素挡住 | Layer 3 **不是装饰层**。是有针对性的 *核心视觉外壳* 替换（信号灯/墙/车道），不是背景图覆盖。不满足 4 条决策门槛就不做 |
 | Layer 3 主题视觉只有第一帧对，之后不随游戏状态刷新 | 只在 hook 里跑了一次初始化，没 hook 重绘入口函数 | 识别每个游戏的重绘入口：maze-escape 是 `loadMaze()`（每关换图）、parking-rush 是 `drawLanes()`（每回合换 freeIndex）、red-light-green-light 是 `setTrafficLight()`（每次切灯）。必须把主题重绘塞进这些函数的 hook 里 |
