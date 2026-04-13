@@ -465,7 +465,6 @@ const STORY_THEME = {
     if (gs.events && gs.events.on) {
       gs.events.on('create', function(){
         setTimeout(function(){
-          gs._themeLaneObjs = [];
           renderThemedLanes();
         }, 0);
       });
