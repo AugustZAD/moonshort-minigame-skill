@@ -1423,7 +1423,7 @@ function generateGame(ep, templateId) {
       ['Hit! -12', '撞击！-12'],
       ['Combo x', '连击 x'],
       ['UNSTOPPABLE!', '无人可挡！'],
-      ['Combo ', '连击 '],
+      ["'Combo '", "'连击 '"],
       ['Orbs', '能量球'],
     ],
     'parking-rush': [

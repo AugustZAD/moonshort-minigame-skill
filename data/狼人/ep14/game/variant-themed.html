@@ -269,7 +269,7 @@ var W = 393, H = 852, ROUND_SECONDS = 30;
 var RATING_THRESHOLDS = { S: 360, A: 270, B: 180, C: 100 };
 var MODIFIER_BY_RATING = { S: 3, A: 1, B: 0, C: -1 };
 
-// ── 逃脱 tiers ──
+// ── Combo tiers ──
 var COMBO_WARM = 3, COMBO_BLAZE = 6, COMBO_UNSTOP = 10;
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -485,7 +485,7 @@ class GameScene extends Phaser.Scene {
     this.hazards = []; this.orbs = [];
     this.spawnMs = 520; this.orbSpawnMs = 2500 + Math.random() * 1500;
     this.lives = 3; this.invulnMs = 0;
-    this.combo = 0; this.max逃脱 = 0; this.totalHits = 0; this.totalMiss = 0; this.orbsCollected = 0;
+    this.combo = 0; this.maxCombo = 0; this.totalHits = 0; this.totalMiss = 0; this.orbsCollected = 0;
     this.lastTickSec = -1; this.audioStarted = false; this.difficulty = 1;
     this.comboTier = 0; this.unstoppableShown = false;
     this.speedLines = []; this.trailObjs = []; this.trailTimer = 0;
@@ -597,7 +597,7 @@ class GameScene extends Phaser.Scene {
     this.orbs.push({ x: LANES[lane], y: orbY, lane: lane, r: 14, phase: Math.random() * Math.PI * 2, collected: false });
   }
 
-  // ── 逃脱 tier management ──
+  // ── Combo tier management ──
   updateComboTier() {
     var prev = this.comboTier;
     if (this.combo >= COMBO_UNSTOP) this.comboTier = 3;
@@ -687,7 +687,7 @@ class GameScene extends Phaser.Scene {
 
       // Scored (passed player)
       if (!h.scored && h.y > this.player.y + 36) {
-        h.scored = true; this.combo += 1; this.max逃脱 = Math.max(this.maxCombo, this.combo); this.totalHits += 1;
+        h.scored = true; this.combo += 1; this.maxCombo = Math.max(this.maxCombo, this.combo); this.totalHits += 1;
         var baseGain = 18; if (h.type === 'fast') baseGain = Math.round(18 * 1.3); if (h.type === 'wide') baseGain = Math.round(18 * 1.5);
         var cb = Math.min(this.combo, 10) * 4; var gain = baseGain + cb;
         this.addScore(gain);
@@ -705,7 +705,7 @@ class GameScene extends Phaser.Scene {
       // Collision
       if (this.invulnMs <= 0 && this.collides(h, this.player)) {
         this.invulnMs = 720; this.lives -= 1; this.totalMiss += 1;
-        var had逃脱 = this.combo >= 3; this.combo = 0; $('combo-text').textContent = '';
+        var hadCombo = this.combo >= 3; this.combo = 0; $('combo-text').textContent = '';
         this.updateLives(); this.addScore(-12);
         showToast(this, '被抓！-12', '#FF4D6A', this.player.x, this.player.y - 40);
         if (hadCombo) { audio.comboBreak(); screenShake(this, 0.018); damageFlash(this, 0x888888); } else { audio.fail(); screenShake(this, 0.012); damageFlash(this); }
@@ -742,7 +742,7 @@ class GameScene extends Phaser.Scene {
 // ══════════════════════════════════════════════════════════════════════════════
 class ResultScene extends Phaser.Scene {
   constructor() { super('ResultScene'); }
-  init(data) { this.finalScore = data.score || 0; this.max逃脱 = data.max逃脱 || 0; this.hits = data.hits || 0; this.misses = data.misses || 0; this.orbsCollected = data.orbsCollected || 0; }
+  init(data) { this.finalScore = data.score || 0; this.maxCombo = data.maxCombo || 0; this.hits = data.hits || 0; this.misses = data.misses || 0; this.orbsCollected = data.orbsCollected || 0; }
   create() {
     this.children.removeAll(true); this.cameras.main.resetFX();
     var self = this; var T = window.__V3_THEME__;

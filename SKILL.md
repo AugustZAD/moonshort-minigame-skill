@@ -748,6 +748,14 @@ Freesound API 搜索 → 下载预览 → FreesoundAudio 类集成
 - 中文字符串替换要用确切的 UTF-8 字符，不要用 `\uXXXX` 转义（容易写错、难以 review）
 - Windows 环境下 `python3` 可能不可用，优先用 `node -e "..."` 做批量文本处理
 
+**⚠️ 致命陷阱：裸子串替换会污染 JS 标识符**（lane-dash V4 实战教训）：
+- BOOT_DESC_REPLACEMENTS 的 `['Combo ', '连击 ']` 作为裸子串替换，会匹配 JS 变量名中的 `Combo`：`maxCombo` → `max连击`、`hadCombo` → `had连击`
+- STORY_RESKIN 进一步链式污染：`max连击` → `max闪避`（EP12）/ `max逃脱`（EP14）
+- 后果：`var had闪避 = ...` 后引用 `hadCombo` → ReferenceError → 碰撞处理函数崩溃 → `finishGame('fail')` 永远不会执行 → 玩家撞到障碍物死不掉
+- **修复方法**：文本替换模式必须包含引号，确保只匹配字符串字面量而非 JS 标识符：`["'Combo '", "'连击 '"]`（而非 `['Combo ', '连击 ']`）
+- **通用规则**：任何英文单词（首字母大写）若在代码中同时作为 UI 文本和 JS 标识符的一部分（如 `Combo` 出现在 `'Combo x'` 字符串和 `maxCombo` 变量中），替换 pattern 必须带引号前缀/后缀以区分
+- **验证方法**：生成后 grep 所有中文字符出现在非引号上下文中的情况：`grep -P '(?<!["\x27])[\x{4e00}-\x{9fff}]' | grep -v '//'` 可检测泄漏到 JS 标识符中的中文
+
 **强制工作顺序**（不可调换）：
 
 1. **先完成 1 个标杆 ep 的完整深度定制**（含所有组件注入 + 浏览器验证通过）
