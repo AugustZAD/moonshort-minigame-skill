@@ -1946,63 +1946,100 @@ ${preloadLines}
       spritePatch += `
 (function() {
   var gs = GameScene.prototype || GameScene;
+  // 2-layer halo simulates CSS drop-shadow blur: inner (sharp, brighter) + outer (diffuse, faint)
+  function addHalo(scene, x, y, tex, w, h, tint, depth) {
+    var inner = scene.add.image(x, y, tex).setDisplaySize(w * 1.18, h * 1.18).setOrigin(0.5).setDepth(depth).setTint(tint).setAlpha(0.35);
+    var outer = scene.add.image(x, y, tex).setDisplaySize(w * 1.45, h * 1.45).setOrigin(0.5).setDepth(depth - 0.1).setTint(tint).setAlpha(0.10);
+    return { inner: inner, outer: outer };
+  }
+  function moveHalo(halo, x, y) { if (halo) { if (halo.inner) halo.inner.setPosition(x, y); if (halo.outer) halo.outer.setPosition(x, y); } }
+  function destroyHalo(halo) { if (halo) { if (halo.inner) halo.inner.destroy(); if (halo.outer) halo.outer.destroy(); } }
+  function cleanObj(o) { if (o._spr) { o._spr.destroy(); o._spr = null; } if (o._spr2) { o._spr2.destroy(); o._spr2 = null; } destroyHalo(o._h1); o._h1 = null; destroyHalo(o._h2); o._h2 = null; }
   var origCreate = gs.create;
   gs.create = function() {
     origCreate.call(this);
-    // Create player sprite overlay
     if (this.textures.exists('ep_sprite_player') && this.player) {
+      var T = window.__V3_THEME__;
+      var pTint = parseInt((T.primary || '#4ECDC4').replace('#',''), 16);
+      this._pH = addHalo(this, this.player.x, 700, 'ep_sprite_player', 50, 66, pTint, 10);
       this._sprPlayer = this.add.image(this.player.x, 700, 'ep_sprite_player')
-        .setDisplaySize(42, 56).setOrigin(0.5).setDepth(11);
+        .setDisplaySize(50, 66).setOrigin(0.5).setDepth(11);
     }
   };
   var origUpdate = gs.update;
   gs.update = function(time, dt) {
+    // Snapshot before origUpdate — it splices entries on collision/offscreen
+    var prevH = this.hazards ? this.hazards.slice() : [];
+    var prevO = this.orbs ? this.orbs.slice() : [];
     origUpdate.call(this, time, dt);
-    // Follow player position
+    // Clean orphaned sprites (removed by collision/offscreen in origUpdate)
+    var i; for (i = 0; i < prevH.length; i++) { if (this.hazards.indexOf(prevH[i]) === -1) cleanObj(prevH[i]); }
+    for (i = 0; i < prevO.length; i++) { if (this.orbs.indexOf(prevO[i]) === -1) cleanObj(prevO[i]); }
+    var hasObsSpr = this.textures.exists('ep_sprite_obstacle');
+    var hasOrbSpr = this.textures.exists('ep_sprite_collect');
+    // Clear template's colored shapes — sprite halos replace them
+    if (this._sprPlayer) { this.playerGfx.clear(); this.playerGlowGfx.clear(); }
+    if (hasObsSpr) this.hazardGfx.clear();
+    if (hasOrbSpr) this.orbGfx.clear();
+    // Player
     if (this._sprPlayer && this.player) {
       this._sprPlayer.setPosition(this.player.x, 700);
+      moveHalo(this._pH, this.player.x, 700);
+      if (this._pH && this._pH.inner) this._pH.inner.setAlpha(0.3 + Math.sin((this._glowPhase || 0) * 1.5) * 0.1);
     }
-    // Obstacle sprites (normal + fast types; wide uses default gfx)
-    var hasObsSpr = this.textures.exists('ep_sprite_obstacle');
+    // Obstacles — 2-layer red halo
     if (this.hazards && hasObsSpr) {
-      for (var i = 0; i < this.hazards.length; i++) {
+      for (i = 0; i < this.hazards.length; i++) {
         var h = this.hazards[i];
-        if (!h._spr && h.y > 0 && h.type !== 'wide') {
-          h._spr = this.add.image(h.x, h.y, 'ep_sprite_obstacle')
-            .setDisplaySize(40, 64).setOrigin(0.5).setDepth(9);
-          if (h.type === 'fast') h._spr.setTint(0xFF6666).setAlpha(0.9);
-          else h._spr.setAlpha(0.85);
+        if (!h._spr && h.y > 0) {
+          var ht = h.type === 'fast' ? 0xFF2D55 : 0xFF4D6A;
+          if (h.type === 'wide') {
+            h._h1 = addHalo(this, h.x - 40, h.y, 'ep_sprite_obstacle', 50, 66, ht, 8);
+            h._h2 = addHalo(this, h.x + 40, h.y, 'ep_sprite_obstacle', 50, 66, ht, 8);
+            h._spr = this.add.image(h.x - 40, h.y, 'ep_sprite_obstacle').setDisplaySize(50, 66).setOrigin(0.5).setDepth(9);
+            h._spr2 = this.add.image(h.x + 40, h.y, 'ep_sprite_obstacle').setDisplaySize(50, 66).setOrigin(0.5).setDepth(9);
+          } else {
+            h._h1 = addHalo(this, h.x, h.y, 'ep_sprite_obstacle', 48, 66, ht, 8);
+            h._spr = this.add.image(h.x, h.y, 'ep_sprite_obstacle').setDisplaySize(48, 66).setOrigin(0.5).setDepth(9);
+            if (h.type === 'fast') h._spr.setTint(0xFFAAAA);
+          }
         }
         if (h._spr) {
-          h._spr.setPosition(h.x, h.y);
-          if (h.y > 900) { h._spr.destroy(); h._spr = null; }
+          if (h.type === 'wide') {
+            h._spr.setPosition(h.x - 40, h.y); if (h._spr2) h._spr2.setPosition(h.x + 40, h.y);
+            moveHalo(h._h1, h.x - 40, h.y); moveHalo(h._h2, h.x + 40, h.y);
+          } else {
+            h._spr.setPosition(h.x, h.y); moveHalo(h._h1, h.x, h.y);
+          }
+          if (h.y > 900) cleanObj(h);
         }
       }
     }
-    // Orb sprites (replace gold circle with story collectible)
-    var hasOrbSpr = this.textures.exists('ep_sprite_collect');
+    // Orbs — 2-layer green halo, pulsing
     if (this.orbs && hasOrbSpr) {
       for (var j = this.orbs.length - 1; j >= 0; j--) {
         var orb = this.orbs[j];
-        // Clean up sprite if orb was collected or offscreen
-        if (orb.collected || orb.y > 800) {
-          if (orb._spr) { orb._spr.destroy(); orb._spr = null; }
-          continue;
-        }
+        if (orb.collected || orb.y > 800) { cleanObj(orb); continue; }
         if (!orb._spr) {
-          orb._spr = this.add.image(orb.x, orb.y, 'ep_sprite_collect')
-            .setDisplaySize(28, 28).setOrigin(0.5).setDepth(8);
+          orb._h1 = addHalo(this, orb.x, orb.y, 'ep_sprite_collect', 36, 36, 0x44FF88, 7);
+          orb._spr = this.add.image(orb.x, orb.y, 'ep_sprite_collect').setDisplaySize(36, 36).setOrigin(0.5).setDepth(8);
         }
-        orb._spr.setPosition(orb.x, orb.y);
-        var sc = 1.0 + Math.sin(orb.phase || 0) * 0.12;
-        orb._spr.setScale(sc);
+        var sc = 1.0 + Math.sin(orb.phase || 0) * 0.18;
+        orb._spr.setPosition(orb.x, orb.y).setScale(sc);
+        moveHalo(orb._h1, orb.x, orb.y);
+        if (orb._h1 && orb._h1.inner) {
+          orb._h1.inner.setScale(sc * 1.18 * 36 / 36); orb._h1.outer.setScale(sc * 1.45 * 36 / 36);
+          orb._h1.inner.setAlpha(0.3 + Math.sin(orb.phase || 0) * 0.15);
+          orb._h1.outer.setAlpha(0.08 + Math.sin(orb.phase || 0) * 0.06);
+        }
       }
     }
   };
-  // Clean up orb sprites when collected or offscreen
   var origFinish = gs.finishGame;
   gs.finishGame = function(reason) {
-    if (this.orbs) { for (var k = 0; k < this.orbs.length; k++) { if (this.orbs[k]._spr) this.orbs[k]._spr.destroy(); } }
+    destroyHalo(this._pH);
+    if (this.hazards) { for (var i = 0; i < this.hazards.length; i++) cleanObj(this.hazards[i]); }
+    if (this.orbs) { for (var k = 0; k < this.orbs.length; k++) cleanObj(this.orbs[k]); }
     origFinish.call(this, reason);
   };
 })();`;
