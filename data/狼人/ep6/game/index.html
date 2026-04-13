@@ -1091,6 +1091,9 @@ function screenShake(scene, intensity) {
   scene.cameras.main.shake(150, intensity || 0.008);
 }
 
+// ══════════════════════════════════════════════════════════════════════════════
+//  BOOT SCENE
+// ══════════════════════════════════════════════════════════════════════════════
 
 // ══════════════════════════════════════════════════════════════════════════════
 //  COMPONENT A: NARRATIVE SCENE
@@ -1171,9 +1174,6 @@ class NarrativeScene extends Phaser.Scene {
   }
 }
 
-// ══════════════════════════════════════════════════════════════════════════════
-//  BOOT SCENE
-// ══════════════════════════════════════════════════════════════════════════════
 class BootScene extends Phaser.Scene {
   constructor() { super('BootScene'); }
 
@@ -1731,7 +1731,7 @@ fitShell();
     var self = this;
     var rating = getRating(this.finalScore || 0);
     if (CTX.resultTexts && CTX.resultTexts[rating]) {
-      // Hide all UI first
+      // Hide all UI first (use classList to preserve inline styles on btn-area etc.)
       ['dialogue','score-display','timer-text','combo-text','hint-text',
        'stars-row','result-info','gauge-area','boot-card','hud-row',
        'sort-legend','btn-area'].forEach(function(id) {
@@ -1751,7 +1751,7 @@ fitShell();
         ov.style.transition = 'opacity 0.4s';
         setTimeout(function() {
           ov.remove();
-          // Restore display defaults
+          // Restore display defaults (use classList to preserve inline styles)
           ['dialogue','score-display','timer-text','combo-text','hint-text',
            'stars-row','result-info','gauge-area','boot-card','hud-row',
            'sort-legend','btn-area'].forEach(function(id) {

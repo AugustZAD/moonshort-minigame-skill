@@ -52,7 +52,6 @@
   .round-bar-fill { height: 100%; border-radius: 6px; background: linear-gradient(90deg, var(--player-hp), var(--primary-light)); transition: width 0.05s linear; }
   .hint-text { position: absolute; top: 618px; left: 0; width: 100%; text-align: center; font-weight: 700; font-size: 12px; z-index: 10; color: rgba(255,255,255,0.45); }
 
-  .btn-area { position: absolute; bottom: 20px; left: 12px; right: 12px; display: flex; flex-direction: column; gap: 14px; z-index: 10; }
   .btn-candy {
     position: relative; height: 64px; border-radius: 24px;
     border: 2px solid rgba(255,255,255,0.25);
@@ -98,6 +97,11 @@
     background: linear-gradient(180deg, #F5C842 0%, #B8860B 100%);
   }
 
+  .btn-area {
+    position: absolute; bottom: 20px; left: 12px; right: 12px;
+    display: flex; flex-direction: column; gap: 14px; z-index: 10;
+  }
+
   .lane-btns { position: absolute; bottom: 20px; left: 0; width: 100%; z-index: 10; display: flex; justify-content: center; gap: 10px; }
   .btn-lane { width: 110px; height: 56px; border-radius: 18px; border: 2px solid rgba(255,255,255,0.25); box-shadow: 0 4px 0 0 var(--black-25), inset 0 0 4px 4px var(--white-50); overflow: hidden; cursor: pointer; position: relative; -webkit-tap-highlight-color: transparent; user-select: none; }
   .btn-lane .base { position: absolute; inset: 0; background: linear-gradient(180deg, var(--primary) 0%, color-mix(in srgb, var(--primary), #000 40%) 100%); border-radius: 16px; }
@@ -132,11 +136,11 @@
   <div id="phaser-container"></div>
   <div class="title-bar" id="title-bar"><span class="title-text" id="title-text">规则战争</span></div>
   <div class="level-info hidden" id="level-info">
-    <span class="level-text" id="level-text">连击 0</span>
+    <span class="level-text" id="level-text">连续 0</span>
     <div class="score-area"><span class="score-label" id="score-label">SCORE</span><div class="score-wrap"><span class="score-value" id="score-value">0</span><span class="delta" id="score-delta"></span></div></div>
     <span class="timer-text" id="timer-text">30s</span>
   </div>
-  <div class="streak-text hidden" id="streak-text">连击 0</div>
+  <div class="streak-text hidden" id="streak-text">连续 0</div>
   <div class="combo-text hidden" id="combo-text"></div>
   <div class="round-bar-wrap hidden" id="round-bar-wrap"><div class="round-bar-fill" id="round-bar-fill" style="width:100%"></div></div>
   <div class="hint-text hidden" id="hint-text">用规则而非武力赢得议事厅的战争</div>
@@ -144,11 +148,11 @@
   <div class="result-info hidden" id="result-info"><div class="attr-mod" id="attr-mod"></div><div class="stats"><span id="stat-combo"></span><span id="stat-hits"></span></div></div>
   <div class="lane-btns hidden" id="lane-btns">
     <div class="btn-lane" id="lane-0"><div class="base"></div><div class="glass"></div><div class="highlight"></div><div class="glow"></div><div class="label">LEFT</div></div>
-    <div class="btn-lane" id="lane-1"><div class="base"></div><div class="glass"></div><div class="highlight"></div><div class="glow"></div><div class="label">中间</div></div>
+    <div class="btn-lane" id="lane-1"><div class="base"></div><div class="glass"></div><div class="highlight"></div><div class="glow"></div><div class="label">中路</div></div>
     <div class="btn-lane" id="lane-2"><div class="base"></div><div class="glass"></div><div class="highlight"></div><div class="glow"></div><div class="label">RIGHT</div></div>
   </div>
   <div class="boot-card hidden" id="boot-card" style="position:absolute;top:380px;left:0;width:100%;text-align:center;z-index:12;">
-    <div style="font-weight:900;font-size:28px;color:var(--primary);margin-bottom:8px;">规则战争</div>
+    <div style="font-weight:900;font-size:28px;color:var(--primary);margin-bottom:8px;">急速泊车</div>
     <div style="font-weight:700;font-size:14px;color:#64748B;margin-bottom:24px;" id="boot-subtitle">考验</div>
     <div style="font-weight:700;font-size:13px;color:#E2E8F0;line-height:2;">在议事厅的压力中调度资源<br>用程序而非武力<br>每一步都必须精准</div>
   </div>
@@ -407,8 +411,8 @@ class GameScene extends Phaser.Scene{
     setVisible('lane-btns',true);setVisible('round-bar-wrap',true);setVisible('hint-text',true);
     setVisible('btn-area',false);setVisible('stars-row',false);setVisible('result-info',false);
     $('score-value').textContent='0';$('timer-text').textContent=ROUND_SECONDS+'s';
-    $('timer-text').classList.remove('warn');$('level-text').textContent='连击 0';
-    $('streak-text').textContent='连击 0';$('combo-text').textContent='';
+    $('timer-text').classList.remove('warn');$('level-text').textContent='连续 0';
+    $('streak-text').textContent='连续 0';$('combo-text').textContent='';
     $('round-bar-fill').style.width='100%';
     this.lotGfx=this.add.graphics().setDepth(2);this.laneGfx=this.add.graphics().setDepth(5);
     this.lotGfx.fillStyle(hexToInt(darken(T.bg,-0.15)),0.5);this.lotGfx.fillRect(20,LOT_TOP,W-40,LOT_H);
@@ -436,11 +440,11 @@ class GameScene extends Phaser.Scene{
     if(index===this.freeIndex){
       this.streak++;var cB=Math.min(this.combo,5)*4,gain=16+cB;this.combo++;this.maxCombo=Math.max(this.maxCombo,this.combo);this.totalHits++;this.consecutiveMisses=0;this.addScore(gain);this.difficulty=Math.min(12,this.difficulty+0.4);
       if(this.streak>=3){showToast(this,'Perfect +'+gain,T.playerHp,W/2,LOT_TOP+200);spawnParticles(this,LANE_XS[this.freeIndex],LOT_TOP+160,hexToInt(T.gold),8,400);}else{showToast(this,'到位！+'+gain,T.primary,W/2,LOT_TOP+200);}
-      audio.success();$('level-text').textContent='连击 '+this.streak;$('streak-text').textContent='连击 '+this.streak;$('combo-text').textContent='连击 x'+this.combo;this.setRound(true);return;
+      audio.success();$('level-text').textContent='连续 '+this.streak;$('streak-text').textContent='连续 '+this.streak;$('combo-text').textContent='连续 x'+this.combo;this.setRound(true);return;
     }
     this.consecutiveMisses++;var pen=-(5+this.consecutiveMisses*2);this.streak=0;this.combo=0;this.totalMiss++;this.addScore(pen);
     showToast(this,'Blocked! '+pen,'#FF4D6A',W/2,LOT_TOP+200);audio.fail();damageFlash(this);screenShake(this,0.008);
-    $('level-text').textContent='连击 0';$('streak-text').textContent='连击 0';$('combo-text').textContent='';this.setRound(true);
+    $('level-text').textContent='连续 0';$('streak-text').textContent='连续 0';$('combo-text').textContent='';this.setRound(true);
   }
   finishGame(reason){if(this.isOver)return;this.isOver=true;window.__activeGameScene=null;audio.stopBgm(600);this.scene.start('ResultScene',{score:Math.round(this.score),maxCombo:this.maxCombo,hits:this.totalHits,misses:this.totalMiss,reason:reason||'time'});}
   update(time,delta){
@@ -450,7 +454,7 @@ class GameScene extends Phaser.Scene{
     if(this.timeLeft<=10)$('timer-text').classList.add('warn');else $('timer-text').classList.remove('warn');
     this.roundMs-=delta;var ratio=clamp(this.roundMs/this.roundMaxMs,0,1);var fill=$('round-bar-fill');fill.style.width=(ratio*100)+'%';
     if(ratio>0.5)fill.style.background='';else if(ratio>0.25)fill.style.background='#FFB347';else fill.style.background='#FF4D6A';
-    if(this.roundMs<=0){this.consecutiveMisses++;var pen=-(3+this.consecutiveMisses);this.streak=0;this.combo=0;this.totalMiss++;this.addScore(pen);showToast(this,'Too slow! '+pen,'#FF4D6A',W/2,LOT_TOP+200);audio.fail();screenShake(this,0.005);$('level-text').textContent='连击 0';$('streak-text').textContent='连击 0';$('combo-text').textContent='';this.setRound(true);}
+    if(this.roundMs<=0){this.consecutiveMisses++;var pen=-(3+this.consecutiveMisses);this.streak=0;this.combo=0;this.totalMiss++;this.addScore(pen);showToast(this,'太慢了！ '+pen,'#FF4D6A',W/2,LOT_TOP+200);audio.fail();screenShake(this,0.005);$('level-text').textContent='连续 0';$('streak-text').textContent='连续 0';$('combo-text').textContent='';this.setRound(true);}
     if(this.timeLeft<=0)this.finishGame('time');
   }
 }
@@ -475,7 +479,7 @@ class ResultScene extends Phaser.Scene{
     this.add.text(W/2,412,DISPLAY_ATTRIBUTE+' '+modText,{fontFamily:'Montserrat',fontSize:'16px',fontStyle:'700',color:'rgba(255,255,255,0.45)'}).setOrigin(0.5).setDepth(10);
     var sr=$('stars-row');sr.innerHTML='';sr.style.top='440px';var sc={S:4,A:3,B:2,C:1}[rating];
     for(var i=0;i<4;i++){var s=document.createElement('span');s.className='star '+(i<sc?'filled':'empty');s.textContent='\u2605';s.style.animationDelay=(0.1+i*0.08)+'s';sr.appendChild(s);}
-    $('result-info').style.top='490px';$('attr-mod').textContent='';$('stat-combo').textContent='Combo: '+this.maxCombo;$('stat-hits').textContent='停放: '+this.hits+' / Miss: '+this.misses;
+    $('result-info').style.top='490px';$('attr-mod').textContent='';$('stat-combo').textContent='连击: '+this.maxCombo;$('stat-hits').textContent='部署: '+this.hits+' / 失误: '+this.misses;
     var self=this;clearBtnArea();
     $('btn-area').appendChild(makeCandyButton('继续','full',18,function(){notifyGameComplete({rating:rating,score:self.finalScore,attribute:ATTRIBUTE,modifier:modifier,gameId:'parking-rush',maxCombo:self.maxCombo,hits:self.hits,misses:self.misses});self.time.delayedCall(600,function(){self.scene.start('BootScene');});}));
     $('btn-area').appendChild(makeCandyButton('再来一次','full',18,function(){self.scene.start('BootScene');}));
@@ -686,7 +690,7 @@ fitShell();
     var self = this;
     var rating = getRating(this.finalScore || 0);
     if (CTX.resultTexts && CTX.resultTexts[rating]) {
-      // Hide all UI first
+      // Hide all UI first (use classList to preserve inline styles on btn-area etc.)
       ['dialogue','score-display','timer-text','combo-text','hint-text',
        'stars-row','result-info','gauge-area','boot-card','hud-row',
        'sort-legend','btn-area'].forEach(function(id) {
@@ -706,7 +710,7 @@ fitShell();
         ov.style.transition = 'opacity 0.4s';
         setTimeout(function() {
           ov.remove();
-          // Restore display defaults
+          // Restore display defaults (use classList to preserve inline styles)
           ['dialogue','score-display','timer-text','combo-text','hint-text',
            'stars-row','result-info','gauge-area','boot-card','hud-row',
            'sort-legend','btn-area'].forEach(function(id) {

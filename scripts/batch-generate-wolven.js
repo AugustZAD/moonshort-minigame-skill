@@ -156,7 +156,7 @@ const STORY_RESKIN = {
   },
   // ── parking-rush ──
   ep11: { // 规则战争
-    labels: { '急速泊车':'规则战争', 'Parked! +':'到位！+', 'Parked: ':'部署: ', 'Streak ':'连续 ', 'CENTER':'中路', 'Find the free slot before time runs out!':'在时间耗尽前把资源送到正确位置！' },
+    labels: { '停放: ':'部署: ', '连击 ':'连续 ', '中间':'中路' },
   },
   // ── color-match ──
   ep16: { // 月光辨认
@@ -1385,6 +1385,10 @@ function generateGame(ep, templateId) {
       ['Tiles flash briefly on a 3x3 grid.<br>Remember and tap the highlighted tile.', storyGame ? storyGame.rules : '方块短暂闪烁。<br>记住位置，快速点击。'],
       ['Watch the spotlight...', '注意观察...'],
       ['Found: ', '找到: '],
+      ['Too slow!', '太慢了！'],
+      ['Hits: ', '命中: '],
+      ['/ Miss: ', '/ 失误: '],
+      ["'Combo: '", "'连击: '"],
     ],
     'stardew-fishing': [
       ['Hold to move the catch bar up.<br>Release to let it fall.<br>Keep bar over the fish to fill gauge.', storyGame ? storyGame.rules : '长按上移捕获条。<br>松开下落。<br>保持在目标上填满进度。'],
@@ -1406,6 +1410,9 @@ function generateGame(ep, templateId) {
       ['Streak ', '连击 '],
       ['Parked! +', '到位！+'],
       ['Parked: ', '停放: '],
+      ['Too slow!', '太慢了！'],
+      ['/ Miss: ', '/ 失误: '],
+      ["'Combo: '", "'连击: '"],
       ['CENTER', '中间'],
     ],
     'color-match': [
