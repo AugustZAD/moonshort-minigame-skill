@@ -816,7 +816,7 @@ class GameScene extends Phaser.Scene {
     var self = this; window.__activeGameScene = this;
     setVisible('boot-card', false);
     setVisible('hud-bar', true); setVisible('round-text', true); setVisible('hint-text', true);
-    setVisible('combo-text', true); setVisible('btn-area', false); setVisible('stars-row', false); setVisible('result-info', false);
+    setVisible('timer-text', true); setVisible('combo-text', true); setVisible('btn-area', false); setVisible('stars-row', false); setVisible('result-info', false);
 
     $('score-value').textContent = '0'; $('timer-text').textContent = ROUND_SECONDS + 's';
     $('timer-text').classList.remove('warn'); $('found-text').textContent = 'Round 1';
@@ -837,10 +837,13 @@ class GameScene extends Phaser.Scene {
 
         // Cell outline — transparent, border only (V5)
         var cellBg = this.add.graphics().setDepth(4);
+        // Very faint dark wash for legibility over bright bgs
         cellBg.fillStyle(0x000000, 0.22);
         cellBg.fillRoundedRect(cx - 36, cy - 36, 72, 72, 12);
+        // Primary-tinted outer border
         cellBg.lineStyle(1.5, priI, 0.6);
         cellBg.strokeRoundedRect(cx - 36, cy - 36, 72, 72, 12);
+        // Inner rim highlight
         cellBg.lineStyle(1, 0xffffff, 0.18);
         cellBg.strokeRoundedRect(cx - 34, cy - 34, 68, 68, 10);
 

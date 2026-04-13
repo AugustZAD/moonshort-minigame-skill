@@ -245,6 +245,7 @@ class GameScene extends Phaser.Scene{
     this.children.removeAll(true);this.cameras.main.resetFX();var self=this;window.__activeGameScene=this;
     var T=window.__V3_THEME__;
     setVisible('boot-card',false);setVisible('level-info',true);setVisible('streak-text',true);setVisible('combo-text',true);
+    setVisible('timer-text',true);setVisible('score-value',true);setVisible('score-label',true);setVisible('level-text',true);
     setVisible('lane-btns',true);setVisible('round-bar-wrap',true);setVisible('hint-text',true);
     setVisible('btn-area',false);setVisible('stars-row',false);setVisible('result-info',false);
     $('score-value').textContent='0';$('timer-text').textContent=ROUND_SECONDS+'s';

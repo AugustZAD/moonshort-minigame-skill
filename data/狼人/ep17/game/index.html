@@ -816,7 +816,7 @@ class GameScene extends Phaser.Scene {
     var self = this; window.__activeGameScene = this;
     setVisible('boot-card', false);
     setVisible('hud-bar', true); setVisible('round-text', true); setVisible('hint-text', true);
-    setVisible('combo-text', true); setVisible('btn-area', false); setVisible('stars-row', false); setVisible('result-info', false);
+    setVisible('timer-text', true); setVisible('combo-text', true); setVisible('btn-area', false); setVisible('stars-row', false); setVisible('result-info', false);
 
     $('score-value').textContent = '0'; $('timer-text').textContent = ROUND_SECONDS + 's';
     $('timer-text').classList.remove('warn'); $('found-text').textContent = 'Round 1';
