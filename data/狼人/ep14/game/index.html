@@ -903,8 +903,8 @@ window.addEventListener('resize', fitShell); fitShell();
         var orb = this.orbs[j];
         if (orb.collected || orb.y > 800) { cleanObj(orb); continue; }
         if (!orb._spr) {
-          orb._gl = addGlow(this, orb.x, orb.y, '_glow_orb', 28, 28, 7);
-          orb._spr = this.add.image(orb.x, orb.y, 'ep_sprite_collect').setDisplaySize(28, 28).setOrigin(0.5).setDepth(8);
+          orb._gl = addGlow(this, orb.x, orb.y, '_glow_orb', 22, 22, 7);
+          orb._spr = this.add.image(orb.x, orb.y, 'ep_sprite_collect').setDisplaySize(22, 22).setOrigin(0.5).setDepth(8);
         }
         var sc = 1.0 + Math.sin(orb.phase || 0) * 0.18;
         orb._spr.setPosition(orb.x, orb.y).setScale(sc);
