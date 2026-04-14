@@ -795,19 +795,36 @@ window.addEventListener('resize', fitShell); fitShell();
 (function() {
   var gs = GameScene.prototype || GameScene;
   var W = 393, H = 852;
-  // Canvas-compatible glow: two concentric Phaser circles (outer diffuse + inner bright)
-  function addCircleGlow(scene, x, y, r, color, depth) {
-    var outer = scene.add.circle(x, y, r * 1.5, color, 0.12).setDepth(depth - 0.1);
-    var inner = scene.add.circle(x, y, r, color, 0.45).setDepth(depth);
-    return { inner: inner, outer: outer };
+  // Create white silhouette texture from any sprite (Canvas API).
+  // White pixels + setTint(color) = bright colored contour on Canvas renderer.
+  function makeWhiteTex(scene, srcKey, dstKey) {
+    if (scene.textures.exists(dstKey)) return;
+    var src = scene.textures.get(srcKey).getSourceImage();
+    var ct = scene.textures.createCanvas(dstKey, src.width, src.height);
+    var ctx = ct.context;
+    ctx.drawImage(src, 0, 0);
+    ctx.globalCompositeOperation = 'source-atop';
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillRect(0, 0, src.width, src.height);
+    ct.refresh();
   }
-  function moveGlow(g, x, y) { if (g) { if (g.inner) g.inner.setPosition(x, y); if (g.outer) g.outer.setPosition(x, y); } }
-  function destroyGlow(g) { if (g) { if (g.inner) g.inner.destroy(); if (g.outer) g.outer.destroy(); } }
+  // 3-layer contour glow (like EP3 conveyor-sort): outer → mid → inner, all tinted
+  function addGlow(scene, x, y, whiteTex, w, h, color, depth) {
+    var g3 = scene.add.image(x, y, whiteTex).setDisplaySize(w * 1.4, h * 1.4).setOrigin(0.5).setDepth(depth).setAlpha(0.15);
+    g3.setTint(color);
+    var g2 = scene.add.image(x, y, whiteTex).setDisplaySize(w * 1.22, h * 1.22).setOrigin(0.5).setDepth(depth + 0.1).setAlpha(0.3);
+    g2.setTint(color);
+    var g1 = scene.add.image(x, y, whiteTex).setDisplaySize(w * 1.08, h * 1.08).setOrigin(0.5).setDepth(depth + 0.2).setAlpha(0.45);
+    g1.setTint(color);
+    return { g1: g1, g2: g2, g3: g3 };
+  }
+  function moveGlow(g, x, y) { if (g) { if (g.g1) g.g1.setPosition(x, y); if (g.g2) g.g2.setPosition(x, y); if (g.g3) g.g3.setPosition(x, y); } }
+  function destroyGlow(g) { if (g) { if (g.g1) g.g1.destroy(); if (g.g2) g.g2.destroy(); if (g.g3) g.g3.destroy(); } }
   function cleanObj(o) {
     if (o._spr) { o._spr.destroy(); o._spr = null; }
     if (o._spr2) { o._spr2.destroy(); o._spr2 = null; }
-    destroyGlow(o._g1); o._g1 = null;
-    destroyGlow(o._g2); o._g2 = null;
+    destroyGlow(o._gl); o._gl = null;
+    destroyGlow(o._gl2); o._gl2 = null;
   }
   var origCreate = gs.create;
   gs.create = function() {
@@ -818,10 +835,14 @@ window.addEventListener('resize', fitShell); fitShell();
       var src = bg.texture.getSourceImage();
       bg.setScale(Math.max(W / src.width, H / src.height)).setAlpha(0.18).setDepth(0.1);
     }
-    // Player sprite with primary-color circle glow
+    // Create white silhouette textures for glow (Canvas-compatible tint trick)
+    if (this.textures.exists('ep_sprite_obstacle')) makeWhiteTex(this, 'ep_sprite_obstacle', '_wh_obs');
+    if (this.textures.exists('ep_sprite_collect'))  makeWhiteTex(this, 'ep_sprite_collect',  '_wh_orb');
+    if (this.textures.exists('ep_sprite_player'))   makeWhiteTex(this, 'ep_sprite_player',   '_wh_ply');
+    // Player sprite with contour glow
     if (this.textures.exists('ep_sprite_player') && this.player) {
       var pInt = parseInt((window.__V3_THEME__.primary || '#4ECDC4').replace('#',''), 16);
-      this._pG = addCircleGlow(this, this.player.x, 700, 32, pInt, 10);
+      this._pG = addGlow(this, this.player.x, 700, '_wh_ply', 50, 66, pInt, 10);
       this._sprPlayer = this.add.image(this.player.x, 700, 'ep_sprite_player')
         .setDisplaySize(50, 66).setOrigin(0.5).setDepth(11);
     }
@@ -842,50 +863,50 @@ window.addEventListener('resize', fitShell); fitShell();
     if (this._sprPlayer && this.player) {
       this._sprPlayer.setPosition(this.player.x, 700);
       moveGlow(this._pG, this.player.x, 700);
-      if (this._pG && this._pG.inner) this._pG.inner.setAlpha(0.4 + Math.sin((this._glowPhase || 0) * 1.5) * 0.1);
+      if (this._pG && this._pG.g1) this._pG.g1.setAlpha(0.4 + Math.sin((this._glowPhase || 0) * 1.5) * 0.1);
     }
-    // Obstacles — bright RED circle glow behind sprite (Canvas-safe)
+    // Obstacles — RED contour glow (white silhouette + setTint, like EP3)
     if (this.hazards && hasObsSpr) {
       for (i = 0; i < this.hazards.length; i++) {
         var h = this.hazards[i];
         if (!h._spr && h.y > 0) {
           var hc = h.type === 'fast' ? 0xFF2D55 : 0xFF4D6A;
           if (h.type === 'wide') {
-            h._g1 = addCircleGlow(this, h.x - 40, h.y, 34, hc, 8);
-            h._g2 = addCircleGlow(this, h.x + 40, h.y, 34, hc, 8);
+            h._gl = addGlow(this, h.x - 40, h.y, '_wh_obs', 50, 66, hc, 8);
+            h._gl2 = addGlow(this, h.x + 40, h.y, '_wh_obs', 50, 66, hc, 8);
             h._spr = this.add.image(h.x - 40, h.y, 'ep_sprite_obstacle').setDisplaySize(50, 66).setOrigin(0.5).setDepth(9);
             h._spr2 = this.add.image(h.x + 40, h.y, 'ep_sprite_obstacle').setDisplaySize(50, 66).setOrigin(0.5).setDepth(9);
           } else {
-            h._g1 = addCircleGlow(this, h.x, h.y, 34, hc, 8);
+            h._gl = addGlow(this, h.x, h.y, '_wh_obs', 48, 66, hc, 8);
             h._spr = this.add.image(h.x, h.y, 'ep_sprite_obstacle').setDisplaySize(48, 66).setOrigin(0.5).setDepth(9);
           }
         }
         if (h._spr) {
           if (h.type === 'wide') {
             h._spr.setPosition(h.x - 40, h.y); if (h._spr2) h._spr2.setPosition(h.x + 40, h.y);
-            moveGlow(h._g1, h.x - 40, h.y); moveGlow(h._g2, h.x + 40, h.y);
+            moveGlow(h._gl, h.x - 40, h.y); moveGlow(h._gl2, h.x + 40, h.y);
           } else {
-            h._spr.setPosition(h.x, h.y); moveGlow(h._g1, h.x, h.y);
+            h._spr.setPosition(h.x, h.y); moveGlow(h._gl, h.x, h.y);
           }
           if (h.y > 900) cleanObj(h);
         }
       }
     }
-    // Orbs — bright GREEN circle glow behind sprite, pulsing (Canvas-safe)
+    // Orbs — GREEN contour glow, pulsing (like EP3)
     if (this.orbs && hasOrbSpr) {
       for (var j = this.orbs.length - 1; j >= 0; j--) {
         var orb = this.orbs[j];
         if (orb.collected || orb.y > 800) { cleanObj(orb); continue; }
         if (!orb._spr) {
-          orb._g1 = addCircleGlow(this, orb.x, orb.y, 24, 0x44FF88, 7);
+          orb._gl = addGlow(this, orb.x, orb.y, '_wh_orb', 36, 36, 0x44FF88, 7);
           orb._spr = this.add.image(orb.x, orb.y, 'ep_sprite_collect').setDisplaySize(36, 36).setOrigin(0.5).setDepth(8);
         }
         var sc = 1.0 + Math.sin(orb.phase || 0) * 0.18;
         orb._spr.setPosition(orb.x, orb.y).setScale(sc);
-        moveGlow(orb._g1, orb.x, orb.y);
-        if (orb._g1 && orb._g1.inner) {
-          orb._g1.inner.setScale(sc * 1.1); orb._g1.outer.setScale(sc * 1.5);
-          orb._g1.inner.setAlpha(0.4 + Math.sin(orb.phase || 0) * 0.15);
+        moveGlow(orb._gl, orb.x, orb.y);
+        if (orb._gl && orb._gl.g1) {
+          orb._gl.g1.setScale(sc * 1.08); orb._gl.g2.setScale(sc * 1.22); orb._gl.g3.setScale(sc * 1.4);
+          orb._gl.g1.setAlpha(0.4 + Math.sin(orb.phase || 0) * 0.15);
         }
       }
     }
