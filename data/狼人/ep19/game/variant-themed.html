@@ -1655,21 +1655,29 @@ fitShell();
   var origCreate = gs.create;
   gs.create = function() {
     origCreate.call(this);
-    // Map attack keys to sprite keys
-    var atkMap = { 'slash': 'ep_sprite_atk1', 'heavy': 'ep_sprite_atk2', 'burst': 'ep_sprite_atk3' };
+    // Map attack keys to sprite keys — keys must match template: parry/dodge/block
+    var atkMap = { 'parry': 'ep_sprite_atk1', 'dodge': 'ep_sprite_atk2', 'block': 'ep_sprite_atk3' };
     var self = this;
-    // Patch showAttack to replace symbol with sprite image
     if (this.attacks) {
       this.attacks.forEach(function(atk) {
-        var origSym = atk.symbol;
-        var sprKey = atkMap[atk.key] || atkMap[Object.keys(atkMap)[0]];
-        if (self.textures.exists(sprKey)) {
+        var sprKey = atkMap[atk.key];
+        if (sprKey && self.textures.exists(sprKey)) {
           atk._spriteKey = sprKey;
+        }
+        // Fix: ensure attack colors have sufficient contrast on white circle bg.
+        // T.primaryLight from kmeans can be near-white — unusable as text color.
+        if (typeof atk.color === 'string' && atk.color.charAt(0) === '#' && atk.color.length >= 7) {
+          var r = parseInt(atk.color.slice(1,3),16), g = parseInt(atk.color.slice(3,5),16), b = parseInt(atk.color.slice(5,7),16);
+          var lum = (0.299*r + 0.587*g + 0.114*b) / 255;
+          if (lum > 0.65) {
+            // Too light — darken by 40%
+            atk.color = '#' + [r,g,b].map(function(c){ return Math.round(c*0.6).toString(16).padStart(2,'0'); }).join('');
+          }
         }
       });
     }
   };
-  // After showAttack renders the cue symbol, try to overlay a sprite
+  // After spawnAttack renders the cue symbol, overlay sprite & hide text
   var origUpdate = gs.update;
   gs.update = function(time, dt) {
     origUpdate.call(this, time, dt);
@@ -1677,16 +1685,32 @@ fitShell();
       var cueEl = document.getElementById('boss-cue') || document.getElementById('cue-symbol');
       if (cueEl && this.textures.exists(this.currentAttack._spriteKey)) {
         if (!cueEl.querySelector('img.atk-spr')) {
+          // Hide the original Unicode symbol text — sprite replaces it
+          for (var ci = 0; ci < cueEl.childNodes.length; ci++) {
+            if (cueEl.childNodes[ci].nodeType === 3) cueEl.childNodes[ci].textContent = '';
+          }
+          cueEl.style.fontSize = '0';
           var img = document.createElement('img');
           img.className = 'atk-spr';
           img.src = window.__EPISODE_CTX__.sprites[this.currentAttack._spriteKey.replace('ep_sprite_','')] || '';
-          img.style.cssText = 'width:48px;height:48px;object-fit:contain;filter:drop-shadow(0 0 8px rgba(255,255,255,0.5));display:block;margin:4px auto;';
+          img.style.cssText = 'width:56px;height:56px;object-fit:contain;filter:drop-shadow(0 2px 8px rgba(0,0,0,0.25));display:block;margin:0 auto;';
           cueEl.appendChild(img);
           this._atkSprShown = true;
         }
       }
     }
-    if (!this.currentAttack) this._atkSprShown = false;
+    if (!this.currentAttack) {
+      if (this._atkSprShown) {
+        // Restore text display when attack clears
+        var cueEl = document.getElementById('boss-cue') || document.getElementById('cue-symbol');
+        if (cueEl) {
+          var sprImg = cueEl.querySelector('img.atk-spr');
+          if (sprImg) sprImg.remove();
+          cueEl.style.fontSize = '';
+        }
+      }
+      this._atkSprShown = false;
+    }
   };
 })();
 

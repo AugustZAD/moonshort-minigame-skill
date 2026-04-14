@@ -1841,21 +1841,29 @@ ${preloadLines}
   var origCreate = gs.create;
   gs.create = function() {
     origCreate.call(this);
-    // Map attack keys to sprite keys
-    var atkMap = { 'slash': 'ep_sprite_atk1', 'heavy': 'ep_sprite_atk2', 'burst': 'ep_sprite_atk3' };
+    // Map attack keys to sprite keys — keys must match template: parry/dodge/block
+    var atkMap = { 'parry': 'ep_sprite_atk1', 'dodge': 'ep_sprite_atk2', 'block': 'ep_sprite_atk3' };
     var self = this;
-    // Patch showAttack to replace symbol with sprite image
     if (this.attacks) {
       this.attacks.forEach(function(atk) {
-        var origSym = atk.symbol;
-        var sprKey = atkMap[atk.key] || atkMap[Object.keys(atkMap)[0]];
-        if (self.textures.exists(sprKey)) {
+        var sprKey = atkMap[atk.key];
+        if (sprKey && self.textures.exists(sprKey)) {
           atk._spriteKey = sprKey;
+        }
+        // Fix: ensure attack colors have sufficient contrast on white circle bg.
+        // T.primaryLight from kmeans can be near-white — unusable as text color.
+        if (typeof atk.color === 'string' && atk.color.charAt(0) === '#' && atk.color.length >= 7) {
+          var r = parseInt(atk.color.slice(1,3),16), g = parseInt(atk.color.slice(3,5),16), b = parseInt(atk.color.slice(5,7),16);
+          var lum = (0.299*r + 0.587*g + 0.114*b) / 255;
+          if (lum > 0.65) {
+            // Too light — darken by 40%
+            atk.color = '#' + [r,g,b].map(function(c){ return Math.round(c*0.6).toString(16).padStart(2,'0'); }).join('');
+          }
         }
       });
     }
   };
-  // After showAttack renders the cue symbol, try to overlay a sprite
+  // After spawnAttack renders the cue symbol, overlay sprite & hide text
   var origUpdate = gs.update;
   gs.update = function(time, dt) {
     origUpdate.call(this, time, dt);
@@ -1863,16 +1871,32 @@ ${preloadLines}
       var cueEl = document.getElementById('boss-cue') || document.getElementById('cue-symbol');
       if (cueEl && this.textures.exists(this.currentAttack._spriteKey)) {
         if (!cueEl.querySelector('img.atk-spr')) {
+          // Hide the original Unicode symbol text — sprite replaces it
+          for (var ci = 0; ci < cueEl.childNodes.length; ci++) {
+            if (cueEl.childNodes[ci].nodeType === 3) cueEl.childNodes[ci].textContent = '';
+          }
+          cueEl.style.fontSize = '0';
           var img = document.createElement('img');
           img.className = 'atk-spr';
           img.src = window.__EPISODE_CTX__.sprites[this.currentAttack._spriteKey.replace('ep_sprite_','')] || '';
-          img.style.cssText = 'width:48px;height:48px;object-fit:contain;filter:drop-shadow(0 0 8px rgba(255,255,255,0.5));display:block;margin:4px auto;';
+          img.style.cssText = 'width:56px;height:56px;object-fit:contain;filter:drop-shadow(0 2px 8px rgba(0,0,0,0.25));display:block;margin:0 auto;';
           cueEl.appendChild(img);
           this._atkSprShown = true;
         }
       }
     }
-    if (!this.currentAttack) this._atkSprShown = false;
+    if (!this.currentAttack) {
+      if (this._atkSprShown) {
+        // Restore text display when attack clears
+        var cueEl = document.getElementById('boss-cue') || document.getElementById('cue-symbol');
+        if (cueEl) {
+          var sprImg = cueEl.querySelector('img.atk-spr');
+          if (sprImg) sprImg.remove();
+          cueEl.style.fontSize = '';
+        }
+      }
+      this._atkSprShown = false;
+    }
   };
 })();`;
     }
@@ -1950,6 +1974,36 @@ ${preloadLines}
 (function() {
   var gs = GameScene.prototype || GameScene;
   var W = 393, H = 852;
+  // Auto-trim transparent padding from a sprite texture.
+  // Many AI-generated sprites have large transparent borders — trimming ensures
+  // setDisplaySize uses the full area for visible content.
+  function trimTex(scene, key) {
+    if (!scene.textures.exists(key)) return;
+    var src = scene.textures.get(key).getSourceImage();
+    var c = document.createElement('canvas');
+    c.width = src.width; c.height = src.height;
+    var ctx = c.getContext('2d');
+    ctx.drawImage(src, 0, 0);
+    var d = ctx.getImageData(0, 0, c.width, c.height).data;
+    var minX = c.width, minY = c.height, maxX = 0, maxY = 0;
+    for (var y = 0; y < c.height; y++)
+      for (var x = 0; x < c.width; x++)
+        if (d[(y * c.width + x) * 4 + 3] > 10) {
+          if (x < minX) minX = x; if (x > maxX) maxX = x;
+          if (y < minY) minY = y; if (y > maxY) maxY = y;
+        }
+    if (maxX <= minX || maxY <= minY) return;
+    var pad = 2;
+    minX = Math.max(0, minX - pad); minY = Math.max(0, minY - pad);
+    maxX = Math.min(c.width - 1, maxX + pad); maxY = Math.min(c.height - 1, maxY + pad);
+    var tw = maxX - minX + 1, th = maxY - minY + 1;
+    // Skip if content is already >70% of canvas (no significant padding)
+    if (tw * th > c.width * c.height * 0.7) return;
+    scene.textures.remove(key);
+    var ct = scene.textures.createCanvas(key, tw, th);
+    ct.context.drawImage(src, minX, minY, tw, th, 0, 0, tw, th);
+    ct.refresh();
+  }
   // Bake a solid color into a sprite's silhouette via Canvas API.
   // source-atop fills ONLY non-transparent pixels → colored silhouette.
   // No Phaser tint needed — color is in the texture itself.
@@ -1988,6 +2042,10 @@ ${preloadLines}
       var src = bg.texture.getSourceImage();
       bg.setScale(Math.max(W / src.width, H / src.height)).setAlpha(0.18).setDepth(0.1);
     }
+    // Auto-trim transparent padding so sprites fill their display size
+    trimTex(this, 'ep_sprite_obstacle');
+    trimTex(this, 'ep_sprite_collect');
+    trimTex(this, 'ep_sprite_player');
     // Pre-bake colored silhouette textures (color in texture, no tint needed)
     var T = window.__V3_THEME__;
     if (this.textures.exists('ep_sprite_obstacle')) {

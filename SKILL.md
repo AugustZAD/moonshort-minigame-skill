@@ -1713,14 +1713,75 @@ graphics.fillCircle(x - radius*0.3, y - radius*0.3, radius * 0.35);
 ```
 
 **精灵图轮廓光晕**（优先于上方 Graphics 圆形光晕，效果更高级）：
+
+**方案 A：setTint 直染（适用于浅色/彩色精灵）**：
 ```javascript
 // 用 tinted + scaled 副本叠放实现（光晕贴合精灵实际形状而非圆形）
 // 外层: setDisplaySize(原尺寸×1.3), setTint(类别色), setAlpha(0.15)
 // 中层: setDisplaySize(原尺寸×1.18), setTint(类别色), setAlpha(0.3)
 // 内层: setDisplaySize(原尺寸×1.09), setTint(类别色), setAlpha(0.45)
 // 主体: setDisplaySize(原尺寸), 无 tint, alpha 1.0
-// 适用：conveyor-sort 掉落物/底栏、所有带精灵图的游戏对象
-// Canvas 模式兼容（不依赖 WebGL postFX）
+// 适用：conveyor-sort 等精灵图本身是浅色/彩色的场景
+// Canvas 模式下 setTint 对【原始加载的图片纹理】基本可用
+```
+
+**方案 B：baked-color 烘焙染色（适用于深色/暗色精灵，Canvas 100% 安全）**：
+```javascript
+// ⚠️ 深色精灵 + Canvas 渲染器 → setTint/setTintFill 不可靠！
+// 解决：用 Canvas 2D source-atop 直接把颜色烘进纹理像素
+function makeColorTex(scene, srcKey, dstKey, cssColor) {
+  if (scene.textures.exists(dstKey)) return;
+  var src = scene.textures.get(srcKey).getSourceImage();
+  var ct = scene.textures.createCanvas(dstKey, src.width, src.height);
+  var ctx = ct.context;
+  ctx.drawImage(src, 0, 0);
+  ctx.globalCompositeOperation = 'source-atop'; // 只填充非透明像素
+  ctx.fillStyle = cssColor;
+  ctx.fillRect(0, 0, src.width, src.height);
+  ct.refresh();
+}
+// 用法：先烘焙 → 再用烘焙纹理做光晕层（不需要任何 setTint）
+makeColorTex(scene, 'ep_sprite_obstacle', '_glow_obs', '#FF4D6A');
+var g3 = scene.add.image(x, y, '_glow_obs').setDisplaySize(w*1.4, h*1.4).setAlpha(0.18);
+var g2 = scene.add.image(x, y, '_glow_obs').setDisplaySize(w*1.22, h*1.22).setAlpha(0.35);
+var g1 = scene.add.image(x, y, '_glow_obs').setDisplaySize(w*1.08, h*1.08).setAlpha(0.5);
+// 适用：lane-dash 障碍物（红光晕）、道具（绿光晕）、玩家（主色光晕）
+// 100% Canvas 兼容，不依赖 Phaser tint 系统
+```
+**选择标准**：精灵图浅色/彩色 → 方案 A；精灵图深色/暗色（如树枝、暗影） → 方案 B。
+
+**精灵图透明边距自动裁剪 (trimTex)**：
+```javascript
+// AI 生成的 128×128 精灵图常有大量透明边距（实测最低仅 7% 填充率）。
+// setDisplaySize(40,40) 时可见内容只有 ~12px，必须裁剪。
+// 在 create() 中、makeColorTex() 之前调用。
+function trimTex(scene, key) {
+  if (!scene.textures.exists(key)) return;
+  var src = scene.textures.get(key).getSourceImage();
+  var c = document.createElement('canvas');
+  c.width = src.width; c.height = src.height;
+  var ctx = c.getContext('2d');
+  ctx.drawImage(src, 0, 0);
+  var d = ctx.getImageData(0, 0, c.width, c.height).data;
+  var minX = c.width, minY = c.height, maxX = 0, maxY = 0;
+  for (var y = 0; y < c.height; y++)
+    for (var x = 0; x < c.width; x++)
+      if (d[(y * c.width + x) * 4 + 3] > 10) {
+        if (x < minX) minX = x; if (x > maxX) maxX = x;
+        if (y < minY) minY = y; if (y > maxY) maxY = y;
+      }
+  if (maxX <= minX || maxY <= minY) return;
+  var pad = 2;
+  minX = Math.max(0, minX - pad); minY = Math.max(0, minY - pad);
+  maxX = Math.min(c.width - 1, maxX + pad); maxY = Math.min(c.height - 1, maxY + pad);
+  var tw = maxX - minX + 1, th = maxY - minY + 1;
+  if (tw * th > c.width * c.height * 0.7) return; // 已填充 >70%，不需要裁
+  scene.textures.remove(key);
+  var ct = scene.textures.createCanvas(key, tw, th);
+  ct.context.drawImage(src, minX, minY, tw, th, 0, 0, tw, th);
+  ct.refresh();
+}
+// 调用顺序：trimTex → makeColorTex → addGlow
 ```
 
 **射线 / 炮管类元素**：双层叠加模拟高光
@@ -1835,6 +1896,10 @@ Canvas/Phaser
 | 开屏 boot-card 还显示模板默认游戏名（如 "急速泊车"） | 模板在 `<div id="boot-card">` 里硬编码了中文标题，`STORY_RESKIN.labels` 只捕获英文键会漏掉 | 为每个使用了模板的 ep 的 `labels` 加一条中文→中文映射（如 `'急速泊车':'规则战争'`）。**审核时用 `grep -oP '[\p{Han}]+' packs/.../index-v3.html \| sort -u` 把模板里所有硬编码中文枚举出来**，确保每条都在 `STORY_RESKIN[ep].labels` 里有对应映射。已知受影响模板：conveyor-sort/maze-escape/parking-rush/spotlight-seek/will-surge |
 | 结算屏还残留英文/通用中文（如 "Combo:"、"停放:"、"Miss:"） | 两个原因：① `BOOT_DESC_REPLACEMENTS` 没覆盖 ResultScene 统计标签；② `labels` 的 key 写的是英文原文，但 `BOOT_DESC_REPLACEMENTS` 已经在前一步把英文替换成了通用中文，所以 labels 找不到匹配 | **所有玩家可见文本都必须翻译**，包括 ResultScene 的 `stat-combo` / `stat-hits` textContent。① 新增模板时，把 `'Combo: '`、`'/ Miss: '`、`'Hits: '`、`'Too slow!'` 等 JS 字符串字面量加进 `BOOT_DESC_REPLACEMENTS`（注意用带引号的模式 `["'Combo: '", "'连击: '"]` 避免匹配变量名 `maxCombo`）。② per-episode `labels` 的 key 必须写**替换后的中文**（`'停放: ':'部署: '`），不是英文原文（~~`'Parked: ':'部署: '`~~），因为 labels 跑在 `BOOT_DESC_REPLACEMENTS` 之后 |
 | 深度定制只处理了游戏初始状态的对象，遗漏了**游戏进程中动态解锁的对象** | conveyor-sort 初始只有 3 个分类 bin（cat1/2/3），但 difficulty≥4 时解锁第 4 类 cat4。精灵图定义（`generate-wolven-sprites.js`）和 preload 注入都只写了 cat1/2/3 + decoy，cat4 掉落物在解锁后回退到 emoji 渲染，与其它三类精灵图风格不一致 | 定制前**必须通读模板的难度递进逻辑**（搜 `difficulty` / `activeBinCount` / `phase` / `wave` / `unlock`），列出所有阶段会出现的对象全集，再逐一确认每个对象都有对应素材。不能只看游戏开局画面就以为对象就这些 |
+| 精灵图轮廓光晕全是白色，没有红/绿染色 | 在 `Phaser.CANVAS` 模式下对 `createCanvas()` 动态纹理调 `setTint()` / `setTintFill()` **无效或不可靠**。白色剪影 + setTint 出来还是白色 | Canvas 渲染器下**不要用 Phaser tint 系统**。改用 **baked-color 方案**：Canvas 2D `source-atop` 混合把颜色直接烘进纹理像素（`makeColorTex()`），光晕层直接用烘焙好的彩色纹理，不需要任何 setTint。注意：`setTint()` 对**原始加载的图片纹理**（`this.load.image()`）在 Canvas 下基本可用（如 conveyor-sort），但对 `createCanvas()` 创建的纹理不可靠 |
+| 精灵图在游戏中显示极小（如急救箱只有 ~12px），实际 setDisplaySize 写了 40×40 | AI 生成的 128×128 PNG 有大量透明边距。EP14 急救箱实际内容仅 40×30px（7.3% 填充率），setDisplaySize(40,40) 时可见区域按比例缩小到 ~12px | **必须在 create() 中调用 `trimTex()` 自动裁剪透明边距**，在 `makeColorTex()` 之前。裁剪后纹理只包含实际内容，setDisplaySize 才能把内容撑满显示区域。对所有精灵图统一裁剪（`trimTex(this, 'ep_sprite_obstacle')` / `ep_sprite_collect` / `ep_sprite_player`），不需要逐 ep 调参 |
+| 道具脉冲动画时精灵突然暴涨到 ~150px | `setDisplaySize(40,40)` 后用 `setScale(1.18)` 做脉冲。源图 128×128，`setDisplaySize(40,40)` 内部设 scale=0.31，但 `setScale(1.18)` **覆盖** scale 为 1.18 → 128×1.18=151px | **脉冲动画必须用 `setDisplaySize(baseSize*sc, baseSize*sc)`**，不能用 `setScale(sc)`。`setScale()` 和 `setDisplaySize()` 共用同一个内部 `scaleX/Y`，后者会覆盖前者。同理光晕层也要用 `setDisplaySize()` 跟随脉冲 |
+| 道具/障碍物视觉权重失衡，道具太小像噪点 | 初始设计道具 28px、障碍物 48×66，玩家无法一眼分辨好坏 | 道具与障碍物是**同等重要的游戏对象**，视觉权重应接近。当两者在剧情上属于同类物件时（如 EP12 窗户），大小应一致。靠**颜色**（红色光晕=危险，绿色光晕=安全）区分好坏，而非大小。当前 lane-dash 配置：障碍物 48×66、道具 40×40、玩家 50×66 |
 | Layer 3 定制变成装饰图覆盖游戏 | 误以为"深度定制"就是找张大图铺在游戏上，把可交互元素挡住 | Layer 3 **不是装饰层**。是有针对性的 *核心视觉外壳* 替换（信号灯/墙/车道），不是背景图覆盖。不满足 4 条决策门槛就不做 |
 | Layer 3 主题视觉只有第一帧对，之后不随游戏状态刷新 | 只在 hook 里跑了一次初始化，没 hook 重绘入口函数 | 识别每个游戏的重绘入口：maze-escape 是 `loadMaze()`（每关换图）、parking-rush 是 `drawLanes()`（每回合换 freeIndex）、red-light-green-light 是 `setTrafficLight()`（每次切灯）。必须把主题重绘塞进这些函数的 hook 里 |
 | Layer 3 新素材风格与现有 sprite/背景完全不搭（3D photoreal 碰 2D painted） | 没看现有素材就直接让 AI 生成新图 | 生成前先 `Read` 一遍 `data/<series>/<ep>/game/bg-scene.jpg` + 所有 `sprite-*.png`，总结风格关键词（"painted digital illustration"/"anime-inspired"/"flat shading"/"cool palette"）写进 prompt。更好的选择是先看 Layer 2 sprite 能不能直接复用（ep11 的 sprite-car/sprite-slot 正好就是议政主题），省一次 API 调用还能保证风格一致 |
