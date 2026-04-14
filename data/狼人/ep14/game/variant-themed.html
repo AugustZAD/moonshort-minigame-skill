@@ -907,10 +907,13 @@ window.addEventListener('resize', fitShell); fitShell();
           orb._spr = this.add.image(orb.x, orb.y, 'ep_sprite_collect').setDisplaySize(22, 22).setOrigin(0.5).setDepth(8);
         }
         var sc = 1.0 + Math.sin(orb.phase || 0) * 0.18;
-        orb._spr.setPosition(orb.x, orb.y).setScale(sc);
+        var os = 22 * sc;
+        orb._spr.setPosition(orb.x, orb.y).setDisplaySize(os, os);
         moveGlow(orb._gl, orb.x, orb.y);
         if (orb._gl && orb._gl.g1) {
-          orb._gl.g1.setScale(sc * 1.08); orb._gl.g2.setScale(sc * 1.22); orb._gl.g3.setScale(sc * 1.4);
+          orb._gl.g1.setDisplaySize(os * 1.08, os * 1.08);
+          orb._gl.g2.setDisplaySize(os * 1.22, os * 1.22);
+          orb._gl.g3.setDisplaySize(os * 1.4, os * 1.4);
           orb._gl.g1.setAlpha(0.45 + Math.sin(orb.phase || 0) * 0.15);
         }
       }
