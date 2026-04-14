@@ -476,10 +476,9 @@ class ResultScene extends Phaser.Scene{
     if(rating==='S'){spawnParticles(this,W/2,300,hexToInt(T.gold),16,600);audio.success();this.time.delayedCall(100,function(){audio.success();});}else if(rating==='A')audio.success();
     this.tweens.add({targets:g,scaleX:1,scaleY:1,duration:400,ease:'Back.easeOut',delay:100});
     this.add.text(W/2,380,'得分 '+this.finalScore,{fontFamily:'Montserrat',fontSize:'24px',fontStyle:'900',color:'#fff'}).setOrigin(0.5).setDepth(10);
-    this.add.text(W/2,412,DISPLAY_ATTRIBUTE+' '+modText,{fontFamily:'Montserrat',fontSize:'16px',fontStyle:'700',color:'rgba(255,255,255,0.45)'}).setOrigin(0.5).setDepth(10);
     var sr=$('stars-row');sr.innerHTML='';sr.style.top='440px';var sc={S:4,A:3,B:2,C:1}[rating];
     for(var i=0;i<4;i++){var s=document.createElement('span');s.className='star '+(i<sc?'filled':'empty');s.textContent='\u2605';s.style.animationDelay=(0.1+i*0.08)+'s';sr.appendChild(s);}
-    $('result-info').style.top='490px';$('attr-mod').textContent='';$('stat-combo').textContent='连击: '+this.maxCombo;$('stat-hits').textContent='部署: '+this.hits+' / 失误: '+this.misses;
+    $('attr-mod').textContent=DISPLAY_ATTRIBUTE+' '+modText;$('stat-combo').textContent='连击: '+this.maxCombo;$('stat-hits').textContent='部署: '+this.hits+' / 失误: '+this.misses;
     var self=this;clearBtnArea();
     $('btn-area').appendChild(makeCandyButton('继续','full',18,function(){notifyGameComplete({rating:rating,score:self.finalScore,attribute:ATTRIBUTE,modifier:modifier,gameId:'parking-rush',maxCombo:self.maxCombo,hits:self.hits,misses:self.misses});self.time.delayedCall(600,function(){self.scene.start('BootScene');});}));
     $('btn-area').appendChild(makeCandyButton('再来一次','full',18,function(){self.scene.start('BootScene');}));

@@ -1232,13 +1232,11 @@ class ResultScene extends Phaser.Scene {
     this.tweens.add({ targets: g, scaleX: 1, scaleY: 1, duration: 400, ease: 'Back.easeOut', delay: 100 });
 
     this.add.text(W / 2, 380, '得分 ' + this.finalScore, { fontFamily: 'Montserrat', fontSize: '24px', fontStyle: '900', color: '#fff' }).setOrigin(0.5).setDepth(10);
-    this.add.text(W / 2, 412, DISPLAY_ATTRIBUTE + ' ' + modText, { fontFamily: 'Montserrat', fontSize: '16px', fontStyle: '700', color: T.primaryLight }).setOrigin(0.5).setDepth(10);
-
     var sr = $('stars-row'); sr.innerHTML = ''; sr.style.top = '440px';
     var sc = { S: 4, A: 3, B: 2, C: 1 }[rating];
     for (var i = 0; i < 4; i++) { var s = document.createElement('span'); s.className = 'star ' + (i < sc ? 'filled' : 'empty'); s.textContent = '\u2605'; s.style.animationDelay = (0.1 + i * 0.08) + 's'; sr.appendChild(s); }
 
-    $('result-info').style.top = '490px'; $('attr-mod').textContent = ''; $('attr-mod').style.color = T.primaryLight;
+    $('attr-mod').textContent = DISPLAY_ATTRIBUTE + ' ' + modText;
     $('stat-combo').textContent = 'Escapes: ' + this.hits; $('stat-hits').textContent = 'Caught: ' + this.captures + ' / Bumps: ' + this.misses;
 
     var self = this; clearBtnArea();
