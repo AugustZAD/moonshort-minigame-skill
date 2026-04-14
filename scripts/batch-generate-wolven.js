@@ -2058,11 +2058,11 @@ ${preloadLines}
         var orb = this.orbs[j];
         if (orb.collected || orb.y > 800) { cleanObj(orb); continue; }
         if (!orb._spr) {
-          orb._gl = addGlow(this, orb.x, orb.y, '_glow_orb', 22, 22, 7);
-          orb._spr = this.add.image(orb.x, orb.y, 'ep_sprite_collect').setDisplaySize(22, 22).setOrigin(0.5).setDepth(8);
+          orb._gl = addGlow(this, orb.x, orb.y, '_glow_orb', 30, 30, 7);
+          orb._spr = this.add.image(orb.x, orb.y, 'ep_sprite_collect').setDisplaySize(30, 30).setOrigin(0.5).setDepth(8);
         }
         var sc = 1.0 + Math.sin(orb.phase || 0) * 0.18;
-        var os = 22 * sc;
+        var os = 30 * sc;
         orb._spr.setPosition(orb.x, orb.y).setDisplaySize(os, os);
         moveGlow(orb._gl, orb.x, orb.y);
         if (orb._gl && orb._gl.g1) {
