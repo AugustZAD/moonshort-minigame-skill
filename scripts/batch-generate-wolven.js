@@ -1941,36 +1941,34 @@ ${preloadLines}
 })();`;
     }
 
-    // ── lane-dash: contour glow sprites (EP3 conveyor-sort style) ──
-    // Canvas renderer: setTintFill won't work. Use white-silhouette textures
-    // + setTint() on scaled-up copies (same technique as conveyor-sort EP3).
-    // White × tint = bright color, so even dark sprites get visible glows.
+    // ── lane-dash: contour glow sprites (EP3 style, Canvas-safe) ──
+    // Canvas renderer: setTint/setTintFill are unreliable.
+    // Solution: bake colors directly into textures via Canvas 2D API.
+    // No Phaser tint system used at all — 100% Canvas-compatible.
     if (templateId === 'lane-dash') {
       spritePatch += `
 (function() {
   var gs = GameScene.prototype || GameScene;
   var W = 393, H = 852;
-  // Create white silhouette texture from any sprite (Canvas API).
-  // White pixels + setTint(color) = bright colored contour on Canvas renderer.
-  function makeWhiteTex(scene, srcKey, dstKey) {
+  // Bake a solid color into a sprite's silhouette via Canvas API.
+  // source-atop fills ONLY non-transparent pixels → colored silhouette.
+  // No Phaser tint needed — color is in the texture itself.
+  function makeColorTex(scene, srcKey, dstKey, cssColor) {
     if (scene.textures.exists(dstKey)) return;
     var src = scene.textures.get(srcKey).getSourceImage();
     var ct = scene.textures.createCanvas(dstKey, src.width, src.height);
     var ctx = ct.context;
     ctx.drawImage(src, 0, 0);
     ctx.globalCompositeOperation = 'source-atop';
-    ctx.fillStyle = '#FFFFFF';
+    ctx.fillStyle = cssColor;
     ctx.fillRect(0, 0, src.width, src.height);
     ct.refresh();
   }
-  // 3-layer contour glow (like EP3 conveyor-sort): outer → mid → inner, all tinted
-  function addGlow(scene, x, y, whiteTex, w, h, color, depth) {
-    var g3 = scene.add.image(x, y, whiteTex).setDisplaySize(w * 1.4, h * 1.4).setOrigin(0.5).setDepth(depth).setAlpha(0.15);
-    g3.setTint(color);
-    var g2 = scene.add.image(x, y, whiteTex).setDisplaySize(w * 1.22, h * 1.22).setOrigin(0.5).setDepth(depth + 0.1).setAlpha(0.3);
-    g2.setTint(color);
-    var g1 = scene.add.image(x, y, whiteTex).setDisplaySize(w * 1.08, h * 1.08).setOrigin(0.5).setDepth(depth + 0.2).setAlpha(0.45);
-    g1.setTint(color);
+  // 3-layer contour glow: outer → mid → inner (all use pre-colored texture)
+  function addGlow(scene, x, y, colorTex, w, h, depth) {
+    var g3 = scene.add.image(x, y, colorTex).setDisplaySize(w * 1.4, h * 1.4).setOrigin(0.5).setDepth(depth).setAlpha(0.18);
+    var g2 = scene.add.image(x, y, colorTex).setDisplaySize(w * 1.22, h * 1.22).setOrigin(0.5).setDepth(depth + 0.1).setAlpha(0.35);
+    var g1 = scene.add.image(x, y, colorTex).setDisplaySize(w * 1.08, h * 1.08).setOrigin(0.5).setDepth(depth + 0.2).setAlpha(0.5);
     return { g1: g1, g2: g2, g3: g3 };
   }
   function moveGlow(g, x, y) { if (g) { if (g.g1) g.g1.setPosition(x, y); if (g.g2) g.g2.setPosition(x, y); if (g.g3) g.g3.setPosition(x, y); } }
@@ -1990,14 +1988,21 @@ ${preloadLines}
       var src = bg.texture.getSourceImage();
       bg.setScale(Math.max(W / src.width, H / src.height)).setAlpha(0.18).setDepth(0.1);
     }
-    // Create white silhouette textures for glow (Canvas-compatible tint trick)
-    if (this.textures.exists('ep_sprite_obstacle')) makeWhiteTex(this, 'ep_sprite_obstacle', '_wh_obs');
-    if (this.textures.exists('ep_sprite_collect'))  makeWhiteTex(this, 'ep_sprite_collect',  '_wh_orb');
-    if (this.textures.exists('ep_sprite_player'))   makeWhiteTex(this, 'ep_sprite_player',   '_wh_ply');
+    // Pre-bake colored silhouette textures (color in texture, no tint needed)
+    var T = window.__V3_THEME__;
+    if (this.textures.exists('ep_sprite_obstacle')) {
+      makeColorTex(this, 'ep_sprite_obstacle', '_glow_obs_r', '#FF4D6A');
+      makeColorTex(this, 'ep_sprite_obstacle', '_glow_obs_f', '#FF2D55');
+    }
+    if (this.textures.exists('ep_sprite_collect')) {
+      makeColorTex(this, 'ep_sprite_collect', '_glow_orb', '#44FF88');
+    }
+    if (this.textures.exists('ep_sprite_player')) {
+      makeColorTex(this, 'ep_sprite_player', '_glow_ply', T.primary || '#4ECDC4');
+    }
     // Player sprite with contour glow
     if (this.textures.exists('ep_sprite_player') && this.player) {
-      var pInt = parseInt((window.__V3_THEME__.primary || '#4ECDC4').replace('#',''), 16);
-      this._pG = addGlow(this, this.player.x, 700, '_wh_ply', 50, 66, pInt, 10);
+      this._pG = addGlow(this, this.player.x, 700, '_glow_ply', 50, 66, 10);
       this._sprPlayer = this.add.image(this.player.x, 700, 'ep_sprite_player')
         .setDisplaySize(50, 66).setOrigin(0.5).setDepth(11);
     }
@@ -2018,21 +2023,21 @@ ${preloadLines}
     if (this._sprPlayer && this.player) {
       this._sprPlayer.setPosition(this.player.x, 700);
       moveGlow(this._pG, this.player.x, 700);
-      if (this._pG && this._pG.g1) this._pG.g1.setAlpha(0.4 + Math.sin((this._glowPhase || 0) * 1.5) * 0.1);
+      if (this._pG && this._pG.g1) this._pG.g1.setAlpha(0.45 + Math.sin((this._glowPhase || 0) * 1.5) * 0.1);
     }
-    // Obstacles — RED contour glow (white silhouette + setTint, like EP3)
+    // Obstacles — RED contour glow (pre-baked red silhouette texture)
     if (this.hazards && hasObsSpr) {
       for (i = 0; i < this.hazards.length; i++) {
         var h = this.hazards[i];
         if (!h._spr && h.y > 0) {
-          var hc = h.type === 'fast' ? 0xFF2D55 : 0xFF4D6A;
+          var gTex = h.type === 'fast' ? '_glow_obs_f' : '_glow_obs_r';
           if (h.type === 'wide') {
-            h._gl = addGlow(this, h.x - 40, h.y, '_wh_obs', 50, 66, hc, 8);
-            h._gl2 = addGlow(this, h.x + 40, h.y, '_wh_obs', 50, 66, hc, 8);
+            h._gl = addGlow(this, h.x - 40, h.y, gTex, 50, 66, 8);
+            h._gl2 = addGlow(this, h.x + 40, h.y, gTex, 50, 66, 8);
             h._spr = this.add.image(h.x - 40, h.y, 'ep_sprite_obstacle').setDisplaySize(50, 66).setOrigin(0.5).setDepth(9);
             h._spr2 = this.add.image(h.x + 40, h.y, 'ep_sprite_obstacle').setDisplaySize(50, 66).setOrigin(0.5).setDepth(9);
           } else {
-            h._gl = addGlow(this, h.x, h.y, '_wh_obs', 48, 66, hc, 8);
+            h._gl = addGlow(this, h.x, h.y, gTex, 48, 66, 8);
             h._spr = this.add.image(h.x, h.y, 'ep_sprite_obstacle').setDisplaySize(48, 66).setOrigin(0.5).setDepth(9);
           }
         }
@@ -2047,13 +2052,13 @@ ${preloadLines}
         }
       }
     }
-    // Orbs — GREEN contour glow, pulsing (like EP3)
+    // Orbs — GREEN contour glow (pre-baked green silhouette texture), pulsing
     if (this.orbs && hasOrbSpr) {
       for (var j = this.orbs.length - 1; j >= 0; j--) {
         var orb = this.orbs[j];
         if (orb.collected || orb.y > 800) { cleanObj(orb); continue; }
         if (!orb._spr) {
-          orb._gl = addGlow(this, orb.x, orb.y, '_wh_orb', 28, 28, 0x44FF88, 7);
+          orb._gl = addGlow(this, orb.x, orb.y, '_glow_orb', 28, 28, 7);
           orb._spr = this.add.image(orb.x, orb.y, 'ep_sprite_collect').setDisplaySize(28, 28).setOrigin(0.5).setDepth(8);
         }
         var sc = 1.0 + Math.sin(orb.phase || 0) * 0.18;
@@ -2061,7 +2066,7 @@ ${preloadLines}
         moveGlow(orb._gl, orb.x, orb.y);
         if (orb._gl && orb._gl.g1) {
           orb._gl.g1.setScale(sc * 1.08); orb._gl.g2.setScale(sc * 1.22); orb._gl.g3.setScale(sc * 1.4);
-          orb._gl.g1.setAlpha(0.4 + Math.sin(orb.phase || 0) * 0.15);
+          orb._gl.g1.setAlpha(0.45 + Math.sin(orb.phase || 0) * 0.15);
         }
       }
     }
